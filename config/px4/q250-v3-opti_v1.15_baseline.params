@@ -1,7 +1,8 @@
 # Q250-V3 Opti PX4 Parameters for v1.15
 # Generated from QGC: Vehicle Setup → Parameters → Tools → Save to File
-# Version: 1.0-baseline
-# Date: 2026-11-02
+# Version: 1.1-baseline+v2
+# Date: 2026-11-03
+# Updated: Added VIO/EKF2 integration params, clarified AID_MASK variants
 
 # Airframe
 CA_AIRFRAME 0
@@ -46,6 +47,11 @@ EKF2_OF_NEIG_NR 3
 # EKF2 Tuning (Indoor)
 EKF2_GPS_CTRL 0
 EKF2_MAG_TYPE 5
+# EKF2_AID_MASK variants:
+#   200 = OF (bit3) + Range Height (bit7)                    -- Legacy baseline
+#   352 = OF (bit3) + EV Yaw (bit6) + Range Height (bit7)    -- VIO yaw fusion
+#   384 = OF (bit3) + EV Pos (bit7?) + EV Vel (bit8?) + EV Yaw (bit6) + Range (bit7)
+#   See docs/07-vio-ekf2-integration.md for details
 EKF2_AID_MASK 200
 EKF2_EV_CTRL 0
 EKF2_FUSE_BETA 1
@@ -54,6 +60,29 @@ EKF2_DRAG_NOISE 0.5
 EKF2_GND_EFF_DZ 0.1
 EKF2_GND_EFF_MAX_HGT 0.5
 EKF2_GND_MAX_HGT 1.0
+
+# VIO / External Vision Parameters (activate when VIO ready)
+# EKF2_EV_CTRL bits: 1=Pos, 2=Vel, 4=Yaw, 8=Horiz Pos, 16=Vert Pos
+#   15 = Pos + Vel + Yaw (recommended for VIO)
+#   7  = Pos + Vel (no yaw)
+#   31 = All (use with caution)
+# EKF2_EV_DELAY: Camera-to-EKF latency in ms (measure: VIO proc + MAVROS tx + PX4 rx)
+# EKF2_EV_POS_X/Y/Z: Camera position relative to COG in FRD frame (m)
+#   X positive = forward, Y positive = right, Z positive = down
+# EKF2_EVP_NOISE / EKF2_EVV_NOISE: Vision position/velocity noise (m, m/s)
+#   Increase if VIO covariance is underestimated
+# EKF2_AID_MASK: Add bit 6 (EV Yaw) when using VIO yaw fusion
+# EKF2_HGT_REF: 2 = Range sensor primary (LiDAR), 0 = Baro primary
+#
+# Recommended VIO tuning values (measure on your setup!):
+# EKF2_EV_CTRL    15      # Pos + Vel + Yaw fusion
+# EKF2_EV_DELAY   10      # ms (tune: innovation minimum)
+# EKF2_EV_POS_X   0.15    # Camera forward offset (m)
+# EKF2_EV_POS_Y   0.00    # Camera lateral offset (m)
+# EKF2_EV_POS_Z  -0.05    # Camera down offset (m)
+# EKF2_EVP_NOISE  0.1     # Vision position noise (m)
+# EKF2_EVV_NOISE  0.1     # Vision velocity noise (m/s)
+# EKF2_AID_MASK   352     # OF + EV Yaw + Range Height
 
 # Companion Computer (uXRCE-DDS on TELEM2)
 UXRCE_DDS_CFG 2
@@ -91,11 +120,12 @@ BAT_CRIT_THR 0.1
 
 # DShot
 DSHOT_TEL_CFG 0
+
+# Parameter metadata (for QGC parameter editor)
 1	1	UXRCE_DDS_CFG	2	9
 1	1	UXRCE_DDS_AG_IP	2130706433	9
 1	1	UXRCE_DDS_PRT	8888	9
 1	1	SER_TEL2_BAUD	921600	9
-1	1	UXRCE_DDS_NS	""	9
 1	1	EKF2_RNG_CTRL	2	9
 1	1	EKF2_HGT_REF	2	9
 1	1	EKF2_AID_MASK	352	9

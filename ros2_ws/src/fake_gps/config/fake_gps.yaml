@@ -1,0 +1,39 @@
+# Fake GPS Configuration
+# Converts VIO local pose (ENU) to GPS_INPUT MAVLink for PX4
+
+fake_gps:
+  ros__parameters:
+    # Datum/Origin (set to actual takeoff location)
+    # Can be overridden by SET_GPS_GLOBAL_ORIGIN MAVLink message
+    datum_lat: 37.5665    # degrees (example: Seoul City Hall)
+    datum_lon: 126.9780   # degrees
+    datum_alt: 28.0       # meters MSL
+
+    # GPS quality simulation
+    fix_type: 3           # 3=3D fix, 4=DGPS, 5=RTK
+    satellites_visible: 10
+    horiz_accuracy: 0.5   # meters (minimum, overridden by VIO covariance)
+    vert_accuracy: 0.5    # meters
+
+    # Input topic (VIO pose in ENU frame)
+    vio_pose_topic: "/ov_msckf/pose"  # geometry_msgs/PoseWithCovarianceStamped
+
+    # Output topic (MAVROS GPS_INPUT)
+    gps_input_topic: "/mavros/gps_input/input"
+
+    # Coordinate frame of input pose
+    # "enu" = ROS standard (East-North-Up)
+    # "ned" = PX4 native (North-East-Down)
+    input_frame: "enu"
+
+    # Ignore flags for GPS_INPUT (bitmask)
+    # 1=VEL, 2=YAW, 4=ALT, 8=HDOP, 16=VDOP, 32=SATS
+    ignore_velocity: true
+    ignore_yaw: true
+    ignore_altitude: false
+
+    # Rate limiting (Hz, 0 = no limit)
+    max_rate_hz: 10.0
+
+    # Debug
+    debug_logging: false

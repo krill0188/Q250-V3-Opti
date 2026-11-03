@@ -21,10 +21,20 @@ find_package(gz_sensors REQUIRED)
 find_package(rosgraph_msgs REQUIRED)
 
 add_executable(offboard_control src/offboard_control.cpp)
-ament_target_dependencies(offboard_control 
-  rclcpp px4_msgs geometry_msgs nav_msgs sensor_msgs std_msgs 
-  builtin_interfaces rclcpp_action ros_gz_bridge gz_msgs gz_sensors rosgraph_msgs
-)
+ament_target_dependencies(
+  offboard_control
+  rclcpp
+  px4_msgs
+  geometry_msgs
+  nav_msgs
+  sensor_msgs
+  std_msgs
+  builtin_interfaces
+  rclcpp_action
+  ros_gz_bridge
+  gz_msgs
+  gz_sensors
+  rosgraph_msgs)
 
 install(TARGETS offboard_control DESTINATION lib/${PROJECT_NAME})
 ament_package()
