@@ -1,0 +1,141 @@
+# Q250-V3 Opti SITL Parameters (Gazebo Simulation)
+# Generated from QUAD Drone Lab Gazebo Tutorial + Real Hardware Specs
+
+# ============================================================
+# AIRFRAME & GEOMETRY
+# ============================================================
+SYS_AUTOSTART=4001          # Generic Quadrotor X
+SYS_AUTOCONFIG=1
+MAV_TYPE=2                  # Quadrotor
+
+CA_AIRFRAME=0               # Quadrotor X
+CA_ROTOR_COUNT=4
+
+# Motor Positions (FRD, COG origin, meters)
+CA_MOT_POS_X1=0.12
+CA_MOT_POS_Y1=-0.12
+CA_MOT_POS_Z1=-0.025
+CA_MOT_DIR_CCW1=0           # CW
+
+CA_MOT_POS_X2=-0.12
+CA_MOT_POS_Y2=-0.12
+CA_MOT_POS_Z2=-0.025
+CA_MOT_DIR_CCW2=0           # CW
+
+CA_MOT_POS_X3=0.12
+CA_MOT_POS_Y3=0.12
+CA_MOT_POS_Z3=-0.025
+CA_MOT_DIR_CCW3=1           # CCW
+
+CA_MOT_POS_X4=-0.12
+CA_MOT_POS_Y4=0.12
+CA_MOT_POS_Z4=-0.025
+CA_MOT_DIR_CCW4=1           # CCW
+
+# ============================================================
+# OPTICAL-FLOW & LIDAR (Indoor Navigation)
+# ============================================================
+
+# Optical-Flow (UART4, 100Hz, Micolink)
+EKF2_OF_CTRL=1              # Enable Optical Flow fusion
+SENS_FLOW_ROT=0             # No rotation (Forward mounted)
+EKF2_OF_POS_X=0.0           # Flow center X offset (m)
+EKF2_OF_POS_Y=0.0           # Flow center Y offset (m)
+EKF2_OF_POS_Z=-0.035        # Flow center Z offset (m, below COG)
+EKF2_OF_QMIN=100            # Minimum quality threshold
+EKF2_OF_NEIG_NR=3           # Noise gate neighbor count
+
+# LiDAR / Range Finder (Downward, 100Hz)
+EKF2_RNG_CTRL=2             # Range height fusion (Continuous)
+EKF2_HGT_REF=2              # Height reference = Range sensor
+EKF2_RNG_POS_X=0.0          # LiDAR X offset (m)
+EKF2_RNG_POS_Y=0.0          # LiDAR Y offset (m)
+EKF2_RNG_POS_Z=-0.040       # LiDAR Z offset (m, below COG)
+EKF2_RNG_NOISE=0.02         # LiDAR noise (m, datasheet 2%)
+EKF2_RNG_SFE=0.1            # Scale factor error
+
+# ============================================================
+# EKF2 TUNING (Indoor)
+# ============================================================
+EKF2_GPS_CTRL=0             # GPS Disabled (Indoor)
+EKF2_MAG_TYPE=5             # Magnetometer Disabled (Indoor interference)
+EKF2_AID_MASK=352           # Bit3(OF)+Bit6(EV Yaw)+Bit7(RNG)+Bit8(Beta) = 8+64+128+256
+# Note: 352 = OF(8) + EV_Yaw(64) + RNG(128) + Beta(256)
+# If no External Vision: use 136 = OF(8) + RNG(128)
+
+EKF2_OF_QMIN=100
+EKF2_OF_NEIG_NR=3
+EKF2_OF_SCALE=1.0
+
+EKF2_RNG_NOISE=0.02
+EKF2_RNG_SFE=0.1
+
+EKF2_FUSE_BETA=1            # Beta fusion enabled
+EKF2_DRAG_CTRL=3            # Drag model enabled (XY)
+EKF2_DRAG_NOISE=0.5
+
+EKF2_GND_EFF_DZ=0.1
+EKF2_GND_EFF_MAX_HGT=0.5
+EKF2_GND_MAX_HGT=1.0
+
+EKF2_BCN_CTRL=0             # Beacon disabled
+
+# Sensor Delays (Silvus Mesh latency compensation)
+EKF2_OF_DELAY=5             # Optical-Flow delay (ms)
+EKF2_RNG_DELAY=5            # Range Finder delay (ms)
+EKF2_IMU_DELAY=2            # IMU delay (ms)
+
+# ============================================================
+# COMPANION COMPUTER (uXRCE-DDS)
+# ============================================================
+UXRCE_DDS_CFG=2             # TELEM2 port
+UXRCE_DDS_AG_IP=2130706433  # 127.0.0.1 (INT32)
+UXRCE_DDS_PRT=8888          # UDP port
+UXRCE_DDS_NS=""             # Namespace (multi-drone: uav1, uav2...)
+SER_TEL2_BAUD=921600        # UART baudrate
+
+# ============================================================
+# BATTERY (Holybro PM07 Power Module)
+# ============================================================
+BAT_V_DIV=54.5              # Voltage divider ratio (4S)
+BAT_A_PER_V=18.0            # Current sensor scale (A/V)
+BAT_N_CELLS=4               # 4S LiPo
+BAT_CAPACITY=4000           # 4000 mAh
+BAT_V_EMPTY=3.3             # Empty cell voltage (V)
+BAT_V_CHARGED=4.2           # Full cell voltage (V)
+BAT_CRIT_THR=0.1            # Critical threshold (10%)
+
+# ============================================================
+# FLIGHT BEHAVIOR (Indoor Safe)
+# ============================================================
+MPC_XY_VEL_MAX=3.0          # Max horizontal velocity (m/s)
+MPC_Z_VEL_MAX_UP=2.0        # Max climb rate (m/s)
+MPC_Z_VEL_MAX_DN=1.5        # Max descent rate (m/s)
+MPC_TILTMAX_AIR=35.0        # Max tilt angle (deg)
+MPC_THR_HOVER=0.5           # Hover throttle (0-1)
+MPC_THR_MIN=0.12            # Minimum throttle
+MPC_THR_MAX=0.95            # Maximum throttle
+
+# ============================================================
+# SAFETY (Indoor Geofence)
+# ============================================================
+GF_ACTION=1                 # Land on fence breach
+GF_MAX_HOR_DIST=10.0        # Max horizontal distance (m)
+GF_MAX_VER_DIST=2.5         # Max vertical distance (m)
+COM_RC_LOSS_T=0.5           # RC loss timeout (s)
+COM_RCL_ACT=2               # RC loss action: Land
+COM_DISARM_LAND=2.0         # Disarm after land (s)
+COM_LOW_BAT_ACT=2           # Low battery: Land
+BAT_CRIT_THR=0.1            # Critical battery threshold
+
+# ============================================================
+# COMPANION COMPUTER MAVLINK (Backup/Telemetry)
+# ============================================================
+MAV_1_CONFIG=4              # UART4 (Optical-Flow)
+MAV_1_MODE=1                # Normal
+SER_TEL4_BAUD=115200
+
+# ============================================================
+# DSHOT ESC
+# ============================================================
+DSHOT_TEL_CFG=0

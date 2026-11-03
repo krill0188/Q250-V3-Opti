@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+    <participant profile_name="swarm_participant" is_default_profile="true">
+        <rtps>
+            <builtin>
+                <discovery_config>
+                    <discoveryProtocol>SIMPLE</discoveryProtocol>
+                    <leaseDuration>
+                        <sec>30</sec>
+                    </leaseDuration>
+                    <metatrafficUnicastLocatorList>
+                        <locator>
+                            <udpv4>
+                                <address>192.168.10.11</address>  <!-- 자기 IP (기체별 수정) -->
+                                <port>7400</port>
+                            </udpv4>
+                        </locator>
+                    </metatrafficUnicastLocatorList>
+                    <initialPeersList>
+                        <locator><udpv4><address>192.168.10.1</address><port>7400</port></udpv4></locator>   <!-- PC -->
+                        <locator><udpv4><address>192.168.10.12</address><port>7400</port></udpv4></locator>  <!-- 기체2 -->
+                        <locator><udpv4><address>192.168.10.13</address><port>7400</port></udpv4></locator>  <!-- 기체3 -->
+                        <locator><udpv4><address>192.168.10.14</address><port>7400</port></udpv4></locator>  <!-- 기체4 -->
+                    </initialPeersList>
+                </discovery_config>
+            </builtin>
+            <port>
+                <portBase>7400</portBase>
+            </port>
+        </rtps>
+    </participant>
+</profiles>

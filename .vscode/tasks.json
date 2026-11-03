@@ -1,0 +1,132 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "PX4: Build FMUv6C (Release)",
+      "type": "shell",
+      "command": "make",
+      "args": ["px4_fmu-v6c_default", "-j8"],
+      "options": {
+        "cwd": "${env:HOME}/PX4-Autopilot"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "PX4: Build FMUv6C (Debug)",
+      "type": "shell",
+      "command": "make",
+      "args": ["px4_fmu-v6c_default", "-j8"],
+      "options": {
+        "cwd": "${env:HOME}/PX4-Autopilot",
+        "env": {
+          "CMAKE_BUILD_TYPE": "Debug"
+        }
+      },
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "PX4: Clean",
+      "type": "shell",
+      "command": "make",
+      "args": ["clean"],
+      "options": {
+        "cwd": "${env:HOME}/PX4-Autopilot"
+      },
+      "group": "build"
+    },
+    {
+      "label": "ROS2: Build Workspace (Release)",
+      "type": "shell",
+      "command": "colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release",
+      "options": {
+        "cwd": "${env:HOME}/ros2_px4_ws"
+      },
+      "group": "build",
+      "problemMatcher": ["$gcc", "$ros2"]
+    },
+    {
+      "label": "ROS2: Build Workspace (Debug)",
+      "type": "shell",
+      "command": "colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Debug",
+      "options": {
+        "cwd": "${env:HOME}/ros2_px4_ws"
+      },
+      "group": "build",
+      "problemMatcher": ["$gcc", "$ros2"]
+    },
+    {
+      "label": "ROS2: Test",
+      "type": "shell",
+      "command": "colcon test --event-handlers console_direct+",
+      "options": {
+        "cwd": "${env:HOME}/ros2_px4_ws"
+      },
+      "group": "test"
+    },
+    {
+      "label": "Gazebo: PX4 SITL (Q250-V3 Opti)",
+      "type": "shell",
+      "command": "make px4_sitl gz_q250_v3_opti",
+      "options": {
+        "cwd": "${env:HOME}/PX4-Autopilot"
+      },
+      "group": "test",
+      "isBackground": true
+    },
+    {
+      "label": "uXRCE-DDS Agent",
+      "type": "shell",
+      "command": "MicroXRCEAgent udp4 -p 8888",
+      "group": "test",
+      "isBackground": true
+    },
+    {
+      "label": "Offboard Control",
+      "type": "shell",
+      "command": "ros2 launch offboard_control offboard_control.launch.py",
+      "options": {
+        "cwd": "${env:HOME}/ros2_px4_ws"
+      },
+      "group": "test",
+      "dependsOn": ["uXRCE-DDS Agent"]
+    },
+    {
+      "label": "Pre-flight Check",
+      "type": "shell",
+      "command": "~/scripts/preflight/check_all.sh",
+      "group": "test"
+    },
+    {
+      "label": "Post-flight Archive",
+      "type": "shell",
+      "command": "~/scripts/postflight/archive_logs.sh",
+      "group": "test"
+    },
+    {
+      "label": "Docker: Build Dev Image",
+      "type": "shell",
+      "command": "docker build -f Dockerfile.dev -t q250-dev .",
+      "group": "build",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
+    },
+    {
+      "label": "Docker: Run Dev Container",
+      "type": "shell",
+      "command": "docker-compose -f docker-compose.dev.yml up -d q250-dev",
+      "group": "build"
+    },
+    {
+      "label": "Docker: Run SITL",
+      "type": "shell",
+      "command": "docker-compose -f docker-compose.dev.yml --profile sitl up -d px4-sitl",
+      "group": "test"
+    }
+  ]
+}

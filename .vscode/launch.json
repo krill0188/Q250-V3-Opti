@@ -1,0 +1,60 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "ROS2: Offboard Control (Debug)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${env:HOME}/ros2_px4_ws/install/offboard_control/lib/offboard_control/offboard_control",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${env:HOME}/ros2_px4_ws",
+      "environment": [
+        { "name": "ROS_DOMAIN_ID", "value": "0" },
+        { "name": "RMW_IMPLEMENTATION", "value": "rmw_fastrtps_cpp" }
+      ],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "setupCommands": [
+        { "description": "Enable pretty-printing", "text": "-enable-pretty-printing", "ignoreFailures": true }
+      ],
+      "preLaunchTask": "ROS2: Build Workspace (Debug)"
+    },
+    {
+      "name": "PX4: SITL (Debug)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${env:HOME}/PX4-Autopilot/build/px4_fmu-v6c_default/px4",
+      "args": ["-d", "-s", "etc/init.d-posix/rcS", "-i", "0"],
+      "stopAtEntry": false,
+      "cwd": "${env:HOME}/PX4-Autopilot",
+      "environment": [
+        { "name": "PX4_SIM_MODEL", "value": "q250_v3_opti" },
+        { "name": "PX4_DIR", "value": "${env:HOME}/PX4-Autopilot" }
+      ],
+      "externalConsole": true,
+      "MIMode": "gdb",
+      "setupCommands": [
+        { "description": "Enable pretty-printing", "text": "-enable-pretty-printing", "ignoreFailures": true }
+      ],
+      "preLaunchTask": "PX4: Build FMUv6C (Debug)"
+    },
+    {
+      "name": "ROS2: Offboard Control (Attach)",
+      "type": "cppdbg",
+      "request": "attach",
+      "processId": "${command:pickProcess}",
+      "cwd": "${env:HOME}/ros2_px4_ws"
+    },
+    {
+      "name": "Python: Silvus Monitor",
+      "type": "python",
+      "request": "launch",
+      "module": "scripts.silvus_monitor",
+      "args": ["--air-unit-ip", "192.168.10.11"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ]
+}

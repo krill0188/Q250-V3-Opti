@@ -1,0 +1,14 @@
+# /etc/netplan/01-netcfg.yaml
+# Jetson AP 모드 설정 (단일 기체, 권장)
+network:
+  version: 2
+  renderer: networkd
+  wifis:
+    wlan0:
+      dhcp4: false
+      addresses: [192.168.10.1/24]
+      access-points:
+        "Q250-Opti":
+          password: "quad250opti"
+          mode: ap
+          band: 2.4ghz

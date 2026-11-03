@@ -1,0 +1,99 @@
+---
+title: Q250-V3 Opti 전체 워크플로우 (HW → SW 설치 → SW 설정 → 운용)
+---
+
+flowchart TD
+    START([시작]) --> HW[1. 하드웨어 설정
+HW Setup]
+    
+    HW --> HW1[1.1 기체 조립/점검
+프레임, 모터, ESC, FC]
+    HW1 --> HW2[1.2 FC 포트맵 배선
+TELEM2, UART4, RC, PWM]
+    HW2 --> HW3[1.3 Jetson 장착/전원
+UBEC, SBC 마운트]
+    HW3 --> HW4[1.4 네트워크 토폴로지
+AP Mode vs Router Mode]
+    HW4 --> HW5[1.5 RC 수신기 연결
+비상 조종용]
+    
+    HW --> SW_INSTALL[2. 소프트웨어 설치
+SW Installation]
+    
+    SW_INSTALL --> SI1[2.1 Jetson Base OS
+JetPack 4.6.1 / Ubuntu 20.04]
+    SI1 --> SI2[2.2 ROS 2 Humble
+Desktop + px4_msgs + mavros]
+    SI2 --> SI3[2.3 PX4 펌웨어 빌드
+v1.15 브랜치 / FMUv6C]
+    SI3 --> SI4[2.4 MAVLink Router
+설치 및 설정]
+    SI4 --> SI5[2.5 uXRCE-DDS Agent
+빌드 및 서비스 등록]
+    SI5 --> SI6[2.6 QGroundControl
+노트북 설치]
+    SI6 --> SI7[2.7 개발 환경
+SSH, TMUX, VS Code]
+    
+    SW_INSTALL --> SW_CONFIG[3. 소프트웨어 설정
+SW Configuration]
+    
+    SW_CONFIG --> SC1[3.1 PX4 파라미터 (QGC)
+Airframe, Actuators, OF/LiDAR]
+    SC1 --> SC2[3.2 EKF2 튜닝
+실내 Position Mode 최적화]
+    SC2 --> SC3[3.3 Companion 연결 설정
+UXRCE_DDS 파라미터]
+    SC3 --> SC4[3.4 Flight Behavior/Safety
+속도 제한, 지오펜스]
+    SC4 --> SC5[3.5 MAVLink Router 검증
+FC ↔ QGC 통신 확인]
+    SC5 --> SC6[3.6 uXRCE-DDS Agent 검증
+ROS 2 토픽 수신 확인]
+    SC6 --> SC7[3.7 네트워크/방화벽/보안
+UFW, Watchdog]
+    SC7 --> SC8[3.8 설정 백업/버전관리
+Git, 파라미터 파일]
+    
+    SW_CONFIG --> OPERATION[4. 운용 융합
+Operation Integration]
+    
+    OPERATION --> OP1[4.1 비행 전 체크리스트
+하드웨어, 서비스, 통신, 센서]
+    OP1 --> OP2[4.2 1단계: 기본 조종/호버링
+Position Mode 검증]
+    OP2 --> OP3[4.3 2단계: 실내 자율비행
+Position → Offboard 전환]
+    OP3 --> OP4[4.4 3단계: ROS 2/MAVROS 개발
+시뮬→실기체 단계적 검증]
+    OP4 --> OP5[4.5 4단계: 군집비행 연구
+멀티 네임스페이스, UWB]
+    OP5 --> OP6[4.6 비행 중 모니터링
+듀얼 모니터, 실시간 토픽]
+    OP6 --> OP7[4.7 비상 절차
+Kill Switch, 통신 두절 대응]
+    OP7 --> OP8[4.8 비행 후 처리
+로그 아카이브, 분석, 백업]
+    OP8 --> OP9[4.9 정기 점검
+주간/월간/분기별]
+    
+    OPERATION --> END([운용 준비 완료])
+
+    %% Feedback Loops
+    OP2 -.->|튜닝 필요| SC2
+    OP3 -.->|파라미터 조정| SC1
+    OP4 -.->|펌웨어 수정| SI3
+    OP5 -.->|하드웨어 추가| HW3
+    OP8 -.->|설정 업데이트| SC8
+
+    classDef hw fill:#e3f2fd,stroke:#1565c0
+    classDef sw_install fill:#fff3e0,stroke:#ef6c00
+    classDef sw_config fill:#e8f5e9,stroke:#2e7d32
+    classDef operation fill:#fce4ec,stroke:#c2185b
+    classDef feedback fill:#fff8e1,stroke:#f57f17,stroke-dasharray: 5 5
+
+    class HW,HW1,HW2,HW3,HW4,HW5 hw
+    class SW_INSTALL,SI1,SI2,SI3,SI4,SI5,SI6,SI7 sw_install
+    class SW_CONFIG,SC1,SC2,SC3,SC4,SC5,SC6,SC7,SC8 sw_config
+    class OPERATION,OP1,OP2,OP3,OP4,OP5,OP6,OP7,OP8,OP9 operation
+    class END operation

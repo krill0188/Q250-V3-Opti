@@ -1,0 +1,122 @@
+---
+title: Q250-V3 Opti 시스템 아키텍처
+---
+
+flowchart TB
+    subgraph Operator["콘솔 노트북 (Operator Station)"]
+        QGC[QGroundControl
+MAVLink UDP:14550]
+        SSH[SSH / VS Code Remote
+TCP:22]
+        ROS2_DEV[ROS 2 개발 터미널
+원격 실행]
+        RC_EMERGENCY[RC 조종기
+비상 수동 조종]
+    end
+
+    subgraph Network["WiFi Network (192.168.10.x)"]
+        WIFI[(Wireless AP/Router)]
+    end
+
+    subgraph Drone["Q250-V3 Opti 기체"]
+        subgraph FC["Pixhawk 6C mini (FC)"]
+            PX4[PX4 v1.15]
+            UXRCE_CLT[uXRCE-DDS Client]
+            EKF2[EKF2 Estimator
+Optical-Flow + LiDAR]
+            DSHOT[DShot300 ESC Driver]
+            MAVLINK_FC[MAVLink Serial]
+        end
+
+        subgraph COMPANION["Jetson Nano (Onboard Computer)"]
+            UBUNTU[Ubuntu 20.04
+JetPack 4.6+]
+            MAV_ROUTER[MAVLink Router
+UDP:14550/14540]
+            UXRCE_AGENT[uXRCE-DDS Agent
+UDP:8888]
+            ROS2[ROS 2 Humble]
+            FASTDDS[Fast-DDS Middleware]
+        end
+
+        subgraph SENSORS["센서"]
+            OF[Optical-Flow
+UART4 115200]
+            LIDAR[LiDAR
+내장 모듈]
+            IMU[IMU (내장)]
+            MAG[Magnetometer
+실내 비활성화]
+            GPS[GPS/Compass
+옵션]
+        end
+
+        subgraph ACTUATORS["액추에이터"]
+            ESC[F4 4in1 50A BLHeli_32]
+            MOTORS[Motor 1-4
+BrotherHobby]
+        end
+
+        subgraph POWER["전원 시스템"]
+            BATT[4S LiPo 4000mAh]
+            PM07[PM07 Power Module]
+            UBEC[2-Ch UBEC
+5V/4A + 12V/2A]
+        end
+
+        RC_RX[RC 수신기
+SBUS/CRSF/PPM]
+    end
+
+    %% Connections
+    QGC -.->|UDP 14550| WIFI
+    SSH -.->|TCP 22| WIFI
+    ROS2_DEV -.->|ROS 2 DDS| WIFI
+    
+    WIFI ====|WiFi| COMPANION
+    
+    MAV_ROUTER ====|UART 921600| MAVLINK_FC
+    UXRCE_AGENT ====|UDP 8888| UXRCE_CLT
+    
+    MAVLINK_FC --- PX4
+    UXRCE_CLT --- PX4
+    
+    PX4 --- EKF2
+    PX4 --- DSHOT
+    
+    EKF2 --- OF
+    EKF2 --- LIDAR
+    EKF2 --- IMU
+    EKF2 -.->|Disabled| MAG
+    EKF2 -.->|Optional| GPS
+    
+    DSHOT --- ESC
+    ESC --- MOTORS
+    
+    BATT --- PM07
+    PM07 --- FC
+    PM07 --- UBEC
+    UBEC --- COMPANION
+    UBEC --- SENSORS
+    
+    RC_RX --- PX4
+    RC_EMERGENCY --- RC_RX
+
+    %% Styling
+    classDef operator fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    classDef network fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
+    classDef fc fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    classDef companion fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    classDef sensors fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef actuators fill:#fff8e1,stroke:#f57f17,stroke-width:2px
+    classDef power fill:#e0f2f1,stroke:#00695c,stroke-width:2px
+    classDef emergency fill:#ffebee,stroke:#c62828,stroke-width:3px,stroke-dasharray: 5 5
+
+    class Operator operator
+    class Network network
+    class FC,FC_COMPONENTS fc
+    class COMPANION,COMPANION_COMPONENTS companion
+    class SENSORS sensors
+    class ACTUATORS actuators
+    class POWER power
+    class RC_RX,RC_EMERGENCY emergency

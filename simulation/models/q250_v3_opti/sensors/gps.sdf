@@ -1,0 +1,15 @@
+<sensor name="gps" type="gps">
+  <always_on>true</always_on>
+  <update_rate>10</update_rate>
+  <visualize>false</visualize>
+  <gps>
+    <min_elevation>5</min_elevation>
+    <position_noise><type>gaussian</type><mean>0.0</mean><stddev>0.5</stddev></position_noise>
+    <velocity_noise><type>gaussian</type><mean>0.0</mean><stddev>0.1</stddev></velocity_noise>
+  </gps>
+  <plugin name="gps_plugin" filename="libGpsPlugin.so">
+    <robotNamespace>/q250_v3_opti</robotNamespace>
+    <topicName>/fmu/out/vehicle_gps_position</topicName>
+    <frameId>gps_link</frameId>
+  </plugin>
+</sensor>

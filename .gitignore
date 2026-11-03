@@ -1,0 +1,90 @@
+# Q250-V3 Opti Project .gitignore
+
+# Build artifacts
+build/
+install/
+log/
+*.ulg
+*.bin
+*.elf
+*.px4
+*.map
+*.hex
+
+# IDE/Editor
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+.venv/
+pip-wheel-metadata/
+.pytest_cache/
+
+# ROS2
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+
+# PX4
+PX4-Autopilot/build/
+PX4-Autopilot/Tools/sitl_gazebo-classic/models/
+*.px4
+*.bin
+*.elf
+
+# Docker
+.docker/
+
+# Logs
+*.log
+logs/
+flight_logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+
+# Secrets (never commit)
+*.pem
+*.key
+*.crt
+.env
+*.env.local
+*.env.*.local
+
+# Large files
+*.bag
+*.mp4
+*.avi
+*.mov
+*.zip
+*.tar.gz
+*.rar
+
+# IDE specific
+*.sublime-workspace
+*.sublime-project
+*.code-workspace
+
+# OS
+ehthumbs.db
+Desktop.ini

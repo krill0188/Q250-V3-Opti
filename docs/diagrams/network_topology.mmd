@@ -1,0 +1,96 @@
+---
+title: Q250-V3 Opti 네트워크 토폴로지
+---
+
+flowchart LR
+    subgraph LAPTOP["콘솔 노트북
+(192.168.10.x)"]
+        QGC_APP[QGroundControl
+Listen UDP:14550]
+        SSH_CLIENT[SSH Client
+TCP:22]
+        VSCODE[VS Code Remote
+SSH:22]
+        ROS2_CLI[ROS 2 CLI Tools]
+    end
+
+    subgraph WIFI_NET["WiFi Network"]
+        direction TB
+        AP_MODE["Jetson AP Mode
+SSID: Q250-Opti
+192.168.10.1/24"]
+        ROUTER_MODE["Shared Router
+192.168.1.1/24
+Jetson: 192.168.1.100"]
+    end
+
+    subgraph JETSON["Jetson Nano
+(Onboard Computer)"]
+        MAV_ROUTER[MAVLink Router
+└─ FC UART: /dev/ttyTHS1:921600
+└─ QGC UDP: 14550 (Broadcast)
+└─ MAVROS UDP: 14540]
+        UXRCE_AGENT[uXRCE-DDS Agent
+└─ UDP: 8888
+└─ Fast-DDS: 7400]
+        ROS2_NODES[ROS 2 Nodes
+└─ px4_msgs Sub/Pub
+└─ Custom Offboard Control]
+        SYSTEMD[Systemd Services
+└─ mavlink-router.service
+└─ uxrce-dds-agent.service
+└─ px4-watchdog.timer]
+    end
+
+    subgraph FC["Pixhawk 6C mini"]
+        PX4_FW[PX4 v1.15 Firmware]
+        UXRCE_CLT[uXRCE-DDS Client
+└─ TELEM2: UART 921600
+└─ Agent IP: 127.0.0.1 (INT32)
+└─ Port: 8888]
+        MAVLINK_OUT[MAVLink Output
+└─ TELEM1: GCS (57600)
+└─ TELEM2: Companion (921600)
+└─ UART4: Optical-Flow (115200)]
+    end
+
+    %% Connections
+    QGC_APP ====|UDP 14550| AP_MODE
+    SSH_CLIENT ====|TCP 22| AP_MODE
+    VSCODE ====|TCP 22| AP_MODE
+    ROS2_CLI ====|DDS/ROS 2| AP_MODE
+
+    AP_MODE ====|WiFi| JETSON
+    ROUTER_MODE ====|WiFi/Ethernet| JETSON
+
+    MAV_ROUTER ====|UART 921600| MAVLINK_OUT
+    UXRCE_AGENT ====|UDP 8888| UXRCE_CLT
+    
+    MAVLINK_OUT --- PX4_FW
+    UXRCE_CLT --- PX4_FW
+
+    %% Port Summary
+    subgraph PORTS["포트 요약"]
+        PORT_TABLE[| 서비스 | 프로토콜 | 포트 | 방향 |
+|--------|----------|------|------|
+| QGC MAVLink | UDP | 14550 | Jetson→Laptop |
+| MAVROS | UDP | 14540 | Jetson→Local |
+| MAVLink Router TCP | TCP | 5760 | Jetson←Laptop |
+| SSH | TCP | 22 | Jetson←Laptop |
+| uXRCE-DDS | UDP | 8888 | FC↔Jetson |
+| Fast-DDS Discovery | UDP | 7400 | Jetson↔Jetson |
+| FC UART (TELEM2) | Serial | 921600 | FC↔Jetson |
+| Optical-Flow UART | Serial | 115200 | FC←Sensor |]
+    end
+
+    classDef laptop fill:#e3f2fd,stroke:#1565c0
+    classDef wifi fill:#fff3e0,stroke:#ef6c00
+    classDef jetson fill:#e8f5e9,stroke:#2e7d32
+    classDef fc fill:#fce4ec,stroke:#c2185b
+    classDef ports fill:#f5f5f5,stroke:#616161
+
+    class LAPTOP laptop
+    class WIFI_NET wifi
+    class JETSON jetson
+    class FC fc
+    class PORTS ports

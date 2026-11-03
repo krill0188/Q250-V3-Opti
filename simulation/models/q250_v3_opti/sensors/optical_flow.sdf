@@ -1,0 +1,18 @@
+<sensor name="optical_flow" type="optical_flow">
+  <always_on>true</always_on>
+  <update_rate>100</update_rate>
+  <visualize>true</visualize>
+  <optical_flow>
+    <focal_length>1.0</focal_length>
+    <image_width>64</image_width>
+    <image_height>64</image_height>
+    <min_distance>0.1</min_distance>
+    <max_distance>10.0</max_distance>
+    <noise><type>gaussian</type><mean>0.0</mean><stddev>0.01</stddev></noise>
+  </optical_flow>
+  <plugin name="optical_flow_plugin" filename="libOpticalFlowPlugin.so">
+    <robotNamespace>/q250_v3_opti</robotNamespace>
+    <topicName>/fmu/out/optical_flow</topicName>
+    <frameId>of_lidar_link</frameId>
+  </plugin>
+</sensor>

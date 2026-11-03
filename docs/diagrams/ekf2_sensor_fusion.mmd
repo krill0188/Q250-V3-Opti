@@ -1,0 +1,165 @@
+---
+title: EKF2 센서 융합 블록 다이어그램 (실내 모드)
+---
+
+flowchart TB
+    subgraph SENSORS["센서 입력"]
+        IMU[IMU
+Gyro + Accel
+400Hz]
+        OF[Optical-Flow
+OPTICAL_FLOW_RAD
+100Hz
+Quality > 100]
+        LIDAR[LiDAR
+DISTANCE_SENSOR
+100Hz
+Range: 0.02-11m]
+        MAG[Magnetometer
+실내: 비활성화
+EKF2_MAG_TYPE=5]
+        GPS[GPS
+실내: 비활성화
+EKF2_GPS_CTRL=0]
+        EV[External Vision
+VIO/T265 (옵션)
+EKF2_EV_CTRL=15]
+    end
+
+    subgraph EKF2["EKF2 Estimator
+(Extended Kalman Filter)"]
+        direction TB
+        
+        subgraph PREDICT["Prediction Step"]
+            IMU_INT[IMU 적분
+자세/속도/위치 예측
+State: 24-28 states]
+        end
+        
+        subgraph UPDATE["Update Step (Sensor Fusion)"]
+            OF_FUSE[Optical-Flow 융합
+EKF2_OF_CTRL=1
+Velocity XY 보정]
+            RNG_FUSE[Range Finder 융합
+EKF2_RNG_CTRL=2
+Height 보정 (연속 모드)]
+            EV_FUSE[External Vision 융합
+EKF2_EV_CTRL=15
+Pos/Vel/Yaw 보정]
+            BETA_FUSE[Beta Fusion
+EKF2_FUSE_BETA=1
+Sideslip 보정]
+            DRAG_FUSE[Drag Fusion
+EKF2_DRAG_CTRL=3
+Wind/Drg 모델]
+        end
+        
+        subgraph HEIGHT_REF["Height Reference
+EKF2_HGT_REF=2"]
+            RNG_PRIMARY[Range Sensor Primary
+LiDAR 고도 기준]
+            BARO_SECONDARY[Barometer Secondary
+압력 고도 보조]
+        end
+        
+        subgraph AID_MASK["Aiding Mask
+EKF2_AID_MASK=200"]
+            BIT3[Bit 3: Optical Flow ✓]
+            BIT6[Bit 6: EV Yaw ✓]
+            BIT7[Bit 7: Range Height ✓]
+            BIT0[Bit 0: GPS Pos ✗]
+            BIT1[Bit 1: GPS Vel ✗]
+            BIT2[Bit 2: GPS Hgt ✗]
+        end
+    end
+
+    subgraph OUTPUT["EKF2 출력"]
+        POS[Position (NED)
+x, y, z]
+        VEL[Velocity (NED)
+vx, vy, vz]
+        ATT[Attitude (Quat)
+Roll, Pitch, Yaw]
+        ANG_RATE[Angular Rates
+p, q, r]
+        COV[Covariance Matrix
+불확실성 추정]
+        INNOV[Innovations
+센서별 혁신/잔차]
+        STATUS[Estimator Status
+해결 상태 플래그]
+    end
+
+    subgraph CONTROL["Flight Control"]
+        POS_CTRL[Position Controller
+Position Mode]
+        VEL_CTRL[Velocity Controller
+Offboard Mode]
+        ATT_CTRL[Attitude Controller
+모든 모드]
+        RATE_CTRL[Rate Controller
+모든 모드]
+        ACTUATOR[Actuator Outputs
+DShot300 → ESC → Motor]
+    end
+
+    %% Connections
+    IMU --> IMU_INT
+    OF --> OF_FUSE
+    LIDAR --> RNG_FUSE
+    EV --> EV_FUSE
+    IMU_INT --> OF_FUSE
+    IMU_INT --> RNG_FUSE
+    IMU_INT --> EV_FUSE
+    IMU_INT --> BETA_FUSE
+    IMU_INT --> DRAG_FUSE
+    
+    OF_FUSE --> POS
+    RNG_FUSE --> POS
+    EV_FUSE --> POS
+    BETA_FUSE --> VEL
+    DRAG_FUSE --> VEL
+    
+    RNG_PRIMARY --> POS
+    BARO_SECONDARY -.-> POS
+    
+    BIT3 --> OF_FUSE
+    BIT6 --> EV_FUSE
+    BIT7 --> RNG_FUSE
+    BIT0 -.->|Disabled| GPS
+    BIT1 -.->|Disabled| GPS
+    BIT2 -.->|Disabled| GPS
+    
+    POS --> POS_CTRL
+    VEL --> VEL_CTRL
+    ATT --> ATT_CTRL
+    ANG_RATE --> RATE_CTRL
+    
+    POS_CTRL --> ATT_CTRL
+    VEL_CTRL --> ATT_CTRL
+    ATT_CTRL --> RATE_CTRL
+    RATE_CTRL --> ACTUATOR
+    
+    %% Innovation Monitoring
+    INNOV -.->|Monitor| OF_FUSE
+    INNOV -.->|Monitor| RNG_FUSE
+    INNOV -.->|Monitor| EV_FUSE
+
+    %% Styling
+    classDef sensors fill:#e3f2fd,stroke:#1565c0
+    classDef predict fill:#fff3e0,stroke:#ef6c00
+    classDef update fill:#e8f5e9,stroke:#2e7d32
+    classDef height fill:#fce4ec,stroke:#c2185b
+    classDef mask fill:#f3e5f5,stroke:#7b1fa2
+    classDef output fill:#fff8e1,stroke:#f57f17
+    classDef control fill:#ffebee,stroke:#c62828
+    classDef disabled fill:#f5f5f5,stroke:#9e9e9e,stroke-dasharray: 5 5
+
+    class SENSORS sensors
+    class PREDICT predict
+    class UPDATE update
+    class HEIGHT_REF height
+    class AID_MASK mask
+    class OUTPUT output
+    class CONTROL control
+    class MAG,GPS disabled

@@ -1,0 +1,108 @@
+{
+  "name": "Q250-V3 Opti Dev Container",
+  "description": "Development environment for Q250-V3 Opti drone project (ROS 2 Humble, PX4, Gazebo, Silvus)",
+  
+  "image": "ros:humble-ros-base-jammy",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/gh-cli:1": {}
+  },
+  
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "ms-python.python",
+        "ms-vscode-remote.remote-wsl",
+        "ms-azuretools.vscode-docker",
+        "twxs.cmake",
+        "twxs.cmake-format",
+        "ms-python.black-formatter",
+        "ms-python.isort",
+        "foxundermoon.shell-format",
+        "redhat.vscode-yaml",
+        "ms-vscode.hexeditor"
+      ],
+      "settings": {
+        "cmake.configureOnOpen": true,
+        "cmake.buildDirectory": "${workspaceFolder}/build",
+        "cmake.generator": "Ninja",
+        "cmake.configureArgs": [
+          "-DCMAKE_BUILD_TYPE=Release",
+          "-DCMAKE_C_COMPILER_LAUNCHER=ccache",
+          "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
+        ],
+        "cmake.buildBeforeRun": true,
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "terminal.integrated.profiles.linux": {
+          "bash": {
+            "path": "bash",
+            "args": ["-l"],
+            "env": {
+              "ROS_DOMAIN_ID": "0"
+            }
+          }
+        },
+        "files.associations": {
+          "*.sdf": "xml",
+          "*.launch.py": "python",
+          "*.px4": "text",
+          "*.mmd": "markdown"
+        },
+        "cmake.configureArgs": [
+          "-DCMAKE_BUILD_TYPE=Release",
+          "-DCMAKE_C_COMPILER_LAUNCHER=ccache",
+          "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+          "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+        ],
+        "remote.SSH.remotePlatform": {
+          "192.168.10.11": "linux",
+          "192.168.10.12": "linux",
+          "192.168.10.13": "linux",
+          "192.168.10.14": "linux"
+        }
+      }
+    }
+  },
+  
+  "forwardPorts": [8888, 14550, 14560, 5760, 51820],
+  
+  "postCreateCommand": "bash scripts/setup/02_ros2_humble.sh && bash scripts/setup/03_px4_firmware.sh",
+  
+  "postStartCommand": "source /opt/ros/humble/setup.bash && source ~/ros2_px4_ws/install/setup.bash 2>/dev/null || true",
+  
+  "remoteUser": "vscode",
+  
+  "containerEnv": {
+    "ROS_DOMAIN_ID": "0",
+    "RMW_IMPLEMENTATION": "rmw_fastrtps_cpp",
+    "FASTRTPS_DEFAULT_PROFILES_FILE": "/workspace/fastdds_config.xml",
+    "PX4_DIR": "/workspace/PX4-Autopilot",
+    "PX4_SIM_MODEL": "q250_v3_opti",
+    "GZ_SIM_RESOURCE_PATH": "/workspace/simulation/models",
+    "CCACHE_DIR": "/workspace/.ccache",
+    "CCACHE_MAXSIZE": "10G"
+  },
+  
+  "remoteUser": "vscode",
+  
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/PX4-Autopilot,target=/workspace/PX4-Autopilot,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/ros2_px4_ws,target=/workspace/ros2_px4_ws,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/simulation,target=/workspace/simulation,type=bind,consistency=cached"
+  ],
+  
+  "runArgs": [
+    "--cap-add=SYS_PTRACE",
+    "--cap-add=CAP_DAC_READ_SEARCH",
+    "--security-opt=seccomp=unconfined",
+    "--group-add=dialout",
+    "--group-add=video"
+  ],
+  
+  "postAttachCommand": "echo 'Q250-V3 Opti Dev Container ready! Run: source /opt/ros/humble/setup.bash'"
+}

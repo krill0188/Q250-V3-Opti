@@ -1,0 +1,58 @@
+# Dockerfile.dev - Q250-V3 Opti 개발 환경
+# 빌드: docker build -f Dockerfile.dev -t q250-dev .
+# 실행: docker-compose -f docker-compose.dev.yml up -d
+
+FROM ros:humble-ros-base-jammy
+
+# 논인터랙티브 모드
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Seoul
+
+# 기본 패키지
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential cmake ninja-build ccache \
+    git curl wget vim htop tmux net-tools \
+    python3-pip python3-venv python3-dev \
+    libssl-dev libudev-dev \
+    software-properties-common \
+    gnupg2 lsb-release \
+    usbutils pciutils \
+    gz-harmonic \
+    && rm -rf /var/lib/apt/lists/*
+
+# PX4 빌드 의존성 (공식 스크립트)
+RUN bash -c "$(curl -s https://raw.githubusercontent.com/PX4/PX4-Autopilot/main/Tools/setup/ubuntu.sh)"
+
+# ROS 2 추가 패키지
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-humble-px4-msgs \
+    ros-humble-mavros \
+    ros-humble-mavros-extras \
+    ros-humble-tf2-tools \
+    ros-humble-rviz2 \
+    && rm -rf /var/lib/apt/lists/*
+
+# ccache 설정
+ENV CCACHE_DIR=/workspace/.ccache
+ENV CCACHE_MAXSIZE=10G
+RUN ccache --max-size=10G
+
+# 작업 디렉토리
+WORKDIR /workspace
+
+# 유용한 별칭
+RUN echo 'alias px4-build="cd /workspace/PX4-Autopilot && make px4_fmu-v6c_default -j$(nproc)"' >> /root/.bashrc \
+    && echo 'alias px4-sitl="cd /workspace/PX4-Autopilot && make px4_sitl gz_q250_v3_opti"' >> /root/.bashrc \
+    && echo 'alias ros2-build="cd /workspace/ros2_px4_ws && colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release"' >> /root/.bashrc \
+    && echo 'alias ros2-test="cd /workspace/ros2_px4_ws && colcon test --event-handlers console_direct+"' >> /root/.bashrc
+
+# ROS 2 환경
+ENV ROS_DOMAIN_ID=0
+ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+
+# 엔트리포인트
+COPY docker-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["bash"]

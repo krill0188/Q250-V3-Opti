@@ -1,0 +1,100 @@
+{
+  "cmake.configureOnOpen": true,
+  "cmake.buildDirectory": "${workspaceFolder}/build",
+  "cmake.generator": "Ninja",
+  "cmake.configureArgs": [
+    "-DCMAKE_BUILD_TYPE=Release",
+    "-DCMAKE_C_COMPILER_LAUNCHER=ccache",
+    "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+    "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+  ],
+  "cmake.buildBeforeRun": true,
+  "cmake.parallelJobs": 8,
+  
+  "terminal.integrated.defaultProfile.linux": "bash",
+  "terminal.integrated.profiles.linux": {
+    "bash": {
+      "path": "bash",
+      "args": ["-l"],
+      "env": {
+        "ROS_DOMAIN_ID": "0"
+      }
+    },
+    "wsl-bash": {
+      "path": "wsl.exe",
+      "args": ["-d", "Ubuntu-22.04"],
+      "env": {
+        "ROS_DOMAIN_ID": "0"
+      }
+    }
+  },
+  
+  "files.associations": {
+    "*.sdf": "xml",
+    "*.launch.py": "python",
+    "*.px4": "text",
+    "*.mmd": "markdown",
+    "*.urdf": "xml",
+    "*.xacro": "xml"
+  },
+  
+  "cmake.configureOnOpen": true,
+  "cmake.buildBeforeRun": true,
+  "cmake.parallelJobs": 8,
+  
+  "python.defaultInterpreterPath": "/opt/ros/humble/bin/python3",
+  "python.analysis.extraPaths": [
+    "/opt/ros/humble/lib/python3.10/site-packages",
+    "${workspaceFolder}/ros2_px4_ws/install"
+  ],
+  
+  "C_Cpp.default.cppStandard": "c++17",
+  "C_Cpp.default.cStandard": "c11",
+  "C_Cpp.default.intelliSenseMode": "linux-gcc-x64",
+  "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json",
+  
+  "ros.distro": "humble",
+  "ros.workspaceFolders": [
+    "${workspaceFolder}/ros2_px4_ws"
+  ],
+  
+  "remote.SSH.remotePlatform": {
+    "192.168.10.11": "linux",
+    "192.168.10.12": "linux",
+    "192.168.10.13": "linux",
+    "192.168.10.14": "linux"
+  },
+  
+  "task.allowAutomaticTasks": "on",
+  "task.autoDetect": "on",
+  
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  },
+  
+  "[cpp]": {
+    "editor.defaultFormatter": "ms-vscode.cpptools",
+    "editor.formatOnSave": true
+  },
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.formatOnSave": true
+  },
+  "[cmake]": {
+    "editor.defaultFormatter": "twxs.cmake-format",
+    "editor.formatOnSave": true
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml",
+    "editor.formatOnSave": true
+  },
+  "[xml]": {
+    "editor.defaultFormatter": "redhat.vscode-xml",
+    "editor.formatOnSave": true
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "foxundermoon.shell-format",
+    "editor.formatOnSave": true
+  }

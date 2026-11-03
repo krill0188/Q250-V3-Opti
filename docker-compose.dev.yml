@@ -1,0 +1,109 @@
+version: '3.8'
+
+services:
+  q250-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: q250-dev
+    hostname: q250-dev
+    
+    # 볼륨 마운트 (캐시드 모드로 성능 최적화)
+    volumes:
+      - .:/workspace:cached
+      - ${HOME}/PX4-Autopilot:/workspace/PX4-Autopilot:cached
+      - ${HOME}/ros2_px4_ws:/workspace/ros2_px4_ws:cached
+      - ${HOME}/simulation:/workspace/simulation:cached
+      - ${HOME}/.ccache:/workspace/.ccache:cached
+      - ${HOME}/fastdds_config.xml:/workspace/fastdds_config.xml:cached
+      # USB 장치 (Jetson, Silvus, FC, Modem)
+      - /dev/bus/usb:/dev/bus/usb
+      - /dev/ttyTHS1:/dev/ttyTHS1
+      - /dev/ttyUSB0:/dev/ttyUSB0
+      - /dev/ttyACM0:/dev/ttyACM0
+    
+    # 네트워크: 호스트 모드 (실버스, PX4, ROS2 DDS 통신용)
+    network_mode: host
+    
+    # 권한
+    privileged: true
+    cap_add:
+      - SYS_PTRACE
+      - CAP_DAC_READ_SEARCH
+      - NET_ADMIN
+      - SYS_ADMIN
+    security_opt:
+      - seccomp:unconfined
+    group_add:
+      - dialout
+      - video
+      - plugdev
+    
+    # 환경 변수
+    environment:
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/workspace/fastdds_config.xml
+      - PX4_DIR=/workspace/PX4-Autopilot
+      - PX4_SIM_MODEL=q250_v3_opti
+      - GZ_SIM_RESOURCE_PATH=/workspace/simulation/models
+      - CCACHE_DIR=/workspace/.ccache
+      - CCACHE_MAXSIZE=10G
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+    
+    # 재시작 정책
+    restart: unless-stopped
+    
+    # 명령
+    command: bash
+    
+    # 리소스 제한 (선택적)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '8'
+    #       memory: 16G
+
+  # 선택적: Gazebo GUI용 별도 서비스
+  gazebo-gui:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: q250-gazebo-gui
+    profile: gui
+    volumes:
+      - .:/workspace:cached
+      - ${HOME}/PX4-Autopilot:/workspace/PX4-Autopilot:cached
+      - ${HOME}/simulation:/workspace/simulation:cached
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    network_mode: host
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - GAZEBO_MASTER_URI=http://localhost:11345
+    privileged: true
+    depends_on:
+      - q250-dev
+    command: bash
+
+  # 선택적: PX4 SITL 전용
+  px4-sitl:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: q250-px4-sitl
+    profile: sitl
+    volumes:
+      - .:/workspace:cached
+      - ${HOME}/PX4-Autopilot:/workspace/PX4-Autopilot:cached
+    network_mode: host
+    privileged: true
+    environment:
+      - PX4_SIM_MODEL=q250_v3_opti
+      - PX4_DIR=/workspace/PX4-Autopilot
+    command: >
+      bash -c "cd /workspace/PX4-Autopilot && 
+      make px4_sitl gz_q250_v3_opti"
+    depends_on:
+      - q250-dev

@@ -1,0 +1,152 @@
+---
+title: Pixhawk 6C mini 포트맵 (Q250-V3 Opti)
+---
+
+flowchart LR
+    subgraph FC["Pixhawk 6C mini"]
+        direction TB
+        
+        subgraph TELEM["Telemetry Ports"]
+            TELEM1[TELEM1
+├─ MAVLink GCS
+├─ 57600 baud
+└─ SiK Radio / USB-TTL]
+            TELEM2[TELEM2 ★
+├─ Companion Computer
+├─ 921600 baud
+├─ MAVLink + uXRCE-DDS
+└─ Jetson UART (J41)]
+            TELEM3[TELEM3 / GPS1
+├─ GPS + Compass
+├─ M10Q-5883 (옵션)
+└─ 실외 비행용]
+        end
+        
+        subgraph UART["UART Ports"]
+            UART4[UART4 / GPS2 ★
+├─ Optical-Flow + LiDAR
+├─ 115200 baud
+├─ MAVLink Protocol
+└─ 내장 Micolink 모듈]
+        end
+        
+        subgraph I2C["I2C Ports"]
+            I2C1[I2C1
+├─ External Compass
+└─ GPS Module 내부]
+            I2C2[I2C2
+└─ 보조 센서 (미사용)]
+        end
+        
+        subgraph CAN["CAN Ports"]
+            CAN1[CAN1
+└─ DroneCAN ESC (미사용
+    DShot 사용)]
+            CAN2[CAN2
+└─ 미사용]
+        end
+        
+        subgraph PWM["PWM Outputs"]
+            MAIN[MAIN 1-6
+└─ 미사용]
+            AUX[AUX 1-4 ★
+├─ Motor 1-4
+├─ DShot300
+└─ F4 4in1 ESC]
+            AUX56[AUX 5-6
+└─ LED / 파라슈트 등
+    (선택)]
+        end
+        
+        subgraph ADC["ADC Inputs"]
+            ADC6V6[ADC 6.6V
+├─ Battery Voltage
+├─ Div Ratio: 54.5
+└─ PM07 6.6V Output]
+            ADC3V3[ADC 3.3V
+├─ Battery Current
+├─ Scale: 18.0 A/V
+└─ PM07 3.3V Output]
+        end
+        
+        subgraph OTHER["기타"]
+            USB[USB-C
+├─ 펌웨어 플래싱
+├─ QGC 설정
+└─ 콘솔/로그]
+            SD[MicroSD
+├─ U3 Class 10+ 32GB
+├─ 비행 로그 (.ulg)
+└─ 파라미터 백업]
+            SAFETY[Safety Switch
+├─ ARM/DISARM
+└─ 부트로더 모드 진입]
+        end
+    end
+
+    %% External Connections
+    subgraph EXTERNAL["외부 연결"]
+        QGC[QGroundControl
+(UDP/USB)]
+        JETSON[Jetson Nano
+J41 Header
+UART2 (ttyTHS1)]
+        OF_LIDAR[Optical-Flow + LiDAR
+내장 모듈]
+        GPS[GPS/Compass M10Q-5883
+(옵션)]
+        RC_RX[RC 수신기
+SBUS/CRSF/PPM]
+        ESC_4IN1[F4 4in1 50A ESC
+DShot300]
+        MOTORS[Motor 1-4
+BrotherHobby]
+        SIK[SiK Telemetry V3
+433MHz (옵션)]
+        USB_TTL[USB-TTL Converter
+CP2102/FT232
+(권장: 중계용)]
+    end
+
+    %% Connections
+    TELEM1 --- QGC
+    TELEM1 --- SIK
+    TELEM1 --- USB_TTL
+    
+    TELEM2 --- USB_TTL
+    USB_TTL --- JETSON
+    TELEM2 -.->|Direct (비권장)| JETSON
+    
+    TELEM3 --- GPS
+    
+    UART4 --- OF_LIDAR
+    
+    I2C1 --- GPS
+    
+    AUX --- ESC_4IN1
+    ESC_4IN1 --- MOTORS
+    
+    RC_RX --- FC
+    
+    USB --- QGC
+
+    %% Styling
+    classDef telemetry fill:#e3f2fd,stroke:#1565c0
+    classDef uart fill:#fff3e0,stroke:#ef6c00
+    classDef i2c fill:#f3e5f5,stroke:#7b1fa2
+    classDef can fill:#e8f5e9,stroke:#2e7d32
+    classDef pwm fill:#fce4ec,stroke:#c2185b
+    classDef adc fill:#fff8e1,stroke:#f57f17
+    classDef other fill:#f5f5f5,stroke:#616161
+    classDef external fill:#e0f2f1,stroke:#00695c
+    classDef critical fill:#ffebee,stroke:#c62828,stroke-width:3px
+
+    class TELEM1,TELEM2,TELEM3 telemetry
+    class UART4 uart
+    class I2C1,I2C2 i2c
+    class CAN1,CAN2 can
+    class MAIN,AUX,AUX56 pwm
+    class ADC6V6,ADC3V3 adc
+    class USB,SD,SAFETY other
+    class QGC,JETSON,OF_LIDAR,GPS,RC_RX,ESC_4IN1,MOTORS,SIK,USB_TTL external
+    class TELEM2,UART4,AUX critical

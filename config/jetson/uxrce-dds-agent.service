@@ -1,0 +1,20 @@
+[Unit]
+Description=Micro XRCE-DDS Agent for PX4 (UDP)
+After=network.target mavlink-router.service
+Wants=mavlink-router.service
+
+[Service]
+Type=simple
+User=jetson
+Group=jetson
+WorkingDirectory=/home/jetson/ros2_px4_ws
+Environment=FASTRTPS_DEFAULT_PROFILES_FILE=/home/jetson/fastdds_config.xml
+Environment=RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+ExecStart=/bin/bash -c "source /opt/ros/humble/setup.bash && source install/setup.bash && MicroXRCEAgent udp4 -p 8888"
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

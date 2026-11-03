@@ -1,0 +1,105 @@
+# ros_gz_bridge.yaml - Q250-V3 Opti Gazebo <-> ROS 2 Bridge Configuration
+# ros_gz_bridge parameter file for Gazebo Harmonic + ROS 2 Humble + PX4 v1.15
+
+bridges:
+  # ============================================================
+  # IMU (400Hz) - base_link
+  # Gazebo: gz.msgs.IMU -> ROS 2: px4_msgs/msg/SensorCombined
+  # ============================================================
+  - gz_topic: /q250_v3_opti/imu
+    ros_topic: /fmu/out/sensor_combined
+    gz_type: gz.msgs.IMU
+    ros_type: px4_msgs/msg/SensorCombined
+    direction: GZ_TO_ROS
+
+  # ============================================================
+  # Optical-Flow (100Hz) - of_lidar_link
+  # Gazebo: gz.msgs.OpticalFlow -> ROS 2: px4_msgs/msg/OpticalFlow
+  # ============================================================
+  - gz_topic: /q250_v3_opti/optical_flow
+    ros_topic: /fmu/out/optical_flow
+    gz_type: gz.msgs.OpticalFlow
+    ros_type: px4_msgs/msg/OpticalFlow
+    direction: GZ_TO_ROS
+
+  # ============================================================
+  # LiDAR / Distance Sensor (100Hz) - of_lidar_link
+  # Gazebo: gz.msgs.LaserScan -> ROS 2: px4_msgs/msg/DistanceSensor
+  # ============================================================
+  - gz_topic: /q250_v3_opti/lidar
+    ros_topic: /fmu/out/distance_sensor
+    gz_type: gz.msgs.LaserScan
+    ros_type: px4_msgs/msg/DistanceSensor
+    direction: GZ_TO_ROS
+
+  # ============================================================
+  # GPS (10Hz, Optional) - gps_link
+  # ============================================================
+  - gz_topic: /q250_v3_opti/gps
+    ros_topic: /fmu/out/vehicle_gps_position
+    gz_type: gz.msgs.NavSat
+    ros_type: px4_msgs/msg/VehicleGpsPosition
+    direction: GZ_TO_ROS
+
+  # ============================================================
+  # Camera (30Hz, Optional) - camera_link
+  # ============================================================
+  - gz_topic: /q250_v3_opti/camera/image
+    ros_topic: /fmu/out/camera/image_raw
+    gz_type: gz.msgs.Image
+    ros_type: sensor_msgs/msg/Image
+    direction: GZ_TO_ROS
+
+  # ============================================================
+  # Odometry / Ground Truth (for validation)
+  # ============================================================
+  - gz_topic: /q250_v3_opti/odometry
+    ros_topic: /fmu/out/vehicle_odometry
+    gz_type: gz.msgs.Odometry
+    ros_type: px4_msgs/msg/VehicleOdometry
+    direction: GZ_TO_ROS
+
+  # ============================================================
+  # Vehicle Command (ROS -> Gazebo) - Offboard Control
+  # ============================================================
+  - gz_topic: /q250_v3_opti/vehicle_command
+    ros_topic: /fmu/in/vehicle_command
+    gz_type: gz.msgs.EntityFactory
+    ros_type: px4_msgs/msg/VehicleCommand
+    direction: ROS_TO_GZ
+
+  # ============================================================
+  # Trajectory Setpoint (ROS -> Gazebo) - Offboard Control
+  # ============================================================
+  - gz_topic: /q250_v3_opti/trajectory_setpoint
+    ros_topic: /fmu/in/trajectory_setpoint
+    gz_type: gz.msgs.Pose
+    ros_type: px4_msgs/msg/TrajectorySetpoint
+    direction: ROS_TO_GZ
+
+  # ============================================================
+  # Offboard Control Mode (ROS -> Gazebo)
+  # ============================================================
+  - gz_topic: /q250_v3_opti/offboard_control_mode
+    ros_topic: /fmu/in/offboard_control_mode
+    gz_type: gz.msgs.Boolean
+    ros_type: px4_msgs/msg/OffboardControlMode
+    direction: ROS_TO_GZ
+
+  # ============================================================
+  # Vehicle Status (Gazebo -> ROS) - for monitoring
+  # ============================================================
+  - gz_topic: /q250_v3_opti/vehicle_status
+    ros_topic: /fmu/out/vehicle_status
+    gz_type: gz.msgs.Int32
+    ros_type: px4_msgs/msg/VehicleStatus
+    direction: GZ_TO_ROS
+
+  # ============================================================
+  # Clock Synchronization (Simulation Time)
+  # ============================================================
+  - gz_topic: /clock
+    ros_topic: /clock
+    gz_type: gz.msgs.Clock
+    ros_type: rosgraph_msgs/msg/Clock
+    direction: GZ_TO_ROS

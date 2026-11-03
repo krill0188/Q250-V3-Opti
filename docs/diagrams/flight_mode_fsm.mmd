@@ -1,0 +1,64 @@
+---
+title: Q250-V3 Opti 비행 모드 상태 머신
+---
+
+stateDiagram-v2
+    [*] --> Disarmed: Power On
+    
+    Disarmed --> Stabilized: Arm (Ch6)
+    Stabilized --> Disarmed: Disarm (Ch6)
+    
+    Stabilized --> Altitude: Mode Switch (Ch5 Pos1)
+    Altitude --> Stabilized: Mode Switch (Ch5 Pos2)
+    
+    Stabilized --> Position: Mode Switch (Ch5 Pos0)
+    Position --> Stabilized: Mode Switch (Ch5 Pos2)
+    Altitude --> Position: Mode Switch (Ch5 Pos0)
+    Position --> Altitude: Mode Switch (Ch5 Pos1)
+    
+    Position --> Offboard: Mode Switch (Ch5 Pos3)
++ OffboardControlMode 2Hz+
+    Offboard --> Position: Mode Switch (Ch5 Pos0/1/2)
+OR Offboard Timeout (0.5s)
+    Offboard --> Disarmed: Kill Switch (Ch7)
+OR Critical Failsafe
+    
+    Position --> Return: Mode Switch (Ch5 Pos4)
+OR RTL Failsafe
+    Return --> Position: Mode Switch (Ch5 Pos0/1/2/3)
+    Return --> Disarmed: Land Complete + Disarm
+    
+    Stabilized --> Disarmed: Kill Switch (Ch7)
+    Altitude --> Disarmed: Kill Switch (Ch7)
+    Position --> Disarmed: Kill Switch (Ch7)
+    Return --> Disarmed: Kill Switch (Ch7)
+    Offboard --> Disarmed: Kill Switch (Ch7)
+    
+    %% Emergency transitions
+    Disarmed --> [*]: Battery Disconnect
+    
+    %% Notes
+    note right of Position
+        실내 호버링 기본 모드
+        Optical-Flow + LiDAR 필수
+        EKF2 수렴 필요
+    end note
+    
+    note right of Offboard
+        ROS 2 / MAVROS 자율비행
+        OffboardControlMode 2Hz+ 필수
+        TrajectorySetpoint 동시 발행
+        하트비트 0.5초 타임아웃
+    end note
+    
+    note right of Return
+        실내: Land Mode 동작
+        실외: GPS RTL 동작
+        Fake GPS 사용 시 Mission 가능
+    end note
+    
+    note right of Disarmed
+        완전 정지 상태
+        모터 전원 차단
+        안전 스위드로만 Arm 가능
+    end note

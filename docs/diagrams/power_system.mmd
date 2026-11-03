@@ -1,0 +1,123 @@
+---
+title: Q250-V3 Opti 전원 시스템
+---
+
+flowchart TD
+    subgraph BATTERY["메인 배터리"]
+        BATT[4S LiPo 4000mAh 50C
+XT60 커넥터
+14.8V Nominal, 16.8V Max]
+    end
+
+    subgraph PM07["PM07 Power Module (내장)"]
+        direction TB
+        XT60_IN[XT60 Input]
+        V_REG_5V[5V/3A BEC Output
+→ Servo Rail / RX Power]
+        V_SENSE_6V6[6.6V ADC Output
+→ Battery Voltage Sense
+Div Ratio: 54.5]
+        I_SENSE_3V3[3.3V ADC Output
+→ Battery Current Sense
+Scale: 18.0 A/V]
+        XT60_OUT[XT60 Output → UBEC]
+    end
+
+    subgraph UBEC["2-Channel UBEC (외부 전원장치)"]
+        direction TB
+        UBEC_IN[Input from PM07
+14.8V]
+        CH1_5V[Channel 1: 5V/4A
+→ Jetson Nano
+→ Optical-Flow/LiDAR]
+        CH2_12V[Channel 2: 12V/2A
+→ Payload/Camera
+→ Additional Sensors]
+    end
+
+    subgraph FC["Pixhawk 6C mini"]
+        FC_POWER[Power Input
+(from PM07 5V BEC)]
+        SERVO_RAIL[Servo Rail Power
+5V/3A]
+        ADC_V[ADC 6.6V: Voltage Monitor]
+        ADC_I[ADC 3.3V: Current Monitor]
+    end
+
+    subgraph COMPANION["Jetson Nano"]
+        JETSON_POWER[5V Input
+(from UBEC Ch1
+via SBC Mount)]
+        JETSON_GPIO[GPIO 5V/3.3V
+→ Additional Sensors]
+    end
+
+    subgraph SENSORS["센서 모듈"]
+        OF_POWER[Optical-Flow Module
+5V from UBEC/FC]
+        LIDAR_POWER[LiDAR Module
+5V from UBEC/FC]
+        GPS_POWER[GPS/Compass (옵션)
+5V from FC]
+    end
+
+    subgraph ACTUATORS["액추에이터"]
+        ESC_POWER[ESC Power
+Direct from Battery
+(via PM07 XT60 Out)]
+        MOTORS[4x Brushless Motors]
+    end
+
+    %% Connections
+    BATT --> XT60_IN
+    XT60_IN --> V_REG_5V
+    XT60_IN --> V_SENSE_6V6
+    XT60_IN --> I_SENSE_3V3
+    XT60_IN --> XT60_OUT
+
+    V_REG_5V --> FC_POWER
+    FC_POWER --> SERVO_RAIL
+    V_SENSE_6V6 --> ADC_V
+    I_SENSE_3V3 --> ADC_I
+
+    XT60_OUT --> UBEC_IN
+    UBEC_IN --> CH1_5V
+    UBEC_IN --> CH2_12V
+
+    CH1_5V --> JETSON_POWER
+    CH1_5V --> OF_POWER
+    CH1_5V --> LIDAR_POWER
+    CH2_12V --> GPS_POWER
+
+    XT60_OUT --> ESC_POWER
+    ESC_POWER --> MOTORS
+
+    %% Voltage Levels
+    subgraph VOLTAGES["전압 레벨 요약"]
+        V_TABLE[| 레일 | 전압 | 전류 용량 | 용도 |
+|------|------|-----------|------|
+| Main Battery | 14.8-16.8V | 50C (200A) | ESC, UBEC |
+| PM07 5V BEC | 5.0V | 3A | FC, Servo, RX |
+| UBEC Ch1 | 5.0V | 4A | Jetson, OF, LiDAR |
+| UBEC Ch2 | 12.0V | 2A | Payload, Camera |
+| PM07 ADC V | 0-3.3V (ADC) | - | Voltage Monitor |
+| PM07 ADC I | 0-3.3V (ADC) | - | Current Monitor |]
+    end
+
+    classDef battery fill:#ffebee,stroke:#c62828
+    classDef pm07 fill:#fff3e0,stroke:#ef6c00
+    classDef ubec fill:#e8f5e9,stroke:#2e7d32
+    classDef fc fill:#fce4ec,stroke:#c2185b
+    classDef companion fill:#e3f2fd,stroke:#1565c0
+    classDef sensors fill:#f3e5f5,stroke:#7b1fa2
+    classDef actuators fill:#fff8e1,stroke:#f57f17
+    classDef voltages fill:#f5f5f5,stroke:#616161
+
+    class BATTERY battery
+    class PM07 pm07
+    class UBEC ubec
+    class FC fc
+    class COMPANION companion
+    class SENSORS sensors
+    class ACTUATORS actuators
+    class VOLTAGES voltages
