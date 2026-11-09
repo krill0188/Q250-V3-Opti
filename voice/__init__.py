@@ -77,6 +77,40 @@ __all__ = [
     "LatencyProfile",
     "PipelineStage",
     "create_ultra_low_latency_pipeline",
+    # keyword_specs (독립적 - 핵심 스펙 정의)
+    "KeywordSpec",
+    "CommandPriority",
+    "KEYWORD_SPECS",
+    "get_all_specs",
+    "get_specs_by_priority",
+    "get_specs_by_target",
+    "get_keywords_list",
+    "get_phrases_for_keyword",
+    "get_command_for_keyword",
+    "export_for_training",
+    # kws_data_collector (pyaudio 필요)
+    "CollectionConfig",
+    "SampleMetadata",
+    "KWSDataCollector",
+    "MultiSpeakerCollector",
+    "quick_collect",
+    # kws_augment (librosa, scipy 필요)
+    "AugmentConfig",
+    "AudioAugmenter",
+    "create_augmenter",
+    "quick_augment",
+    # kws_train (torch, librosa, sklearn 필요)
+    "train_kws",
+    "evaluate_tflite",
+    "test_tflite_inference_speed",
+    "prepare_dataset",
+    "build_ds_cnn_model",
+    # kws_runtime (tflite_runtime, librosa 필요)
+    "MFCCExtractor",
+    "KWSRuntime",
+    "KWSResult",
+    "create_kws_runtime",
+    "test_kws_runtime",
 ]
 
 # 지연 로딩을 위한 모듈 매핑
@@ -138,6 +172,45 @@ _OPTIONAL_MODULES = {
         "PipelineStage",
         "create_ultra_low_latency_pipeline",
     ],
+    "keyword_specs": [
+        "KeywordSpec",
+        "CommandPriority",
+        "KEYWORD_SPECS",
+        "get_all_specs",
+        "get_specs_by_priority",
+        "get_specs_by_target",
+        "get_keywords_list",
+        "get_phrases_for_keyword",
+        "get_command_for_keyword",
+        "export_for_training",
+    ],
+    "kws_data_collector": [
+        "CollectionConfig",
+        "SampleMetadata",
+        "KWSDataCollector",
+        "MultiSpeakerCollector",
+        "quick_collect",
+    ],
+    "kws_augment": [
+        "AugmentConfig",
+        "AudioAugmenter",
+        "create_augmenter",
+        "quick_augment",
+    ],
+    "kws_train": [
+        "train_kws",
+        "evaluate_tflite",
+        "test_tflite_inference_speed",
+        "prepare_dataset",
+        "build_ds_cnn_model",
+    ],
+    "kws_runtime": [
+        "MFCCExtractor",
+        "KWSRuntime",
+        "KWSResult",
+        "create_kws_runtime",
+        "test_kws_runtime",
+    ],
 }
 
 # 타입 체커용 (실제 import는 런타임에만)
@@ -196,6 +269,45 @@ if TYPE_CHECKING:
         LatencyProfile,
         PipelineStage,
         create_ultra_low_latency_pipeline,
+    )
+    from voice.keyword_specs import (
+        KeywordSpec,
+        CommandPriority,
+        KEYWORD_SPECS,
+        get_all_specs,
+        get_specs_by_priority,
+        get_specs_by_target,
+        get_keywords_list,
+        get_phrases_for_keyword,
+        get_command_for_keyword,
+        export_for_training,
+    )
+    from voice.kws_data_collector import (
+        CollectionConfig,
+        SampleMetadata,
+        KWSDataCollector,
+        MultiSpeakerCollector,
+        quick_collect,
+    )
+    from voice.kws_augment import (
+        AugmentConfig,
+        AudioAugmenter,
+        create_augmenter,
+        quick_augment,
+    )
+    from voice.kws_train import (
+        train_kws,
+        evaluate_tflite,
+        test_tflite_inference_speed,
+        prepare_dataset,
+        build_ds_cnn_model,
+    )
+    from voice.kws_runtime import (
+        MFCCExtractor,
+        KWSRuntime,
+        KWSResult,
+        create_kws_runtime,
+        test_kws_runtime,
     )
 
 
