@@ -111,6 +111,23 @@ __all__ = [
     "KWSResult",
     "create_kws_runtime",
     "test_kws_runtime",
+    # denoising_dnn (onnxruntime, torch 필요)
+    "DNNModelConfig",
+    "BaseDenoiser",
+    "ONNXDenoiser",
+    "TorchDenoiser",
+    "DNNNoiseSuppression",
+    "create_denoiser",
+    "export_pytorch_to_onnx",
+    "PRETRAINED_MODELS",
+    # noise_reduction (librosa, scipy 필요)
+    "PropellerNoiseConfig",
+    "NotchFilterBank",
+    "SpectralSubtraction",
+    "AdaptiveLMSFilter",
+    "Beamformer",
+    "PropellerNoiseReducer",
+    "create_noise_reducer",
 ]
 
 # 지연 로딩을 위한 모듈 매핑
@@ -211,6 +228,25 @@ _OPTIONAL_MODULES = {
         "create_kws_runtime",
         "test_kws_runtime",
     ],
+    "denoising_dnn": [
+        "DNNModelConfig",
+        "BaseDenoiser",
+        "ONNXDenoiser",
+        "TorchDenoiser",
+        "DNNNoiseSuppression",
+        "create_denoiser",
+        "export_pytorch_to_onnx",
+        "PRETRAINED_MODELS",
+    ],
+    "noise_reduction": [
+        "PropellerNoiseConfig",
+        "NotchFilterBank",
+        "SpectralSubtraction",
+        "AdaptiveLMSFilter",
+        "Beamformer",
+        "PropellerNoiseReducer",
+        "create_noise_reducer",
+    ],
 }
 
 # 타입 체커용 (실제 import는 런타임에만)
@@ -308,6 +344,25 @@ if TYPE_CHECKING:
         KWSResult,
         create_kws_runtime,
         test_kws_runtime,
+    )
+    from voice.denoising_dnn import (
+        DNNModelConfig,
+        BaseDenoiser,
+        ONNXDenoiser,
+        TorchDenoiser,
+        DNNNoiseSuppression,
+        create_denoiser,
+        export_pytorch_to_onnx,
+        PRETRAINED_MODELS,
+    )
+    from voice.noise_reduction import (
+        PropellerNoiseConfig,
+        NotchFilterBank,
+        SpectralSubtraction,
+        AdaptiveLMSFilter,
+        Beamformer,
+        PropellerNoiseReducer,
+        create_noise_reducer,
     )
 
 
