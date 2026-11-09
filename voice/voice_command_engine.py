@@ -45,23 +45,41 @@ except ImportError:
     WHISPER_AVAILABLE = False
     WhisperModel = None  # type: ignore
 
-try:
-    from voice.speaker_adapter import SpeakerAdapter as _SA, SpeakerProfile as _SP, AdaptiveWhisperModel as _AWM
-    SPEAKER_ADAPTER_AVAILABLE = True
-except ImportError:
-    SPEAKER_ADAPTER_AVAILABLE = False
+# speaker_adapter, wake_word_detector, voice_enrollment는 지연 import
+# (torch, pvporcupine 등 무거운 의존성 회피)
+SPEAKER_ADAPTER_AVAILABLE = False
+WAKE_WORD_AVAILABLE = False
+ENROLLMENT_AVAILABLE = False
 
-try:
-    from voice.wake_word_detector import WakeWordDetector as _WWD
-    WAKE_WORD_AVAILABLE = True
-except ImportError:
-    WAKE_WORD_AVAILABLE = False
+def _check_speaker_adapter() -> bool:
+    global SPEAKER_ADAPTER_AVAILABLE
+    if not SPEAKER_ADAPTER_AVAILABLE:
+        try:
+            from voice.speaker_adapter import SpeakerAdapter, SpeakerProfile, AdaptiveWhisperModel
+            SPEAKER_ADAPTER_AVAILABLE = True
+        except ImportError:
+            pass
+    return SPEAKER_ADAPTER_AVAILABLE
 
-try:
-    from voice.voice_enrollment import VoiceEnrollmentManager as _VEM
-    ENROLLMENT_AVAILABLE = True
-except ImportError:
-    ENROLLMENT_AVAILABLE = False
+def _check_wake_word() -> bool:
+    global WAKE_WORD_AVAILABLE
+    if not WAKE_WORD_AVAILABLE:
+        try:
+            from voice.wake_word_detector import WakeWordDetector
+            WAKE_WORD_AVAILABLE = True
+        except ImportError:
+            pass
+    return WAKE_WORD_AVAILABLE
+
+def _check_enrollment() -> bool:
+    global ENROLLMENT_AVAILABLE
+    if not ENROLLMENT_AVAILABLE:
+        try:
+            from voice.voice_enrollment import VoiceEnrollmentManager
+            ENROLLMENT_AVAILABLE = True
+        except ImportError:
+            pass
+    return ENROLLMENT_AVAILABLE
 
 logger = logging.getLogger(__name__)
 
@@ -147,7 +165,7 @@ class LocalWhisperSTT:
 
     def _get_model_for_speaker(self, speaker_id: Optional[str]) -> "WhisperModel":
         """화자별 어댑터 적용 모델 반환"""
-        if not speaker_id or not self.speaker_adapter or not SPEAKER_ADAPTER_AVAILABLE:
+        if not speaker_id or not self.speaker_adapter or not _check_speaker_adapter():
             return self.model
 
         profile = self.speaker_adapter.get_profile(speaker_id)
@@ -267,7 +285,7 @@ class VoiceIntentParser:
             return hybrid_cmd
 
         # 3) 커스텀 명령어 매핑 확인 (VoiceEnrollment)
-        if self.enrollment_manager and ENROLLMENT_AVAILABLE:
+        if self.enrollment_manager and _check_enrollment():
             custom_mapping = self.enrollment_manager.resolve_command(
                 recognized_text=text,
                 speaker_id=speaker_id,
@@ -578,7 +596,7 @@ class VoiceCommandPipeline:
     def _init_components(self):
         # 화자 적응
         self.speaker_adapter = None
-        if self.config.enable_speaker_adaptation and SPEAKER_ADAPTER_AVAILABLE:
+        if self.config.enable_speaker_adaptation and _check_speaker_adapter():
             from voice.speaker_adapter import SpeakerAdapter as SA
             self.speaker_adapter = SA(self.config.speaker_profiles_dir)
             self.active_speaker_id = self.speaker_adapter.active_profile_id
@@ -595,7 +613,7 @@ class VoiceCommandPipeline:
 
         # 음성 등록
         self.enrollment_manager = None
-        if self.config.enable_enrollment and ENROLLMENT_AVAILABLE:
+        if self.config.enable_enrollment and _check_enrollment():
             from voice.voice_enrollment import VoiceEnrollmentManager as VEM
             self.enrollment_manager = VEM(self.config.enrollment_storage_dir)
 
@@ -607,7 +625,7 @@ class VoiceCommandPipeline:
 
         # 웨이크 워드
         self.wake_word_detector = None
-        if self.config.enable_wake_word and WAKE_WORD_AVAILABLE:
+        if self.config.enable_wake_word and _check_wake_word():
             from voice.wake_word_detector import (
                 KoreanWakeWordDetector,
                 WakeWordDetector,

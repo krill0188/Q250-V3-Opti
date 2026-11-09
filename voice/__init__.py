@@ -48,6 +48,16 @@ __all__ = [
     "CommandCategory",
     "VoiceEnrollmentSession",
     "create_enrollment_manager",
+    # finetune_pipeline (torch, transformers, peft, datasets, jiwer 필요)
+    "FinetuneConfig",
+    "STTLogCollector",
+    "WhisperFinetuner",
+    "CTranslate2Converter",
+    "FinetunePipeline",
+    "create_finetune_pipeline",
+    "quick_finetune",
+    # labeling_tool (datasets 필요)
+    "STTLabelingTool",
 ]
 
 # 지연 로딩을 위한 모듈 매핑
@@ -75,6 +85,18 @@ _OPTIONAL_MODULES = {
         "CommandCategory",
         "VoiceEnrollmentSession",
         "create_enrollment_manager",
+    ],
+    "finetune_pipeline": [
+        "FinetuneConfig",
+        "STTLogCollector",
+        "WhisperFinetuner",
+        "CTranslate2Converter",
+        "FinetunePipeline",
+        "create_finetune_pipeline",
+        "quick_finetune",
+    ],
+    "labeling_tool": [
+        "STTLabelingTool",
     ],
 }
 
@@ -104,6 +126,16 @@ if TYPE_CHECKING:
         VoiceEnrollmentSession,
         create_enrollment_manager,
     )
+    from voice.finetune_pipeline import (
+        FinetuneConfig,
+        STTLogCollector,
+        WhisperFinetuner,
+        CTranslate2Converter,
+        FinetunePipeline,
+        create_finetune_pipeline,
+        quick_finetune,
+    )
+    from voice.labeling_tool import STTLabelingTool
 
 
 def __getattr__(name: str):

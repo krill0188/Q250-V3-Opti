@@ -1,0 +1,26 @@
+# Whisper Fine-tuning Dependencies
+# 설치: pip install -r requirements-finetune.txt
+
+# Core ML
+torch>=2.0.0
+torchaudio>=2.0.0
+
+# Hugging Face
+transformers>=4.35.0
+datasets>=2.14.0
+accelerate>=0.24.0
+peft>=0.6.0
+
+# Evaluation
+jiwer>=3.0.0
+
+# CTranslate2 (faster-whisper 변환용)
+ctranslate2>=4.0.0
+faster-whisper>=1.0.0
+
+# Audio
+librosa>=0.10.0
+soundfile>=0.12.0
+
+# Optional: wandb for logging
+# wandb>=0.16.0
