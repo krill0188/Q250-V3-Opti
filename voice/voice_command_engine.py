@@ -1,22 +1,73 @@
+"""
+통합 음성 명령 엔진
+- STT (Whisper)
+- NLU (규칙 + LLM)
+- 화자 적응 (SpeakerAdapter)
+- 웨이크 워드 감지 (Porcupine)
+- 음성 등록/커스텀 명령어 (VoiceEnrollment)
+"""
 import math
 import re
 import uuid
-from typing import Optional, Tuple
+import asyncio
+import logging
+from pathlib import Path
+from typing import Optional, Tuple, Callable, List, Dict, TYPE_CHECKING
+from dataclasses import dataclass, field
+
 import numpy as np
 from pydantic import BaseModel, Field
 
 from core_arbitrator import CommandPriority, UnifiedCommand
 
+# TYPE_CHECKING으로 타입 힌트만 가져오고 런타임 import는 선택적으로 처리
+if TYPE_CHECKING:
+    from voice.speaker_adapter import SpeakerAdapter, SpeakerProfile, AdaptiveWhisperModel
+    from voice.wake_word_detector import (
+        WakeWordDetector,
+        WakeWordConfig,
+        WakeWordEvent,
+        WakeWordState,
+        KoreanWakeWordDetector,
+    )
+    from voice.voice_enrollment import (
+        VoiceEnrollmentManager,
+        VoiceCommandMapping,
+        CommandCategory,
+        VoiceEnrollmentSession,
+    )
+
+# 런타임 선택적 import (가용성 플래그만 설정)
 try:
     from faster_whisper import WhisperModel
-
     WHISPER_AVAILABLE = True
 except ImportError:
     WHISPER_AVAILABLE = False
-    WhisperModel = None
+    WhisperModel = None  # type: ignore
+
+try:
+    from voice.speaker_adapter import SpeakerAdapter as _SA, SpeakerProfile as _SP, AdaptiveWhisperModel as _AWM
+    SPEAKER_ADAPTER_AVAILABLE = True
+except ImportError:
+    SPEAKER_ADAPTER_AVAILABLE = False
+
+try:
+    from voice.wake_word_detector import WakeWordDetector as _WWD
+    WAKE_WORD_AVAILABLE = True
+except ImportError:
+    WAKE_WORD_AVAILABLE = False
+
+try:
+    from voice.voice_enrollment import VoiceEnrollmentManager as _VEM
+    ENROLLMENT_AVAILABLE = True
+except ImportError:
+    ENROLLMENT_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
 
 
 class FastPathEmergencyMatcher:
+    """초저지연 비상 명령어 매칭 (STT 신뢰도 무시)"""
     EMERGENCY_STOP_PATTERN = re.compile(
         r"(비상\s*정지|긴급\s*정지|즉시\s*정지|올\s*스톱|all\s*stop)", re.IGNORECASE
     )
@@ -69,21 +120,78 @@ class FastPathEmergencyMatcher:
 
 
 class LocalWhisperSTT:
+    """로컬 Whisper STT (화자 적응 지원)"""
+
     def __init__(
-        self, model_size: str = "base", device: str = "cpu", compute_type: str = "int8"
+        self,
+        model_size: str = "base",
+        device: str = "cpu",
+        compute_type: str = "int8",
+        speaker_adapter: Optional["SpeakerAdapter"] = None,
     ):
         if not WHISPER_AVAILABLE:
             raise RuntimeError("faster-whisper 패키지가 설치되어 있지 않습니다.")
+
+        self.model_size = model_size
+        self.device = device
+        self.compute_type = compute_type
+        self.speaker_adapter = speaker_adapter
+
+        # 기본 모델
         self.model = WhisperModel(model_size, device=device, compute_type=compute_type)
 
-    def transcribe_audio(self, audio_np: np.ndarray) -> Tuple[str, float]:
-        segments, _ = self.model.transcribe(
+        # 화자별 어댑터 적용 모델 캐시
+        self._adapted_models: Dict[str, "AdaptiveWhisperModel"] = {}
+
+        logger.info(f"Whisper STT 초기화: {model_size} ({device}, {compute_type})")
+
+    def _get_model_for_speaker(self, speaker_id: Optional[str]) -> "WhisperModel":
+        """화자별 어댑터 적용 모델 반환"""
+        if not speaker_id or not self.speaker_adapter or not SPEAKER_ADAPTER_AVAILABLE:
+            return self.model
+
+        profile = self.speaker_adapter.get_profile(speaker_id)
+        if not profile or not profile.adapter_path:
+            return self.model
+
+        # 어댑터 모델 캐시 확인
+        if speaker_id in self._adapted_models:
+            return self._adapted_models[speaker_id].model
+
+        # 어댑터 모델 생성 시도 (CT2 변환된 모델 경로 필요)
+        if profile.adapter_path and Path(profile.adapter_path).exists():
+            try:
+                from voice.speaker_adapter import AdaptiveWhisperModel as AWM
+                adapted = AWM(
+                    model_size=profile.adapter_path,
+                    device=self.device,
+                    compute_type=self.compute_type,
+                )
+                self._adapted_models[speaker_id] = adapted
+                logger.info(f"화자별 어댑터 모델 로드: {speaker_id}")
+                return adapted.model
+            except Exception as e:
+                logger.warning(f"어댑터 모델 로드 실패, 기본 모델 사용: {e}")
+
+        return self.model
+
+    def transcribe_audio(
+        self,
+        audio_np: np.ndarray,
+        speaker_id: Optional[str] = None,
+        language: str = "ko",
+    ) -> Tuple[str, float]:
+        """음성 인식 실행"""
+        model = self._get_model_for_speaker(speaker_id)
+
+        segments, _ = model.transcribe(
             audio_np,
-            language="ko",
+            language=language,
             beam_size=3,
             vad_filter=True,
-            initial_prompt="드론 1번, 로봇 1번, 하이브리드 1번, 이륙, 착륙, 정지, 앞으로 이동, 복귀, 고도, 미터, 다이브, 기만, 순항, 기동",
+            initial_prompt="드론 1번, 로봇 1번, 하이브리드 1번, 이륙, 착륙, 정지, 앞으로 이동, 복귀, 고도, 미터, 다이브, 기만, 순항, 기동, 비상",
         )
+
         texts = []
         probs = []
         for seg in segments:
@@ -99,12 +207,8 @@ class LocalWhisperSTT:
 
 
 class ParsedVoiceIntent(BaseModel):
-    target_id: str = Field(
-        description="제어 대상 ID (예: drone_1, robot_1, hybrid_drone_1)"
-    )
-    action: str = Field(
-        description="ARM, TAKEOFF, LAND, HOLD, MOVE_VEL, NAV_TO_POSE, RTL, SET_MODE, DIVE_ATTACK, DECEPTION_START, DECEPTION_PATTERN, DECEPTION_STOP 중 하나"
-    )
+    target_id: str = Field(description="제어 대상 ID")
+    action: str = Field(description="수행할 액션")
     x_m: float = 0.0
     y_m: float = 0.0
     z_m: float = 0.0
@@ -115,6 +219,14 @@ class ParsedVoiceIntent(BaseModel):
 
 
 class VoiceIntentParser:
+    """
+    통합 음성 의도 파서
+    - Fast-Path (비상/하이브리드)
+    - 커스텀 명령어 매핑 (VoiceEnrollment)
+    - LLM 폴백
+    - 결정론적 폴백
+    """
+
     SYSTEM_PROMPT = """
     당신은 드론/로봇/하이브리드 제어용 NLU 파서입니다.
     사용자의 음성 텍스트를 분석하여 반드시 지정된 JSON 스키마로만 응답하십시오.
@@ -127,31 +239,49 @@ class VoiceIntentParser:
     - 기만: DECEPTION_START 액션, params에 pattern, duration, auto
     """
 
-    def __init__(self, llm_client=None):
+    def __init__(
+        self,
+        llm_client=None,
+        enrollment_manager: Optional["VoiceEnrollmentManager"] = None,
+    ):
         self.llm_client = llm_client
+        self.enrollment_manager = enrollment_manager
 
     async def parse_to_command(
         self,
         text: str,
         stt_confidence: float,
         active_target: str = "drone_1",
+        speaker_id: Optional[str] = None,
     ) -> UnifiedCommand:
-        # 1) 초저지연 Fast-Path 긴급 명령어 먼저 검사
+        # 1) 초저지연 Fast-Path 긴급 명령어
         fast_cmd = FastPathEmergencyMatcher.match(text, default_target=active_target)
         if fast_cmd is not None:
-            print(f"[FAST-PATH 매칭 완료] '{text}' -> {fast_cmd.action}")
+            logger.info(f"[FAST-PATH] '{text}' -> {fast_cmd.action}")
             return fast_cmd
 
-        # 2) 하이브리드/다이브/기만 전용 키워드 매칭 (Fast-Path 확장)
+        # 2) 하이브리드/다이브/기만 전용 Fast-Path
         hybrid_cmd = self._match_hybrid_commands(text, active_target)
         if hybrid_cmd:
-            print(f"[HYBRID-PATH 매칭 완료] '{text}' -> {hybrid_cmd.action}")
+            logger.info(f"[HYBRID-PATH] '{text}' -> {hybrid_cmd.action}")
             return hybrid_cmd
 
-        # 3) 일반 명령어 파싱
+        # 3) 커스텀 명령어 매핑 확인 (VoiceEnrollment)
+        if self.enrollment_manager and ENROLLMENT_AVAILABLE:
+            custom_mapping = self.enrollment_manager.resolve_command(
+                recognized_text=text,
+                speaker_id=speaker_id,
+                stt_confidence=stt_confidence,
+            )
+            if custom_mapping:
+                logger.info(f"[CUSTOM-MAPPING] '{text}' -> {custom_mapping.action}")
+                return self._mapping_to_command(custom_mapping, text, stt_confidence, active_target)
+
+        # 4) LLM 구조화 파싱
         if self.llm_client is not None:
             intent = await self._call_structured_llm(text, active_target)
         else:
+            # 5) 결정론적 폴백 파서
             intent = self._deterministic_fallback_parser(text, active_target)
 
         return UnifiedCommand(
@@ -169,6 +299,52 @@ class VoiceIntentParser:
             yaw_rate_radps=intent.yaw_rate_radps,
             confidence=stt_confidence,
         )
+
+    def _mapping_to_command(
+        self,
+        mapping: "VoiceCommandMapping",
+        text: str,
+        stt_confidence: float,
+        active_target: str,
+    ) -> UnifiedCommand:
+        """VoiceCommandMapping을 UnifiedCommand로 변환"""
+        target = mapping.target_device
+        if target == "*":
+            target = active_target
+
+        # 파라미터에서 숫자 추출 (텍스트 기반 오버라이드)
+        params = mapping.params.copy()
+        self._extract_numbers_from_text(text, params)
+
+        return UnifiedCommand(
+            command_id=str(uuid.uuid4()),
+            source="VOICE_NLU",
+            priority=CommandPriority(mapping.priority),
+            target_id=target,
+            action=mapping.action,  # type: ignore[arg-type]
+            params=params or {},
+            confidence=stt_confidence,
+        )
+
+    def _extract_numbers_from_text(self, text: str, params: dict):
+        """텍스트에서 숫자 추출하여 파라미터 업데이트"""
+        numbers = re.findall(r"(\d+(?:\.\d+)?)", text)
+        if not numbers:
+            return
+
+        vals = [float(n) for n in numbers]
+
+        # 파라미터 키에 따라 매핑
+        if "z_m" in params and "alt" not in params:
+            params["z_m"] = vals[0]
+        if "target_alt" in params:
+            params["target_alt"] = vals[0]
+        if "angle" in params and len(vals) > 1:
+            params["angle"] = vals[1]
+        if "duration" in params:
+            params["duration"] = vals[0] if "duration" in params else vals[-1]
+        if "vx_mps" in params:
+            params["vx_mps"] = vals[0]
 
     def _match_hybrid_commands(
         self, text: str, default_target: str
@@ -208,7 +384,6 @@ class VoiceIntentParser:
         elif "다이브" in clean_text and (
             "어택" in clean_text or "공격" in clean_text or "시작" in clean_text
         ):
-            # 다이브 파라미터 추출
             num_match = re.search(r"(\d+(?:\.\d+)?)", clean_text)
             alt = float(num_match.group(1)) if num_match else 500.0
             angle_match = re.search(r"각도\s*(\d+)", clean_text)
@@ -226,7 +401,6 @@ class VoiceIntentParser:
         elif "기만" in clean_text and (
             "시작" in clean_text or "켜" in clean_text or "실행" in clean_text
         ):
-            # 기만 패턴 추출
             pattern = "AUTO"
             if "나선" in clean_text or "스파이럴" in clean_text:
                 pattern = "SPIRAL_DIVE"
@@ -239,7 +413,6 @@ class VoiceIntentParser:
             elif "멀티" in clean_text or "펄스" in clean_text:
                 pattern = "MULTI_PULSE"
 
-            # 지속시간 추출
             duration_match = re.search(r"(\d+)\s*초", clean_text)
             duration = float(duration_match.group(1)) if duration_match else 30.0
 
@@ -343,3 +516,345 @@ class VoiceIntentParser:
             response_model=ParsedVoiceIntent,
         )
         return ParsedVoiceIntent.model_validate_json(raw_json)
+
+
+@dataclass
+class VoicePipelineConfig:
+    """음성 파이프라인 설정"""
+    # STT
+    whisper_model_size: str = "base"
+    whisper_device: str = "cpu"
+    whisper_compute_type: str = "int8"
+
+    # 화자 적응
+    enable_speaker_adaptation: bool = False
+    speaker_profiles_dir: str = "~/models/speaker_profiles"
+
+    # 웨이크 워드
+    enable_wake_word: bool = False
+    wake_word_keywords: List[str] = field(default_factory=list)
+    wake_word_keyword_paths: List[str] = field(default_factory=list)
+    wake_word_sensitivities: List[float] = field(default_factory=list)
+    picovoice_access_key: str = ""
+
+    # 음성 등록
+    enable_enrollment: bool = False
+    enrollment_storage_dir: str = "~/models/voice_enrollment"
+
+    # VAD
+    vad_aggressiveness: int = 2  # 0-3
+    silence_timeout_sec: float = 2.0
+    min_audio_length_sec: float = 0.5
+
+
+class VoiceCommandPipeline:
+    """
+    완전한 음성 명령 파이프라인
+    - 웨이크 워드 대기 → VAD → STT → NLU → 명령 실행
+    - 화자 적응, 커스텀 명령어 지원
+    """
+
+    def __init__(
+        self,
+        config: "VoicePipelineConfig",
+        on_command: Optional[Callable[["UnifiedCommand"], None]] = None,
+        on_wake_word: Optional[Callable[["WakeWordEvent"], None]] = None,
+        on_transcription: Optional[Callable[[str, float], None]] = None,
+    ):
+        self.config = config
+        self.on_command = on_command
+        self.on_wake_word = on_wake_word
+        self.on_transcription = on_transcription
+
+        # 컴포넌트 초기화
+        self._init_components()
+
+        # 상태
+        self._running = False
+        self._wake_word_detected = False
+        self._recording = False
+        self._audio_buffer: List[np.ndarray] = []
+
+    def _init_components(self):
+        # 화자 적응
+        self.speaker_adapter = None
+        if self.config.enable_speaker_adaptation and SPEAKER_ADAPTER_AVAILABLE:
+            from voice.speaker_adapter import SpeakerAdapter as SA
+            self.speaker_adapter = SA(self.config.speaker_profiles_dir)
+            self.active_speaker_id = self.speaker_adapter.active_profile_id
+        else:
+            self.active_speaker_id = None
+
+        # STT
+        self.stt = LocalWhisperSTT(
+            model_size=self.config.whisper_model_size,
+            device=self.config.whisper_device,
+            compute_type=self.config.whisper_compute_type,
+            speaker_adapter=self.speaker_adapter,
+        )
+
+        # 음성 등록
+        self.enrollment_manager = None
+        if self.config.enable_enrollment and ENROLLMENT_AVAILABLE:
+            from voice.voice_enrollment import VoiceEnrollmentManager as VEM
+            self.enrollment_manager = VEM(self.config.enrollment_storage_dir)
+
+        # NLU 파서
+        self.parser = VoiceIntentParser(
+            llm_client=None,  # 필요시 주입
+            enrollment_manager=self.enrollment_manager,
+        )
+
+        # 웨이크 워드
+        self.wake_word_detector = None
+        if self.config.enable_wake_word and WAKE_WORD_AVAILABLE:
+            from voice.wake_word_detector import (
+                KoreanWakeWordDetector,
+                WakeWordDetector,
+                WakeWordConfig,
+            )
+            if self.config.wake_word_keyword_paths:
+                self.wake_word_detector = KoreanWakeWordDetector(
+                    keyword_paths=self.config.wake_word_keyword_paths,
+                    on_detected=self._handle_wake_word,
+                )
+            elif self.config.wake_word_keywords:
+                self.wake_word_detector = WakeWordDetector(
+                    WakeWordConfig(
+                        keywords=self.config.wake_word_keywords,
+                        sensitivities=self.config.wake_word_sensitivities,
+                    ),
+                    on_detected=self._handle_wake_word,
+                )
+
+    def _handle_wake_word(self, event: "WakeWordEvent"):
+        """웨이크 워드 감지 콜백"""
+        logger.info(f"웨이크 워드 감지: {event.keyword}")
+        self._wake_word_detected = True
+        if self.on_wake_word:
+            self.on_wake_word(event)
+
+    def start(self):
+        """파이프라인 시작"""
+        if self._running:
+            return
+
+        self._running = True
+
+        # 웨이크 워드 감지 시작
+        if self.wake_word_detector:
+            self.wake_word_detector.start()
+            logger.info("웨이크 워드 대기 모드 시작")
+        else:
+            logger.info("웨이크 워드 없이 직접 STT 모드 시작")
+
+    def stop(self):
+        """파이프라인 중지"""
+        self._running = False
+
+        if self.wake_word_detector:
+            self.wake_word_detector.stop()
+
+        logger.info("음성 파이프라인 중지")
+
+    def process_audio_chunk(self, audio_np: np.ndarray) -> Optional[UnifiedCommand]:
+        """
+        오디오 청크 처리 (실시간 스트리밍용)
+        웨이크 워드 감지 후 VAD로 음성 구간 추출 → STT → NLU
+        """
+        if not self._running:
+            return None
+
+        # 웨이크 워드 모드에서 감지 대기
+        if self.wake_word_detector and not self._wake_word_detected:
+            return None
+
+        # 간단한 VAD (에너지 기반)
+        energy = np.mean(np.abs(audio_np))
+        is_speech = energy > 0.01  # 임계값 조정 필요
+
+        if is_speech:
+            self._audio_buffer.append(audio_np)
+            self._recording = True
+        elif self._recording:
+            # 무음 감지 → 세그먼트 완료
+            return self._process_recorded_audio()
+
+        return None
+
+    def _process_recorded_audio(self) -> Optional[UnifiedCommand]:
+        """녹음된 오디오 처리"""
+        if not self._audio_buffer:
+            self._recording = False
+            self._wake_word_detected = False  # 웨이크 워드 모드면 리셋
+            return None
+
+        # 오디오 연결
+        full_audio = np.concatenate(self._audio_buffer)
+        self._audio_buffer = []
+        self._recording = False
+
+        # 최소 길이 체크
+        if len(full_audio) < self.config.min_audio_length_sec * 16000:
+            logger.debug("오디오 너무 짧음, 무시")
+            self._wake_word_detected = False
+            return None
+
+        # STT 실행
+        try:
+            text, confidence = self.stt.transcribe_audio(
+                full_audio,
+                speaker_id=self.active_speaker_id,
+            )
+
+            if not text:
+                logger.debug("STT 결과 없음")
+                self._wake_word_detected = False
+                return None
+
+            logger.info(f"STT: '{text}' (conf={confidence:.2f})")
+
+            if self.on_transcription:
+                self.on_transcription(text, confidence)
+
+            # 신뢰도 체크
+            if confidence < 0.5:
+                logger.warning(f"STT 신뢰도 낮음: {confidence:.2f}")
+                self._wake_word_detected = False
+                return None
+
+            # NLU 파싱 (비동기 실행 필요)
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+            command = loop.run_until_complete(
+                self.parser.parse_to_command(
+                    text=text,
+                    stt_confidence=confidence,
+                    active_target="drone_1",
+                    speaker_id=self.active_speaker_id,
+                )
+            )
+
+            # 웨이크 워드 모드면 리셋
+            self._wake_word_detected = False
+
+            if self.on_command:
+                self.on_command(command)
+
+            return command
+
+        except Exception as e:
+            logger.error(f"오디오 처리 오류: {e}")
+            self._wake_word_detected = False
+            return None
+
+    def set_active_speaker(self, speaker_id: str):
+        """활성 화자 변경"""
+        if self.speaker_adapter:
+            self.speaker_adapter.set_active(speaker_id)
+            self.active_speaker_id = speaker_id
+            logger.info(f"활성 화자 변경: {speaker_id}")
+
+    def add_custom_command(
+        self,
+        phrase: str,
+        target_device: str,
+        action: str,
+        params: dict = None,
+        speaker_id: str = None,
+        **kwargs
+    ):
+        """커스텀 명령어 추가"""
+        if self.enrollment_manager:
+            sid = speaker_id or self.active_speaker_id
+            self.enrollment_manager.add_mapping(
+                phrase=phrase,
+                target_device=target_device,
+                action=action,
+                params=params or {},
+                speaker_id=sid,
+                **kwargs
+            )
+
+    def get_stats(self) -> dict:
+        """파이프라인 통계"""
+        stats = {
+            "running": self._running,
+            "wake_word_enabled": self.wake_word_detector is not None,
+            "speaker_adaptation": self.speaker_adapter is not None,
+            "enrollment": self.enrollment_manager is not None,
+            "active_speaker": self.active_speaker_id,
+        }
+
+        if self.wake_word_detector:
+            stats["wake_word"] = self.wake_word_detector.get_stats()
+
+        if self.speaker_adapter:
+            stats["profiles"] = len(self.speaker_adapter.profiles)
+
+        if self.enrollment_manager:
+            stats["custom_mappings"] = len(self.enrollment_manager.mappings)
+
+        return stats
+
+
+# 편의 함수
+def create_voice_pipeline(
+    config: "VoicePipelineConfig" = None,
+    on_command: Callable[["UnifiedCommand"], None] = None,
+    on_wake_word: Callable[["WakeWordEvent"], None] = None,
+    on_transcription: Callable[[str, float], None] = None,
+) -> "VoiceCommandPipeline":
+    """음성 파이프라인 생성"""
+    if config is None:
+        config = VoicePipelineConfig()
+    return VoiceCommandPipeline(config, on_command, on_wake_word, on_transcription)
+
+
+# 사용 예시
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+
+    config = VoicePipelineConfig(
+        whisper_model_size="base",
+        enable_wake_word=False,  # PICOVOICE_ACCESS_KEY 필요
+        enable_enrollment=True,
+        enable_speaker_adaptation=False,  # 어댑터 모델 필요
+    )
+
+    def on_cmd(cmd: UnifiedCommand):
+        print(f"[명령 실행] {cmd.action} -> {cmd.target_id}")
+
+    def on_wake(event):
+        print(f"[웨이크 워드] {event.keyword}")
+
+    def on_trans(text: str, conf: float):
+        print(f"[인식] {text} ({conf:.2f})")
+
+    pipeline = create_voice_pipeline(config, on_cmd, on_wake, on_trans)
+
+    # 커스텀 명령어 등록
+    pipeline.add_custom_command(
+        phrase="내 드론 이륙",
+        target_device="drone_1",
+        action="TAKEOFF",
+        params={"z_m": 5.0},
+    )
+
+    pipeline.start()
+    print("파이프라인 시작됨 (테스트용 - 실제 오디오 입력 필요)")
+
+    # 테스트용 직접 텍스트 처리
+    import asyncio
+    async def test():
+        cmd = await pipeline.parser.parse_to_command(
+            "내 드론 이륙", 0.95, "drone_1"
+        )
+        print(f"파싱 결과: {cmd.action} {cmd.params}")
+
+    asyncio.run(test())
+    pipeline.stop()
