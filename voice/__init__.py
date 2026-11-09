@@ -58,6 +58,16 @@ __all__ = [
     "quick_finetune",
     # labeling_tool (datasets 필요)
     "STTLabelingTool",
+    # nlu_learning (torch, transformers, peft 필요)
+    "NLUModelConfig",
+    "NLUModelType",
+    "FeedbackType",
+    "NLUTrainingSample",
+    "NLUDataCollector",
+    "FewShotPromptBuilder",
+    "NLULearningPipeline",
+    "LearningVoiceIntentParser",
+    "create_nlu_learning_pipeline",
 ]
 
 # 지연 로딩을 위한 모듈 매핑
@@ -98,6 +108,17 @@ _OPTIONAL_MODULES = {
     "labeling_tool": [
         "STTLabelingTool",
     ],
+    "nlu_learning": [
+        "NLUModelConfig",
+        "NLUModelType",
+        "FeedbackType",
+        "NLUTrainingSample",
+        "NLUDataCollector",
+        "FewShotPromptBuilder",
+        "NLULearningPipeline",
+        "LearningVoiceIntentParser",
+        "create_nlu_learning_pipeline",
+    ],
 }
 
 # 타입 체커용 (실제 import는 런타임에만)
@@ -136,6 +157,17 @@ if TYPE_CHECKING:
         quick_finetune,
     )
     from voice.labeling_tool import STTLabelingTool
+    from voice.nlu_learning import (
+        NLUModelConfig,
+        NLUModelType,
+        FeedbackType,
+        NLUTrainingSample,
+        NLUDataCollector,
+        FewShotPromptBuilder,
+        NLULearningPipeline,
+        LearningVoiceIntentParser,
+        create_nlu_learning_pipeline,
+    )
 
 
 def __getattr__(name: str):

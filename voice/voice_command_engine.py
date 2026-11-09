@@ -36,6 +36,7 @@ if TYPE_CHECKING:
         CommandCategory,
         VoiceEnrollmentSession,
     )
+    from voice.nlu_learning import NLUModelConfig, NLULearningPipeline
 
 # 런타임 선택적 import (가용성 플래그만 설정)
 try:
@@ -45,11 +46,12 @@ except ImportError:
     WHISPER_AVAILABLE = False
     WhisperModel = None  # type: ignore
 
-# speaker_adapter, wake_word_detector, voice_enrollment는 지연 import
+# speaker_adapter, wake_word_detector, voice_enrollment, nlu_learning는 지연 import
 # (torch, pvporcupine 등 무거운 의존성 회피)
 SPEAKER_ADAPTER_AVAILABLE = False
 WAKE_WORD_AVAILABLE = False
 ENROLLMENT_AVAILABLE = False
+NLU_LEARNING_AVAILABLE = False
 
 def _check_speaker_adapter() -> bool:
     global SPEAKER_ADAPTER_AVAILABLE
@@ -80,6 +82,16 @@ def _check_enrollment() -> bool:
         except ImportError:
             pass
     return ENROLLMENT_AVAILABLE
+
+def _check_nlu_learning() -> bool:
+    global NLU_LEARNING_AVAILABLE
+    if not NLU_LEARNING_AVAILABLE:
+        try:
+            from voice.nlu_learning import NLULearningPipeline
+            NLU_LEARNING_AVAILABLE = True
+        except ImportError:
+            pass
+    return NLU_LEARNING_AVAILABLE
 
 logger = logging.getLogger(__name__)
 
@@ -559,6 +571,12 @@ class VoicePipelineConfig:
     enable_enrollment: bool = False
     enrollment_storage_dir: str = "~/models/voice_enrollment"
 
+    # NLU 학습 (자연어 이해 지속적 개선)
+    enable_nlu_learning: bool = False
+    nlu_learning_config: Optional["NLUModelConfig"] = None
+    nlu_model_type: str = "fewshot"  # "fewshot", "lora", "classifier"
+    auto_retrain_threshold: int = 50  # 이만큼 피드백 쌓이면 자동 재학습
+
     # VAD
     vad_aggressiveness: int = 2  # 0-3
     silence_timeout_sec: float = 2.0
@@ -592,6 +610,7 @@ class VoiceCommandPipeline:
         self._wake_word_detected = False
         self._recording = False
         self._audio_buffer: List[np.ndarray] = []
+        self.active_target = "drone_1"  # 현재 제어 대상 (음성/명령으로 변경 가능)
 
     def _init_components(self):
         # 화자 적응
@@ -617,11 +636,32 @@ class VoiceCommandPipeline:
             from voice.voice_enrollment import VoiceEnrollmentManager as VEM
             self.enrollment_manager = VEM(self.config.enrollment_storage_dir)
 
-        # NLU 파서
-        self.parser = VoiceIntentParser(
-            llm_client=None,  # 필요시 주입
-            enrollment_manager=self.enrollment_manager,
-        )
+        # NLU 학습 파이프라인
+        self.nlu_learning = None
+        if self.config.enable_nlu_learning and _check_nlu_learning():
+            from voice.nlu_learning import NLUModelConfig, NLULearningPipeline, LearningVoiceIntentParser, NLUModelType
+            nlu_config = self.config.nlu_learning_config or NLUModelConfig()
+            # 모델 타입 설정
+            if self.config.nlu_model_type == "lora":
+                nlu_config.model_type = NLUModelType.LLM_LORA
+            elif self.config.nlu_model_type == "classifier":
+                nlu_config.model_type = NLUModelType.CLASSIFIER
+            else:
+                nlu_config.model_type = NLUModelType.LLM_FEWSHOT
+            
+            self.nlu_learning = NLULearningPipeline(nlu_config)
+            # 기본 파서를 학습 래퍼로 감싸기
+            base_parser = VoiceIntentParser(
+                llm_client=None,
+                enrollment_manager=self.enrollment_manager,
+            )
+            self.parser = LearningVoiceIntentParser(base_parser, self.nlu_learning)
+        else:
+            # 기본 파서
+            self.parser = VoiceIntentParser(
+                llm_client=None,
+                enrollment_manager=self.enrollment_manager,
+            )
 
         # 웨이크 워드
         self.wake_word_detector = None
@@ -752,8 +792,8 @@ class VoiceCommandPipeline:
                 self.parser.parse_to_command(
                     text=text,
                     stt_confidence=confidence,
-                    active_target="drone_1",
-                    speaker_id=self.active_speaker_id,
+                    active_target=self.active_target,
+                    speaker_id=self.active_speaker_id or "",
                 )
             )
 
@@ -805,7 +845,9 @@ class VoiceCommandPipeline:
             "wake_word_enabled": self.wake_word_detector is not None,
             "speaker_adaptation": self.speaker_adapter is not None,
             "enrollment": self.enrollment_manager is not None,
+            "nlu_learning": self.nlu_learning is not None,
             "active_speaker": self.active_speaker_id,
+            "active_target": self.active_target,
         }
 
         if self.wake_word_detector:
@@ -817,7 +859,28 @@ class VoiceCommandPipeline:
         if self.enrollment_manager:
             stats["custom_mappings"] = len(self.enrollment_manager.mappings)
 
+        if self.nlu_learning:
+            stats["nlu_learning"] = self.nlu_learning.get_pipeline_status()
+
         return stats
+
+    def set_active_target(self, target_id: str):
+        """활성 제어 대상 변경 (drone_1, robot_1, hybrid_drone_1 등)"""
+        self.active_target = target_id
+        logger.info(f"활성 타겟 변경: {target_id}")
+
+    def submit_nlu_feedback(self, sample_id: str, is_correct: bool, correct_text: str = "") -> bool:
+        """NLU 파싱 결과에 대한 사용자 피드백 제출"""
+        if self.nlu_learning and hasattr(self.parser, 'submit_feedback'):
+            return self.parser.submit_feedback(sample_id, is_correct, correct_text)
+        logger.warning("NLU 학습이 활성화되지 않음")
+        return False
+
+    def get_active_learning_tasks(self, count: int = 10) -> List[Dict]:
+        """Active Learning: 라벨링이 필요한 샘플 목록 반환"""
+        if self.nlu_learning:
+            return self.nlu_learning.get_active_learning_tasks(count)
+        return []
 
 
 # 편의 함수
