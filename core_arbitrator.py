@@ -60,6 +60,8 @@ class UnifiedCommand(BaseModel):
     yaw_rate_radps: float = 0.0
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     params: Dict[str, Any] = {}
+    clarification_needed: bool = False
+    reason: str = ""
 
 
 class DynamicSafetyValidator:

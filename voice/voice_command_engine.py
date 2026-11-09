@@ -1,11 +1,3 @@
-"""
-통합 음성 명령 엔진
-- STT (Whisper)
-- NLU (규칙 + LLM)
-- 화자 적응 (SpeakerAdapter)
-- 웨이크 워드 감지 (Porcupine)
-- 음성 등록/커스텀 명령어 (VoiceEnrollment)
-"""
 import math
 import re
 import uuid
@@ -37,6 +29,7 @@ if TYPE_CHECKING:
         VoiceEnrollmentSession,
     )
     from voice.nlu_learning import NLUModelConfig, NLULearningPipeline
+    from voice.ambiguous_quantification import parse_korean_command, quantify_korean_ambiguity
 
 # 런타임 선택적 import (가용성 플래그만 설정)
 try:
@@ -46,12 +39,13 @@ except ImportError:
     WHISPER_AVAILABLE = False
     WhisperModel = None  # type: ignore
 
-# speaker_adapter, wake_word_detector, voice_enrollment, nlu_learning는 지연 import
+# speaker_adapter, wake_word_detector, voice_enrollment, nlu_learning, ambiguous_quantification는 지연 import
 # (torch, pvporcupine 등 무거운 의존성 회피)
 SPEAKER_ADAPTER_AVAILABLE = False
 WAKE_WORD_AVAILABLE = False
 ENROLLMENT_AVAILABLE = False
 NLU_LEARNING_AVAILABLE = False
+AMBIGUOUS_QUANTIFICATION_AVAILABLE = False
 
 def _check_speaker_adapter() -> bool:
     global SPEAKER_ADAPTER_AVAILABLE
@@ -92,6 +86,16 @@ def _check_nlu_learning() -> bool:
         except ImportError:
             pass
     return NLU_LEARNING_AVAILABLE
+
+def _check_ambiguous_quantification() -> bool:
+    global AMBIGUOUS_QUANTIFICATION_AVAILABLE
+    if not AMBIGUOUS_QUANTIFICATION_AVAILABLE:
+        try:
+            from voice.ambiguous_quantification import parse_korean_command, quantify_korean_ambiguity
+            AMBIGUOUS_QUANTIFICATION_AVAILABLE = True
+        except ImportError:
+            pass
+    return AMBIGUOUS_QUANTIFICATION_AVAILABLE
 
 logger = logging.getLogger(__name__)
 
@@ -308,11 +312,13 @@ class VoiceIntentParser:
                 return self._mapping_to_command(custom_mapping, text, stt_confidence, active_target)
 
         # 4) LLM 구조화 파싱
+        clarification_needed = False
+        reason = ""
         if self.llm_client is not None:
             intent = await self._call_structured_llm(text, active_target)
         else:
             # 5) 결정론적 폴백 파서
-            intent = self._deterministic_fallback_parser(text, active_target)
+            intent, clarification_needed, reason = self._deterministic_fallback_parser(text, active_target)
 
         return UnifiedCommand(
             command_id=str(uuid.uuid4()),
@@ -328,6 +334,8 @@ class VoiceIntentParser:
             vz_mps=intent.vz_mps,
             yaw_rate_radps=intent.yaw_rate_radps,
             confidence=stt_confidence,
+            clarification_needed=clarification_needed,
+            reason=reason,
         )
 
     def _mapping_to_command(
@@ -484,7 +492,11 @@ class VoiceIntentParser:
 
     def _deterministic_fallback_parser(
         self, text: str, active_target: str
-    ) -> ParsedVoiceIntent:
+    ) -> tuple[ParsedVoiceIntent, bool, str]:
+        """
+        결정론적 폴백 파서
+        Returns: (ParsedVoiceIntent, clarification_needed, reason)
+        """
         target = (
             "drone_1"
             if "드론" in text
@@ -493,49 +505,88 @@ class VoiceIntentParser:
         if "하이브리드" in text:
             target = "hybrid_drone_1"
 
+        # 모호한 표현 정량화 모듈 사용 시도
+        if _check_ambiguous_quantification():
+            try:
+                from voice.ambiguous_quantification import parse_korean_command
+                parsed = parse_korean_command(text)
+                if parsed.get("clarification_needed"):
+                    return ParsedVoiceIntent(
+                        target_id=target,
+                        action=parsed["action"],
+                        x_m=parsed.get("forward_m", 0.0),
+                        y_m=parsed.get("right_m", 0.0),
+                        z_m=parsed.get("down_m", 0.0),
+                        vx_mps=parsed.get("vx_mps", 0.0),
+                        vy_mps=parsed.get("vy_mps", 0.0),
+                        vz_mps=parsed.get("vz_mps", 0.0),
+                        yaw_rate_radps=parsed.get("yaw_rate_radps", 0.0),
+                    ), True, parsed.get("reason", "명령이 모호하여 명확화가 필요함")
+                else:
+                    # 모호 표현이 정량화되었으면 해당 값 사용
+                    action = parsed["action"]
+                    # MOVE_BODY를 MOVE_VEL로 매핑 (UnifiedCommand 액션 리터럴에 맞춤)
+                    if action == "MOVE_BODY":
+                        action = "MOVE_VEL"
+                    # 키 매핑: parse_korean_command는 forward_m/right_m/down_m/yaw_deg 사용
+                    # ParsedVoiceIntent는 vx_mps/vy_mps/vz_mps/yaw_rate_radps 사용
+                    return ParsedVoiceIntent(
+                        target_id=target,
+                        action=action,
+                        x_m=parsed.get("forward_m", 0.0),
+                        y_m=parsed.get("right_m", 0.0),
+                        z_m=parsed.get("down_m", 0.0),
+                        vx_mps=parsed.get("forward_m", 0.0),
+                        vy_mps=parsed.get("right_m", 0.0),
+                        vz_mps=parsed.get("down_m", 0.0),
+                        yaw_rate_radps=parsed.get("yaw_deg", 0.0) * 3.14159 / 180.0,
+                    ), False, parsed.get("reason", "")
+            except Exception:
+                pass  # 폴백 파서로 진행
+
         num_match = re.search(r"(\d+(?:\.\d+)?)", text)
         val = float(num_match.group(1)) if num_match else 1.0
 
         if "이륙" in text:
             return ParsedVoiceIntent(
                 target_id=target, action="TAKEOFF", z_m=val if num_match else 2.5
-            )
+            ), False, ""
         elif "착륙" in text:
-            return ParsedVoiceIntent(target_id=target, action="LAND")
+            return ParsedVoiceIntent(target_id=target, action="LAND"), False, ""
         elif "복귀" in text or "돌아와" in text:
-            return ParsedVoiceIntent(target_id=target, action="RTL")
+            return ParsedVoiceIntent(target_id=target, action="RTL"), False, ""
         elif "정지" in text or "멈춰" in text or "홀드" in text:
-            return ParsedVoiceIntent(target_id=target, action="HOLD")
+            return ParsedVoiceIntent(target_id=target, action="HOLD"), False, ""
         elif "앞으로" in text or "전진" in text:
-            return ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vx_mps=val)
+            return ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vx_mps=val), False, ""
         elif "뒤로" in text or "후진" in text:
-            return ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vx_mps=-val)
+            return ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vx_mps=-val), False, ""
         elif "좌측" in text or "왼쪽" in text:
-            return ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vy_mps=-val)
+            return ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vy_mps=-val), False, ""
         elif "우측" in text or "오른쪽" in text:
-            return ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vy_mps=val)
+            return ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vy_mps=val), False, ""
         elif "상승" in text or "올라" in text:
-            return ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vz_mps=val)
+            return ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vz_mps=val), False, ""
         elif "하강" in text or "내려" in text:
-            return ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vz_mps=-val)
+            return ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vz_mps=-val), False, ""
         elif "좌회전" in text:
             return ParsedVoiceIntent(
                 target_id=target, action="MOVE_VEL", yaw_rate_radps=0.5
-            )
+            ), False, ""
         elif "우회전" in text:
             return ParsedVoiceIntent(
                 target_id=target, action="MOVE_VEL", yaw_rate_radps=-0.5
-            )
+            ), False, ""
         elif "복귀" in text or "돌아와" in text:
-            return ParsedVoiceIntent(target_id=target, action="RTL")
+            return ParsedVoiceIntent(target_id=target, action="RTL"), False, ""
         elif "고도" in text and "변경" in text:
-            return ParsedVoiceIntent(target_id=target, action="MOVE_VEL", z_m=val)
+            return ParsedVoiceIntent(target_id=target, action="MOVE_VEL", z_m=val), False, ""
         elif "좌표" in text or "이동" in text:
             return ParsedVoiceIntent(
                 target_id=target, action="NAV_TO_POSE", x_m=val, y_m=0.0
-            )
+            ), False, ""
 
-        raise ValueError(f"해석할 수 없는 음성 명령입니다: '{text}'")
+        return ParsedVoiceIntent(target_id=target, action="HOLD"), True, f"해석할 수 없는 음성 명령입니다: '{text}'"
 
     async def _call_structured_llm(
         self, text: str, active_target: str
