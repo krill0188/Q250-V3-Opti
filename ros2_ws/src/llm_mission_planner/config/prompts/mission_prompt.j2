@@ -1,0 +1,39 @@
+{# Mission Prompt Template #}
+## Mission Request
+**User Input**: "{{ user_input }}"
+
+**Current Drone State**:
+- Position: {{ current_position_lat }}, {{ current_position_lon }}, {{ current_position_alt }}m
+- Battery: {{ battery_percent }}%
+- Mode: {{ flight_mode }}
+- VIO Status: {{ vio_status }}
+- Silvus Link: {{ silvus_status }}
+
+**Environment**:
+- Geofence: {% if geofence %}{{ geofence }}{% else %}Not set (use default safety margin){% endif %}
+- No-fly Zones: {% if no_fly_zones %}{{ no_fly_zones }}{% else %}None{% endif %}
+- Known Obstacles: {% if obstacles %}{{ obstacles }}{% else %}Unknown{% endif %}
+- Weather: {{ weather_info }}
+
+**Mission Constraints from Config**:
+- Default Altitude: {{ default_altitude }}m
+- Max Altitude: {{ max_altitude }}m
+- Min Altitude: {{ min_altitude }}m
+- Default Speed: {{ default_speed }}m/s
+- Max Speed: {{ max_speed }}m/s
+- Safety Margin: {{ safety_margin }}m
+- Max Waypoints: {{ max_waypoints }}
+
+## Task
+Convert the user's natural language mission into a structured JSON mission plan following the exact output format specified in the system prompt.
+
+Consider:
+1. Current drone position as starting reference
+2. Battery level for mission duration estimation
+3. VIO drift characteristics for indoor missions
+4. Silvus link quality for communication-dependent operations
+5. Obstacle avoidance capabilities (Depth + LiDAR + TEB)
+5. Geofence and no-fly zone constraints
+6. Failsafe behavior configuration
+
+**Output**: Valid JSON only, no markdown, no explanations.

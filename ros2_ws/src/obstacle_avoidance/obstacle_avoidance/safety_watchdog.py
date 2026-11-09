@@ -187,7 +187,9 @@ class SafetyWatchdog(Node):
     def update_px4_param(self, param_name: str, value: float):
         """Update PX4 parameter via MAVROS."""
         if not self.param_client.service_is_ready():
-            self.get_logger().debug(f"MAVROS param service not ready, skipping {param_name}")
+            self.get_logger().debug(
+                f"MAVROS param service not ready, skipping {param_name}"
+            )
             return
 
         request = ParamSet.Request()

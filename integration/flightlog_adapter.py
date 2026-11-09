@@ -217,7 +217,10 @@ class FlightLogAdapter:
             source_sha256=source_sha256,
             transform_code_version=self.transform_code_version,
             transform_timestamp=datetime.utcnow().isoformat() + "Z",
-            transform_params={"parser": "pyulog", "topics": list(self.TOPICS_OF_INTEREST.keys())},
+            transform_params={
+                "parser": "pyulog",
+                "topics": list(self.TOPICS_OF_INTEREST.keys()),
+            },
         )
 
         # Parse ulog
@@ -237,7 +240,9 @@ class FlightLogAdapter:
 
         return data
 
-    def _extract_metadata(self, ulog: ULog, provenance: Provenance) -> FlightLogMetadata:
+    def _extract_metadata(
+        self, ulog: ULog, provenance: Provenance
+    ) -> FlightLogMetadata:
         """Extract flight metadata from ulog."""
         # Get start timestamp from first message
         start_ts = min(
@@ -288,7 +293,9 @@ class FlightLogAdapter:
                         if field != "timestamp":
                             val = dataset.data[field][i]
                             # Handle arrays
-                            if hasattr(val, "__len__") and not isinstance(val, (str, bytes)):
+                            if hasattr(val, "__len__") and not isinstance(
+                                val, (str, bytes)
+                            ):
                                 msg_dict[field] = [float(x) for x in val]
                             else:
                                 msg_dict[field] = (

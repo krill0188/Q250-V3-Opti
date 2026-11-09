@@ -32,7 +32,9 @@ def render_mermaid_to_png(mmd_file, output_dir):
         # mmdc (Mermaid CLI) 확인
         result = subprocess.run(["which", "mmdc"], capture_output=True)
         if result.returncode != 0:
-            print(f"Warning: mmdc not found. Install with: npm install -g @mermaid-js/mermaid-cli")
+            print(
+                f"Warning: mmdc not found. Install with: npm install -g @mermaid-js/mermaid-cli"
+            )
             return False
 
         output_dir = Path(output_dir)
@@ -84,7 +86,9 @@ def markdown_to_docx(md_file, docx_file, images_dir):
         return f"[Diagram: {diagram_name}.mmd - 렌더링 필요]"
 
     # ```mermaid 블록 처리
-    md_content = re.sub(r"```mermaid\s*\n(.*?)\n```", replace_mermaid, md_content, flags=re.DOTALL)
+    md_content = re.sub(
+        r"```mermaid\s*\n(.*?)\n```", replace_mermaid, md_content, flags=re.DOTALL
+    )
 
     # HTML로 변환
     html = markdown2.markdown(

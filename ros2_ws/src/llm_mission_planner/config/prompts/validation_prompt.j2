@@ -1,0 +1,86 @@
+{# Validation Prompt Template #}
+## Mission Validation Task
+Validate the generated mission plan for safety and correctness.
+
+## Generated Mission Plan
+{{ mission_json }}
+
+## Validation Criteria
+Check each criterion and return PASS/FAIL with details:
+
+### 1. Coordinate Validity
+- All latitudes in [-90, 90]
+- All longitudes in [-180, 180]
+- All altitudes in [min_altitude, max_altitude] meters MSL
+
+### 2. Geofence Compliance
+- All waypoints within geofence polygon
+- Minimum {{ safety_margin }}m clearance from geofence boundary
+- No waypoints in no-fly zones
+
+### 3. Waypoint Spacing
+- Distance between consecutive waypoints ≤ {{ max_waypoint_distance }}m
+- No duplicate waypoints
+
+### 4. Altitude Safety
+- All waypoints above minimum safe altitude (terrain + {{ min_obstacle_clearance }}m)
+- No sudden altitude changes > 10m between adjacent waypoints
+
+### 5. Speed Limits
+- All waypoint speeds ≤ {{ max_speed }}m/s
+- No zero or negative speeds
+
+### 6. Action Validity
+- All actions in: none, takeoff, land, loiter, photo, scan
+- hold_time ≥ 0
+- takeoff only as first waypoint
+- land only as last waypoint
+
+### 7. Failsafe Configuration
+- on_comm_loss in: rtl, land, hover
+- on_battery_low in: rtl, land
+- on_geofence_breach in: rtl, land
+- on_obstacle_critical in: hover, brake, land
+
+### 8. Battery Feasibility
+- Estimated mission duration × power consumption < battery_capacity × 0.8
+
+### 9. VIO Drift Consideration (Indoor)
+- Mission duration × drift_rate < geofence_size × 0.5
+- Fake GPS origin stability verified
+
+### 10. Silvus Link Quality
+- Multi-drone missions: all drones within communication range
+- Hop count ≤ 5 for mesh relay
+
+## Output Format (Strict JSON)
+{
+  "valid": true|false,
+  "score": 0.0-1.0,
+  "errors": [
+    {"code": "ERROR_CODE", "message": "Description", "severity": "critical|warning|info", "waypoint_index": null}
+  ],
+  "warnings": [
+    {"code": "WARN_CODE", "message": "Description", "waypoint_index": 0}
+  ],
+  "suggestions": [
+    "Suggestion for improvement"
+  ],
+  "auto_fix_applied": false|true,
+  "fixed_mission_json": {}  // if auto_fix_applied=true
+}
+
+## Severity Levels
+- **critical**: Mission unsafe, must fix before flight
+- **warning**: Suboptimal but flyable, should fix
+- **info**: Minor suggestion, optional
+
+## Auto-Fix Rules (if enabled)
+- Clamp altitudes to [min_altitude, max_altitude]
+- Clamp speeds to [0.1, max_speed]
+- Remove duplicate waypoints
+- Add missing failsafe defaults
+- Snap waypoints to geofence boundary if marginally outside
+- Add takeoff/land waypoints if missing
+
+**Output**: Valid JSON only.

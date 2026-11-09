@@ -1,5 +1,9 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
+from launch.actions import (
+    DeclareLaunchArgument,
+    IncludeLaunchDescription,
+    OpaqueFunction,
+)
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
@@ -9,7 +13,9 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description():
     args = [
         DeclareLaunchArgument(
-            "use_teb", default_value="true", description="Use TEB local planner (vs custom)"
+            "use_teb",
+            default_value="true",
+            description="Use TEB local planner (vs custom)",
         ),
         DeclareLaunchArgument(
             "odom_topic",
@@ -53,7 +59,11 @@ def generate_launch_description():
                 output="screen",
                 parameters=[
                     PathJoinSubstitution(
-                        [FindPackageShare("obstacle_avoidance"), "config", "teb_params.yaml"]
+                        [
+                            FindPackageShare("obstacle_avoidance"),
+                            "config",
+                            "teb_params.yaml",
+                        ]
                     ),
                     {
                         "odom_topic": LaunchConfiguration("odom_topic"),
@@ -84,7 +94,10 @@ def generate_launch_description():
         nodes.append(obstacle_dist_node)
 
         # 4. Safety Watchdog (planner health + Silvus link quality -> PX4 failsafe)
-        if LaunchConfiguration("enable_silvus_monitor").perform(context).lower() == "true":
+        if (
+            LaunchConfiguration("enable_silvus_monitor").perform(context).lower()
+            == "true"
+        ):
             watchdog_node = Node(
                 package="obstacle_avoidance",
                 executable="safety_watchdog",

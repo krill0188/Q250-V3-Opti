@@ -1,0 +1,105 @@
+# Swarm Communication Configuration for Q250-V3-Opti
+# Fast-DDS real-time position broadcast + collision avoidance
+
+swarm_comm:
+  ros__parameters:
+    # Drone Identity
+    drone_id: "drone_01"              # Unique drone identifier
+    swarm_id: "swarm_alpha"           # Swarm identifier
+    
+    # Fast-DDS Configuration
+    dds_domain: 0                     # DDS domain ID
+    dds_partition: "swarm_alpha"      # DDS partition for isolation
+    qos_profile: "swarm_realtime"     # QoS profile name
+    
+    # Position Broadcast
+    broadcast_rate: 20.0              # Hz (position updates per second)
+    position_topic: "/swarm/position" # Topic for position broadcasts
+    use_reliable_qos: false           # Best effort for real-time
+    history_depth: 1                  # Keep only latest
+    
+    # Position Message Content
+    include_velocity: true            # Include velocity in broadcast
+    include_attitude: true            # Include attitude (quaternion)
+    include_battery: true             # Include battery status
+    include_mode: true                # Include flight mode
+    include_vio_quality: true         # Include VIO quality metrics
+    
+    # Collision Avoidance
+    collision_avoidance_enabled: true
+    safety_radius: 2.0                # meters (minimum separation)
+    warning_radius: 5.0               # meters (warning zone)
+    max_avoidance_accel: 2.0          # m/s² max avoidance acceleration
+    prediction_horizon: 2.0           # seconds (trajectory prediction)
+    min_approach_angle: 30.0          # degrees (minimum crossing angle)
+    
+    # Swarm Coordination
+    max_swarm_size: 10                # Maximum drones in swarm
+    leader_id: ""                     # Leader drone ID (empty = none)
+    formation_enabled: false          # Formation flight mode
+    formation_shape: "line"           # line, wedge, diamond, circle
+    formation_spacing: 3.0            # meters between drones in formation
+    
+    # Silvus Link Integration
+    silvus_monitor_topic: "/silvus/link_quality"
+    silvus_link_loss_threshold: 0.1   # 10% packet loss
+    silvus_rtt_threshold: 50.0        # ms
+    link_loss_reduce_rate: 0.5        # Reduce broadcast rate by 50% on link loss
+    
+    # VIO Quality Integration
+    vio_quality_topic: "/vio/quality"
+    vio_drift_threshold: 0.5          # m/s drift rate
+    vio_loss_timeout: 2.0             # seconds before VIO considered lost
+    
+    # Collision Avoidance Parameters
+    ca_algorithm: "potential_field"   # potential_field, velocity_obstacle, mpc
+    repulsive_gain: 1.0               # Repulsive force gain
+    attractive_gain: 0.5              # Attractive force gain (for formation)
+    max_repulsive_force: 5.0          # Max repulsive acceleration (m/s²)
+    cut_off_distance: 10.0            # Ignore drones beyond this distance
+    
+    # Velocity Obstacle Parameters (if VO algorithm)
+    vo_time_horizon: 3.0              # seconds
+    vo_safety_margin: 1.0             # Additional safety buffer
+    
+    # Topics
+    position_broadcast_topic: "/swarm/position"
+    collision_avoidance_topic: "/swarm/collision_avoidance"
+    formation_command_topic: "/swarm/formation_cmd"
+    swarm_status_topic: "/swarm/status"
+    
+    # QoS Profiles
+    qos_profiles:
+      swarm_realtime:
+        reliability: "best_effort"
+        history: "keep_last"
+        depth: 1
+        durability: "volatile"
+        deadline_ms: 50
+        lifespan_ms: 100
+      swarm_reliable:
+        reliability: "reliable"
+        history: "keep_last"
+        depth: 10
+        durability: "volatile"
+      swarm_status:
+        reliability: "reliable"
+        history: "keep_last"
+        depth: 5
+        durability: "transient_local"
+    
+    # Network
+    multicast_enabled: true
+    multicast_address: "239.255.0.1"
+    multicast_port: 7400
+    unicast_fallback: true
+    
+    # Logging
+    log_broadcast_stats: true
+    log_collision_events: true
+    log_stats_interval: 10.0          # seconds
+    
+    # Safety
+    max_position_age: 1.0             # seconds (ignore stale positions)
+    position_timeout_action: "hover"  # hover, land, rtl
+    min_neighbors_for_ca: 1           # Minimum neighbors for CA activation

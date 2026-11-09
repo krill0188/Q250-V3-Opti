@@ -10,7 +10,10 @@ setup(
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
         ("share/" + package_name + "/launch", ["launch/obstacle_avoidance.launch.py"]),
-        ("share/" + package_name + "/config", ["config/teb_params.yaml", "costmap_params.yaml"]),
+        (
+            "share/" + package_name + "/config",
+            ["config/teb_params.yaml", "costmap_params.yaml"],
+        ),
     ],
     install_requires=["setuptools"],
     zip_safe=True,

@@ -62,13 +62,25 @@
 │  │   ├─ Phase 5: 트렌드 분석 및 파라미터 튜닝 피드백 루프                │
 │  │   └─ Phase 6: 아카이브 및 문서화                                      │
 │  │                                                                           │
-│  Phase 7: Silvus 데이터링크 고도화 & 군집 비행 (2주+)                     │
-│  ├─ Silvus MN-MIMO 특성 이해 및 링크 품질 모니터링                        │
-│  ├─ MAVLink Router 멀티엔드포인트 라우팅                                  │
-│  ├─ Fast-DDS 튜닝 (대역폭/지연 최적화)                                   │
-│  ├─ 링크 품질 → 비행 파라미터 동적 연동 (planner 속도 자동 감속)         │
-│  └─ 군집 비행 아키텍처 (리더-팔로워, 컨센서스)                            │
-│                                                                             │
+│  Phase 7: LLM 고수준 미션 플래너 (1~2주)  ← NEW                           │
+│  ├─ 06_llm_mission_planner_guide.md  ← LLM 미션 플래너 가이드            │
+│  │   ├─ Phase 1: 패키지 빌드 및 설정 (LLM API 키 설정)                   │
+│  │   ├─ Phase 2: 프롬프트 이해 및 커스터마이징                           │
+│  │   ├─ Phase 3: 실행 및 테스트 (자연어 → 웨이포인트 JSON)               │
+│  │   ├─ Phase 4: 검증 파이프라인 이해                                    │
+│  │   ├─ Phase 5: PX4 연동 및 실행 (Mission/Offboard)                    │
+│  │   └─ Phase 6: 프롬프트 엔지니어링 팁                                  │
+│  │                                                                           │
+│  Phase 8: 군집 통신 & 편대 비행 (2주+)  ← NEW                              │
+│  ├─ 07_swarm_communication_guide.md  ← 군집 통신 가이드                  │
+│  │   ├─ Phase 1: 패키지 빌드 및 설정 (drone_id, swarm_id)                │
+│  │   ├─ Phase 2: Silvus 네트워크 설정 (웹 UI, MAVLink Router)            │
+│  │   ├─ Phase 3: Fast-DDS 설정 (QoS, 파티션, 멀티캐스트)                │
+│  │   ├─ Phase 4: 단일 기체 테스트 → 군집 확장 (2일)                      │
+│  │   ├─ Phase 5: 다중 기체 군집 테스트 (2-3일)                          │
+│  │   ├─ Phase 6: 실전 운용 및 모니터링 (KPI, 대시보드)                  │
+│  │   └─ Phase 7: 고급 기능 확장 (태스크 할당, 합의 알고리즘)             │
+│  │                                                                           │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -85,11 +97,13 @@
 | **5** | `03_fake_gps_guide.md` | VIO→EKF2 완료 | Mission/RTL/Geofence 활성화 | 2~3일 |
 | **6** | `02_obstacle_avoidance_guide.md` | VIO→EKF2 완료 | 자율 회피 비행 | 2~3주 |
 | **7** | `04_flight_log_analysis_guide.md` | 비행 데이터 존재 | 자동 분석 리포트, 튜닝 피드백 | 상시 |
-| **8** | Silvus/군집 비행 | 단일 기체 완전 자율 | 다중 기체 자율 협업 | 2주+ |
+| **8** | `06_llm_mission_planner_guide.md` | VIO→EKF2 + Fake GPS + 회피 | LLM 미션 플래너 연동 | 1~2주 |
+| **9** | `07_swarm_communication_guide.md` | 단일 기체 완전 자율 | 다중 기체 자율 협업 | 2주+ |
 
-> **💡 핵심 경로**: 1 → 2 → 3 → **4** → (5, 6 병렬 가능) → 7 → 8
+> **💡 핵심 경로**: 1 → 2 → 3 → **4** → (5, 6 병렬 가능) → 7 → 8 → 9
 > - **Phase 4(VIO→EKF2)가 모든 자율 비행의 전제조건**임
 > - Phase 5(fake GPS)와 Phase 6(회피)는 Phase 4 완료 후 **병렬 진행 가능**
+> - Phase 8(LLM 미션 플래너)과 Phase 9(군집 통신)는 단일 기체 완전 자율 후 진행
 
 ---
 
@@ -103,7 +117,9 @@
 │   │   ├── 02_obstacle_avoidance_guide.md        # 자율 회피 파이프라인
 │   │   ├── 03_fake_gps_guide.md                  # Fake GPS 구현
 │   │   ├── 04_flight_log_analysis_guide.md       # 비행 로그 분석 파이프라인
-│   │   └── 05_dev_environment_setup_guide.md     # 개발 환경 설정 (첫 시작)
+│   │   ├── 05_dev_environment_setup_guide.md     # 개발 환경 설정 (첫 시작)
+│   │   ├── 06_llm_mission_planner_guide.md       # LLM 미션 플래너 (NEW)
+│   │   └── 07_swarm_communication_guide.md       # 군집 통신 (NEW)
 │   │
 │   ├── 07-vio-ekf2-integration.md                # VIO→EKF2 상세 기술 문서
 │   ├── 12-obstacle-avoidance-pipeline.md         # 회피 파이프라인 상세
@@ -119,17 +135,40 @@
 │   │   ├── launch/fake_gps.launch.py             # Launch 파일
 │   │   └── config/fake_gps.yaml                  # 설정 파일
 │   │
-│   └── obstacle_avoidance/                       # 회피 파이프라인 패키지
-│       ├── obstacle_avoidance/obstacle_distance_pub.py  # LiDAR→OBSTACLE_DISTANCE
-│       ├── obstacle_avoidance/safety_watchdog.py        # 플래너 워치독 + Silvus 연동
-│       ├── launch/obstacle_avoidance.launch.py          # 통합 Launch
-│       └── config/ (teb_params.yaml, costmap_params.yaml)
+│   ├── obstacle_avoidance/                       # 회피 파이프라인 패키지
+│   │   ├── obstacle_avoidance/obstacle_distance_pub.py  # LiDAR→OBSTACLE_DISTANCE
+│   │   ├── obstacle_avoidance/safety_watchdog.py        # 플래너 워치독 + Silvus 연동
+│   │   ├── launch/obstacle_avoidance.launch.py          # 통합 Launch
+│   │   └── config/ (teb_params.yaml, costmap_params.yaml)
+│   │
+│   ├── llm_mission_planner/                      # LLM 미션 플래너 (NEW)
+│   │   ├── llm_mission_planner/mission_planner_node.py  # 메인 플래너 노드
+│   │   ├── llm_mission_planner/mission_validator_node.py # 검증 노드
+│   │   ├── launch/mission_planner.launch.py             # Launch 파일
+│   │   ├── config/mission_planner.yaml                  # 설정 파일
+│   │   └── config/prompts/ (system/mission/validation 프롬프트)
+│   │
+│   ├── swarm_comm/                               # 군집 통신 (NEW)
+│   │   ├── swarm_comm/position_broadcaster.py      # 위치 브로드캐스터
+│   │   ├── swarm_comm/collision_avoidance.py       # 충돌 방지 노드
+│   │   ├── swarm_comm/swarm_coordinator.py         # 편대 비행 코디네이터
+│   │   ├── launch/swarm_comm.launch.py             # 통합 Launch
+│   │   └── config/swarm_comm.yaml                  # 설정 파일
+│   │
+│   ├── integration/                              # 비행 로그 분석 어댑터
+│   │   ├── flightlog_adapter.py      # PX4 ulog 파싱 + Provenance
+│   │   ├── mavlink_adapter.py        # MAVLink PCAP/텍스트 파싱
+│   │   ├── align.py                  # 멀티소스 시간 정렬
+│   │   ├── common.py                 # 공통 타입, SQL 스키마, 좌표변환
+│   │   └── __init__.py
+│   │
+│   └── offboard_control/                            # 기존 Offboard 제어
 │
-├── integration/                                  # 비행 로그 분석 어댑터
-│   ├── flightlog_adapter.py      # PX4 ulog 파싱 + Provenance
-│   ├── mavlink_adapter.py        # MAVLink PCAP/텍스트 파싱
-│   ├── align.py                  # 멀티소스 시간 정렬
-│   ├── common.py                 # 공통 타입, SQL 스키마, 좌표변환
+├── integration/                                    # 비행 로그 분석 어댑터 (동일)
+│   ├── flightlog_adapter.py
+│   ├── mavlink_adapter.py
+│   ├── align.py
+│   ├── common.py
 │   └── __init__.py
 │
 ├── scripts/
@@ -146,7 +185,9 @@
 │   ├── init_flightlog_db.py      # DB 초기화
 │   ├── parse_flight.py           # 비행 로그 파싱
 │   ├── ingest_flight.py          # DB 적재
-│   └── silvus_monitor.py         # Silvus 링크 모니터링
+│   ├── test_flightlog_integration.py # 통합 테스트
+│   ├── silvus_monitor.py         # Silvus 링크 모니터링
+│   └── llm_flight_analyzer.py    # LLM 비행 분석기 (NEW)
 │
 ├── flight_logs/db/flightlog.db   # SQLite DB (19개 테이블, Provenance 포함)
 ├── references/flightlog-schema.sql
@@ -189,8 +230,41 @@ cat docs/guides/01_vio_ekf2_integration_guide.md
 # 2. OpenVINS 설치 및 VIO 포즈 검증
 # 3. TF 트리 및 카메라 마운트 실측
 # 4. MAVROS vision_pose 경로로 PX4 연동
-# 5. EKF2 파라미터 적용 및 혁신 모니터링 (핵심!)
-# 6. Position 모드 진입 테스트
+# 4. EKF2 파라미터 적용 및 혁신 모니터링 (핵심!)
+# 5. Position 모드 진입 테스트
+```
+
+### 4단계: LLM 미션 플래너 연동 (VIO→EKF2 완료 후)
+```bash
+# 실전 가이드 읽기
+cat docs/guides/06_llm_mission_planner_guide.md
+
+# 패키지 빌드
+cd ros2_ws && colcon build --symlink-install --packages-select llm_mission_planner
+source install/setup.bash
+
+# LLM API 키 설정
+export OPENAI_API_KEY="sk-..."
+
+# 실행
+ros2 launch llm_mission_planner mission_planner.launch.py llm_provider:=openai
+```
+
+### 5단계: 군집 통신 (단일 기체 완전 자율 후)
+```bash
+# 실전 가이드 읽기
+cat docs/guides/07_swarm_communication_guide.md
+
+# 패키지 빌드
+cd ros2_ws && colcon build --symlink-install --packages-select swarm_comm
+source install/setup.bash
+
+# 드론별 실행 (예: 4기체 편대)
+# 드론 1 (리더)
+ros2 launch swarm_comm swarm_comm.launch.py drone_id:=drone_01 swarm_id:=swarm_alpha leader_id:=drone_01 formation_enabled:=true
+
+# 드론 2
+ros2 launch swarm_comm swarm_comm.launch.py drone_id:=drone_02 swarm_id:=swarm_alpha leader_id:=drone_01 formation_enabled:=true
 ```
 
 ---
@@ -220,6 +294,8 @@ cat docs/guides/01_vio_ekf2_integration_guide.md
 | 회피 안 됨/충돌 | `02_obstacle_avoidance_guide.md` Phase 3~5 | `12-obstacle-avoidance-pipeline.md` |
 | 로그 분석 방법 | `04_flight_log_analysis_guide.md` | `integration/` 어댑터 코드 |
 | 환경 설정 꼬임 | `05_dev_environment_setup_guide.md` | `references/development_environment.md` |
+| LLM 미션 플래너 오류 | `06_llm_mission_planner_guide.md` | `llm_mission_planner` 패키지 코드 |
+| 군집 통신 안 됨 | `07_swarm_communication_guide.md` | `swarm_comm` 패키지 코드 |
 
 ---
 
@@ -231,7 +307,9 @@ cat docs/guides/01_vio_ekf2_integration_guide.md
 3~5주차: VIO→EKF2 연동 (핵심)    → 01_vio_ekf2_integration_guide.md ★★★
 6주차:  fake GPS + Mission/RTL  → 03_fake_gps_guide.md
 7~9주차: 자율 회피 파이프라인    → 02_obstacle_avoidance_guide.md
-10주차+: Silvus/군집/로그 분석   → 04_flight_log_analysis_guide.md
+10~11주차: LLM 미션 플래너       → 06_llm_mission_planner_guide.md (NEW)
+12~13주차: 군집 통신 & 편대 비행  → 07_swarm_communication_guide.md (NEW)
+14주차+: 로그 분석/지속적 개선    → 04_flight_log_analysis_guide.md
 ```
 
 ---
@@ -252,4 +330,4 @@ cat docs/guides/01_vio_ekf2_integration_guide.md
 
 ---
 
-*마스터 인덱스 버전: 1.0 | 작성: 2026-11-04 | 기반: 전체 가이드 문서 통합*
+*마스터 인덱스 버전: 1.1 | 작성: 2026-11-04 | 기반: 전체 가이드 문서 통합 (v1.1.0 릴리즈 포함)*

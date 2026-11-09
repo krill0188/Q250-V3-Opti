@@ -1016,7 +1016,9 @@ def ecef_to_lla(x: float, y: float, z: float) -> Tuple[float, float, float]:
     return math.degrees(lat), math.degrees(lon), alt
 
 
-def quat_to_euler(q0: float, q1: float, q2: float, q3: float) -> Tuple[float, float, float]:
+def quat_to_euler(
+    q0: float, q1: float, q2: float, q3: float
+) -> Tuple[float, float, float]:
     """Quaternion to Euler angles (roll, pitch, yaw) in radians. ZYX convention."""
     import math
 
@@ -1040,7 +1042,9 @@ def quat_to_euler(q0: float, q1: float, q2: float, q3: float) -> Tuple[float, fl
     return roll, pitch, yaw
 
 
-def euler_to_quat(roll: float, pitch: float, yaw: float) -> Tuple[float, float, float, float]:
+def euler_to_quat(
+    roll: float, pitch: float, yaw: float
+) -> Tuple[float, float, float, float]:
     """Euler angles (roll, pitch, yaw) in radians to quaternion. ZYX convention."""
     import math
 

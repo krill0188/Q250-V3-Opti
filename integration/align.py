@@ -70,7 +70,9 @@ class TimeAligner:
     """Aligns multiple time-series datasets to a common reference timebase."""
 
     def __init__(
-        self, reference_source: str = "ulog", alignment_code_version: Optional[str] = None
+        self,
+        reference_source: str = "ulog",
+        alignment_code_version: Optional[str] = None,
     ):
         self.reference_source = reference_source
         self.alignment_code_version = alignment_code_version or self._get_git_hash()
@@ -177,7 +179,9 @@ class TimeAligner:
             for msg_a in timesync_msgs_a[:max_pairs]:
                 tc1_a = msg_a.get("tc1", 0) / 1e6
                 # Find closest in time
-                best_b = min(timesync_msgs_b, key=lambda m: abs(m.get("tc1", 0) / 1e6 - tc1_a))
+                best_b = min(
+                    timesync_msgs_b, key=lambda m: abs(m.get("tc1", 0) / 1e6 - tc1_a)
+                )
                 tc1_b = best_b.get("tc1", 0) / 1e6
                 pairs.append(
                     TimeSyncPoint(
@@ -234,7 +238,9 @@ class TimeAligner:
 
         return len(pairs)
 
-    def compute_transforms(self, min_confidence: float = 0.5) -> Dict[str, TimeTransform]:
+    def compute_transforms(
+        self, min_confidence: float = 0.5
+    ) -> Dict[str, TimeTransform]:
         """
         Compute linear time transforms from each source to reference.
         Uses all sync points involving the reference source.
@@ -246,9 +252,13 @@ class TimeAligner:
             if sp.confidence < min_confidence:
                 continue
             if sp.source_a == self.reference_source:
-                ref_points[sp.source_b].append((sp.timestamp_a, sp.timestamp_b, sp.confidence))
+                ref_points[sp.source_b].append(
+                    (sp.timestamp_a, sp.timestamp_b, sp.confidence)
+                )
             elif sp.source_b == self.reference_source:
-                ref_points[sp.source_a].append((sp.timestamp_b, sp.timestamp_a, sp.confidence))
+                ref_points[sp.source_a].append(
+                    (sp.timestamp_b, sp.timestamp_a, sp.confidence)
+                )
 
         transforms = {}
         for other_source, points in ref_points.items():
@@ -280,7 +290,9 @@ class TimeAligner:
 
             # Compute R-squared
             t_ref_pred = [scale * o + offset for o in t_other]
-            ss_res = sum(w * (r - p) ** 2 for w, r, p in zip(weights, t_ref, t_ref_pred))
+            ss_res = sum(
+                w * (r - p) ** 2 for w, r, p in zip(weights, t_ref, t_ref_pred)
+            )
             t_ref_mean = w_t_ref / w_sum
             ss_tot = sum(w * (r - t_ref_mean) ** 2 for w, r in zip(weights, t_ref))
             r_squared = 1 - ss_res / ss_tot if ss_tot > 0 else 0
@@ -294,7 +306,9 @@ class TimeAligner:
                 sync_points_used=len(points),
                 provenance={
                     other_source: self.source_hashes.get(other_source, ""),
-                    self.reference_source: self.source_hashes.get(self.reference_source, ""),
+                    self.reference_source: self.source_hashes.get(
+                        self.reference_source, ""
+                    ),
                 },
             )
             transforms[other_source] = transform
@@ -364,7 +378,9 @@ class TimeAligner:
 
         self.compute_transforms()
         return {
-            name: self.align_dataset(name, data, timestamp_fields.get(name, "timestamp"))
+            name: self.align_dataset(
+                name, data, timestamp_fields.get(name, "timestamp")
+            )
             for name, data in datasets.items()
         }
 
@@ -385,7 +401,9 @@ class TimeAligner:
         with open(output_path, "w") as f:
             json.dump(asdict(prov), f, indent=2, default=str)
 
-    def export_aligned_data(self, aligned: Dict[str, AlignedDataset], output_dir: str) -> None:
+    def export_aligned_data(
+        self, aligned: Dict[str, AlignedDataset], output_dir: str
+    ) -> None:
         """Export aligned datasets to JSON files."""
         out_path = Path(output_dir)
         out_path.mkdir(parents=True, exist_ok=True)
@@ -408,7 +426,9 @@ class TimeAligner:
                 )
 
 
-def find_common_time_range(aligned_datasets: Dict[str, AlignedDataset]) -> Tuple[float, float]:
+def find_common_time_range(
+    aligned_datasets: Dict[str, AlignedDataset],
+) -> Tuple[float, float]:
     """Find overlapping time range across all aligned datasets."""
     all_starts = []
     all_ends = []
@@ -507,7 +527,9 @@ def main():
     parser.add_argument("--ulog", help="PX4 ulog file (reference)")
     parser.add_argument("--mavlink", help="MAVLink log file")
     parser.add_argument("--rosbag", help="ROS 2 bag directory")
-    parser.add_argument("--output-dir", default="aligned_output", help="Output directory")
+    parser.add_argument(
+        "--output-dir", default="aligned_output", help="Output directory"
+    )
     parser.add_argument("--dt", type=float, default=0.1, help="Resample interval (s)")
 
     args = parser.parse_args()

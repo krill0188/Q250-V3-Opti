@@ -16,7 +16,9 @@ class SilvusMonitor(Node):
         self.air_unit_ip = air_unit_ip
         self.pub_rssi = self.create_publisher(Float32, "/silvus/rssi", 10)
         self.pub_snr = self.create_publisher(Float32, "/silvus/snr", 10)
-        self.pub_throughput = self.create_publisher(Float32, "/silvus/throughput_mbps", 10)
+        self.pub_throughput = self.create_publisher(
+            Float32, "/silvus/throughput_mbps", 10
+        )
         self.pub_hops = self.create_publisher(Int32, "/silvus/hops", 10)
         self.pub_neighbors = self.create_publisher(Int32, "/silvus/neighbor_count", 10)
         self.timer = self.create_timer(1.0, self.poll)
@@ -26,7 +28,9 @@ class SilvusMonitor(Node):
         try:
             # 실버스 Air Unit 로컬 API (펌웨어 버전별 엔드포인트 확인 필요)
             # 일반적인 엔드포인트 예시:
-            r = requests.get(f"http://{self.air_unit_ip}/api/v1/link/status", timeout=0.5)
+            r = requests.get(
+                f"http://{self.air_unit_ip}/api/v1/link/status", timeout=0.5
+            )
             data = r.json()
 
             # 예상 JSON 구조 (펌웨어 버전에 따라 필드명 다를 수 있음)
@@ -34,7 +38,9 @@ class SilvusMonitor(Node):
 
             self.pub_rssi.publish(Float32(data=float(data.get("rssi", -99))))
             self.pub_snr.publish(Float32(data=float(data.get("snr", 0))))
-            self.pub_throughput.publish(Float32(data=float(data.get("throughput_mbps", 0))))
+            self.pub_throughput.publish(
+                Float32(data=float(data.get("throughput_mbps", 0)))
+            )
             self.pub_hops.publish(Int32(data=int(data.get("hops", 0))))
             self.pub_neighbors.publish(Int32(data=int(data.get("neighbor_count", 0))))
 
@@ -48,7 +54,9 @@ class SilvusMonitor(Node):
 
 def main():
     parser = argparse.ArgumentParser(description="Silvus Air Unit Link Monitor")
-    parser.add_argument("--air-unit-ip", default="192.168.10.11", help="Air Unit IP address")
+    parser.add_argument(
+        "--air-unit-ip", default="192.168.10.11", help="Air Unit IP address"
+    )
     args = parser.parse_args()
 
     rclpy.init()

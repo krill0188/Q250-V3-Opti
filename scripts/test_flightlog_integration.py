@@ -32,7 +32,9 @@ def insert_flight_record(conn, flight_data: dict) -> str:
     """Insert flight metadata and return flight_id."""
     cursor = conn.cursor()
 
-    flight_id = flight_data.get("flight_id", f"flight_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+    flight_id = flight_data.get(
+        "flight_id", f"flight_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    )
 
     cursor.execute(
         """
@@ -71,7 +73,9 @@ def insert_flight_record(conn, flight_data: dict) -> str:
     return flight_id
 
 
-def store_ekf2_innovations(conn, flight_id: str, innovations: list, provenance: str) -> int:
+def store_ekf2_innovations(
+    conn, flight_id: str, innovations: list, provenance: str
+) -> int:
     """Store EKF2 innovations data."""
     cursor = conn.cursor()
     count = 0
@@ -116,12 +120,36 @@ def store_ekf2_innovations(conn, flight_id: str, innovations: list, provenance: 
                 innov.get("ang_innov_var", [None] * 3)[0],
                 innov.get("ang_innov_var", [None] * 3)[1],
                 innov.get("ang_innov_var", [None] * 3)[2],
-                innov.get("ev_pos_innov", [None] * 3)[0] if innov.get("ev_pos_innov") else None,
-                innov.get("ev_pos_innov", [None] * 3)[1] if innov.get("ev_pos_innov") else None,
-                innov.get("ev_pos_innov", [None] * 3)[2] if innov.get("ev_pos_innov") else None,
-                innov.get("ev_vel_innov", [None] * 3)[0] if innov.get("ev_vel_innov") else None,
-                innov.get("ev_vel_innov", [None] * 3)[1] if innov.get("ev_vel_innov") else None,
-                innov.get("ev_vel_innov", [None] * 3)[2] if innov.get("ev_vel_innov") else None,
+                (
+                    innov.get("ev_pos_innov", [None] * 3)[0]
+                    if innov.get("ev_pos_innov")
+                    else None
+                ),
+                (
+                    innov.get("ev_pos_innov", [None] * 3)[1]
+                    if innov.get("ev_pos_innov")
+                    else None
+                ),
+                (
+                    innov.get("ev_pos_innov", [None] * 3)[2]
+                    if innov.get("ev_pos_innov")
+                    else None
+                ),
+                (
+                    innov.get("ev_vel_innov", [None] * 3)[0]
+                    if innov.get("ev_vel_innov")
+                    else None
+                ),
+                (
+                    innov.get("ev_vel_innov", [None] * 3)[1]
+                    if innov.get("ev_vel_innov")
+                    else None
+                ),
+                (
+                    innov.get("ev_vel_innov", [None] * 3)[2]
+                    if innov.get("ev_vel_innov")
+                    else None
+                ),
                 innov.get("ev_yaw_innov"),
                 provenance,
             ),
@@ -132,7 +160,9 @@ def store_ekf2_innovations(conn, flight_id: str, innovations: list, provenance: 
     return count
 
 
-def store_vehicle_local_position(conn, flight_id: str, positions: list, provenance: str) -> int:
+def store_vehicle_local_position(
+    conn, flight_id: str, positions: list, provenance: str
+) -> int:
     """Store vehicle local position data."""
     cursor = conn.cursor()
     count = 0
@@ -263,10 +293,14 @@ def demo_with_sample_data():
 
     # Verify
     cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM ekf2_innovations WHERE flight_id = ?", (flight_id,))
+    cursor.execute(
+        "SELECT COUNT(*) FROM ekf2_innovations WHERE flight_id = ?", (flight_id,)
+    )
     print(f"\nEKF2 innovations in DB: {cursor.fetchone()[0]}")
 
-    cursor.execute("SELECT COUNT(*) FROM vehicle_local_position WHERE flight_id = ?", (flight_id,))
+    cursor.execute(
+        "SELECT COUNT(*) FROM vehicle_local_position WHERE flight_id = ?", (flight_id,)
+    )
     print(f"Vehicle local positions in DB: {cursor.fetchone()[0]}")
 
     cursor.execute("SELECT * FROM flights WHERE flight_id = ?", (flight_id,))

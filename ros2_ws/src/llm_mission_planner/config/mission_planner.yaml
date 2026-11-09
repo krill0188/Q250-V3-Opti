@@ -1,0 +1,62 @@
+# LLM Mission Planner Configuration
+# Converts natural language missions to waypoints/constraints for PX4
+
+llm_mission_planner:
+  ros__parameters:
+    # LLM Configuration
+    llm_provider: "openai"          # openai, anthropic, local
+    llm_model: "gpt-4o"             # Model to use
+    llm_temperature: 0.1            # Low temperature for deterministic output
+    llm_max_tokens: 2048
+    llm_timeout: 30.0               # seconds
+    
+    # API Keys (set via environment variables)
+    # OPENAI_API_KEY, ANTHROPIC_API_KEY
+    
+    # Mission Parameters
+    default_altitude: 10.0          # meters (default mission altitude)
+    max_waypoints: 50               # Maximum waypoints per mission
+    safety_margin: 2.0              # meters from obstacles/geofence
+    default_speed: 3.0              # m/s default cruise speed
+    
+    # Coordinate Frame
+    # Input: LLM outputs in ENU (ROS standard)
+    # Internal: Convert to NED for PX4
+    coordinate_frame: "ENU"         # ENU or NED
+    
+    # Geofence (default, can be overridden per mission)
+    geofence_enabled: true
+    geofence_polygon: []            # [[lat, lon], ...] empty = use PX4 geofence
+    max_altitude: 50.0              # meters MSL
+    min_altitude: 0.5               # meters MSL
+    
+    # Safety Validation
+    validate_waypoints: true        # Run safety checks on LLM output
+    max_waypoint_distance: 500.0    # Max distance between waypoints (m)
+    check_geofence: true            # Verify waypoints within geofence
+    check_altitude_limits: true     # Verify altitude within limits
+    check_no_fly_zones: true        # Check against known no-fly zones
+    
+    # Retry Logic
+    max_retries: 3                  # Max LLM retries on validation failure
+    retry_on_validation_error: true
+    
+    # Topics
+    mission_request_topic: "/llm_mission/request"
+    mission_response_topic: "/llm_mission/response"
+    mission_validated_topic: "/llm_mission/validated"
+    waypoints_topic: "/llm_mission/waypoints"
+    
+    # Services
+    plan_mission_service: "/llm_mission/plan"
+    validate_mission_service: "/llm_mission/validate"
+    
+    # Prompt Templates (Jinja2)
+    system_prompt_file: "config/prompts/system_prompt.j2"
+    mission_prompt_file: "config/prompts/mission_prompt.j2"
+    validation_prompt_file: "config/prompts/validation_prompt.j2"
+    
+    # Logging
+    log_llm_requests: true
+    log_llm_responses: true
+    log_validation_results: true

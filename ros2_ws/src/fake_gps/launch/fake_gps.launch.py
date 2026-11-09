@@ -12,16 +12,22 @@ def generate_launch_description():
             "datum_lat", default_value="37.5665", description="Datum latitude (degrees)"
         ),
         DeclareLaunchArgument(
-            "datum_lon", default_value="126.9780", description="Datum longitude (degrees)"
+            "datum_lon",
+            default_value="126.9780",
+            description="Datum longitude (degrees)",
         ),
         DeclareLaunchArgument(
             "datum_alt", default_value="28.0", description="Datum altitude MSL (meters)"
         ),
         DeclareLaunchArgument(
-            "fix_type", default_value="3", description="GPS fix type (3=3D, 4=DGPS, 5=RTK)"
+            "fix_type",
+            default_value="3",
+            description="GPS fix type (3=3D, 4=DGPS, 5=RTK)",
         ),
         DeclareLaunchArgument(
-            "satellites_visible", default_value="10", description="Simulated satellites visible"
+            "satellites_visible",
+            default_value="10",
+            description="Simulated satellites visible",
         ),
         DeclareLaunchArgument(
             "horiz_accuracy",
@@ -29,7 +35,9 @@ def generate_launch_description():
             description="Minimum horizontal accuracy (meters)",
         ),
         DeclareLaunchArgument(
-            "vert_accuracy", default_value="0.5", description="Minimum vertical accuracy (meters)"
+            "vert_accuracy",
+            default_value="0.5",
+            description="Minimum vertical accuracy (meters)",
         ),
         DeclareLaunchArgument(
             "vio_pose_topic",
@@ -42,7 +50,9 @@ def generate_launch_description():
             description="Output MAVROS GPS_INPUT topic",
         ),
         DeclareLaunchArgument(
-            "input_frame", default_value="enu", description="Input pose frame: enu or ned"
+            "input_frame",
+            default_value="enu",
+            description="Input pose frame: enu or ned",
         ),
         DeclareLaunchArgument(
             "ignore_velocity",
@@ -99,8 +109,14 @@ def generate_launch_description():
             ],
             remappings=[
                 # Allow topic remapping via launch args
-                (LaunchConfiguration("vio_pose_topic"), LaunchConfiguration("vio_pose_topic")),
-                (LaunchConfiguration("gps_input_topic"), LaunchConfiguration("gps_input_topic")),
+                (
+                    LaunchConfiguration("vio_pose_topic"),
+                    LaunchConfiguration("vio_pose_topic"),
+                ),
+                (
+                    LaunchConfiguration("gps_input_topic"),
+                    LaunchConfiguration("gps_input_topic"),
+                ),
             ],
         )
         return [node]

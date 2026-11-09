@@ -49,15 +49,21 @@ def analyze_flight_log(ulg_file):
 
         if of_cols:
             of_innov = est[of_cols].values
-            print(f"\n=== Optical Flow Innovation RMS: {np.sqrt(np.mean(of_innov**2)):.4f} ===")
+            print(
+                f"\n=== Optical Flow Innovation RMS: {np.sqrt(np.mean(of_innov**2)):.4f} ==="
+            )
         if rng_cols:
             rng_innov = est[rng_cols].values
-            print(f"=== Range Finder Innovation RMS: {np.sqrt(np.mean(rng_innov**2)):.4f} ===")
+            print(
+                f"=== Range Finder Innovation RMS: {np.sqrt(np.mean(rng_innov**2)):.4f} ==="
+            )
 
     # 3. 모터 출력 균형
     if "actuator_outputs" in data:
         act = data["actuator_outputs"]
-        motor_cols = [c for c in act.columns if c.startswith("output[") and c.endswith("]")]
+        motor_cols = [
+            c for c in act.columns if c.startswith("output[") and c.endswith("]")
+        ]
         if len(motor_cols) >= 4:
             motors = act[motor_cols[:4]].values
             hover_motors = motors[motors.mean(axis=1) > 0.2]
