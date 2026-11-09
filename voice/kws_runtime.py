@@ -1,14 +1,17 @@
 """
 KWS Runtime - 키워드 스팟팅 실시간 추론 및 MAVLink 명령 변환
 TFLite INT8 모델로 10ms 프레임 처리, <5ms 지연
+선택적 의존성(librosa, tflite_runtime, numpy) 지연 로딩
 """
-import numpy as np
-import librosa
-import tflite_runtime.interpreter as tflite
 from pathlib import Path
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple, TYPE_CHECKING
 from dataclasses import dataclass
 from collections import deque
+
+if TYPE_CHECKING:
+    import numpy as np
+    import librosa
+    import tflite_runtime.interpreter as tflite
 
 from voice.keyword_specs import (
     get_keywords_list,
@@ -46,113 +49,145 @@ class MFCCExtractor:
         self.hop_length = hop_length
         self.n_frames = n_frames
         
-        # 멜 필터뱅크 사전 계산
-        self.mel_basis = librosa.filters.mel(
-            sr=sample_rate, n_fft=n_fft, n_mels=40
-        )
+        # 지연 import로 librosa, numpy 로드
+        self._librosa = None
+        self._np = None
         
-        # DCT 행렬 사전 계산 (MFCC용)
-        self.dct_matrix = self._create_dct_matrix(n_mfcc, 40)
-        
-        # 윈도우 함수
-        self.window = np.hanning(n_fft)
+        # 멜 필터뱅크 사전 계산 (지연 초기화)
+        self._mel_basis = None
+        self._dct_matrix = None
+        self._window = None
         
         # 링버퍼 (오디오)
-        self.audio_buffer = np.zeros(n_fft, dtype=np.float32)
-        self.buffer_pos = 0
+        self._audio_buffer = None
+        self._buffer_pos = 0
         
         # MFCC 프레임 버퍼 (슬라이딩 윈도우)
-        self.mfcc_buffer = np.zeros((n_frames, n_mfcc), dtype=np.float32)
-        self.mfcc_count = 0
+        self._mfcc_buffer = None
+        self._mfcc_count = 0
     
-    def _create_dct_matrix(self, n_mfcc: int, n_mels: int) -> np.ndarray:
+    def _ensure_librosa(self):
+        """librosa와 numpy 지연 로드"""
+        if self._librosa is None:
+            import librosa
+            import numpy as np
+            self._librosa = librosa
+            self._np = np
+            
+            # 멜 필터뱅크 사전 계산
+            self._mel_basis = self._librosa.filters.mel(
+                sr=self.sample_rate, n_fft=self.n_fft, n_mels=40
+            )
+            
+            # DCT 행렬 사전 계산 (MFCC 계산용)
+            self._dct_matrix = self._create_dct_matrix(self.n_mfcc, 40)
+            
+            # 윈도우 함수
+            self._window = self._np.hanning(self.n_fft)
+            
+            # 링버퍼 (오디오)
+            self._audio_buffer = self._np.zeros(self.n_fft, dtype=np.float32)
+            self._buffer_pos = 0
+            
+            # MFCC 프레임 버퍼 (슬라이딩 윈도우)
+            self._mfcc_buffer = self._np.zeros((self.n_frames, self.n_mfcc), dtype=np.float32)
+            self._mfcc_count = 0
+    
+    def _create_dct_matrix(self, n_mfcc: int, n_mels: int):
         """DCT-II 행렬 생성 (MFCC 계산용)"""
-        n = np.arange(n_mels)
-        k = np.arange(n_mfcc).reshape(-1, 1)
-        dct = np.cos(np.pi / n_mels * (n + 0.5) * k)
-        dct[0, :] *= np.sqrt(1.0 / n_mels)
-        dct[1:, :] *= np.sqrt(2.0 / n_mels)
+        self._ensure_librosa()
+        n = self._np.arange(n_mels)
+        k = self._np.arange(n_mfcc).reshape(-1, 1)
+        dct = self._np.cos(self._np.pi / n_mels * (n + 0.5) * k)
+        dct[0, :] *= self._np.sqrt(1.0 / n_mels)
+        dct[1:, :] *= self._np.sqrt(2.0 / n_mels)
         return dct.astype(np.float32)
     
-    def process_frame(self, audio_10ms: np.ndarray) -> np.ndarray:
+    def process_frame(self, audio_10ms: "np.ndarray") -> "np.ndarray":
         """
         10ms 오디오 프레임 → MFCC 1프레임 (13차원)
         전체 지연: ~0.5ms
         """
+        self._ensure_librosa()
+        
         # 1. 링버퍼에 오디오 추가
         frame_len = len(audio_10ms)
         if frame_len != self.hop_length:
             # 리샘플/패딩
             if frame_len < self.hop_length:
-                audio_10ms = np.pad(audio_10ms, (0, self.hop_length - frame_len))
+                audio_10ms = self._np.pad(audio_10ms, (0, self.hop_length - frame_len))
             else:
                 audio_10ms = audio_10ms[:self.hop_length]
         
         # 링버퍼 업데이트
-        end_pos = self.buffer_pos + frame_len
+        end_pos = self._buffer_pos + frame_len
         if end_pos <= self.n_fft:
-            self.audio_buffer[self.buffer_pos:end_pos] = audio_10ms
+            self._audio_buffer[self._buffer_pos:end_pos] = audio_10ms
         else:
             # 순환
-            first_part = self.n_fft - self.buffer_pos
-            self.audio_buffer[self.buffer_pos:] = audio_10ms[:first_part]
+            first_part = self.n_fft - self._buffer_pos
+            self._audio_buffer[self._buffer_pos:] = audio_10ms[:first_part]
             remaining = frame_len - first_part
-            self.audio_buffer[:remaining] = audio_10ms[first_part:]
+            self._audio_buffer[:remaining] = audio_10ms[first_part:]
         
-        self.buffer_pos = (self.buffer_pos + frame_len) % self.n_fft
+        self._buffer_pos = (self._buffer_pos + frame_len) % self.n_fft
         
         # 2. 충분한 데이터가 모였을 때만 MFCC 계산 (30ms 윈도우 필요)
-        if self.mfcc_count < 3:  # 처음 3프레임은 0 패딩
-            mfcc_frame = np.zeros(self.n_mfcc, dtype=np.float32)
+        if self._mfcc_count < 3:  # 처음 3프레임은 0 패딩
+            mfcc_frame = self._np.zeros(self.n_mfcc, dtype=np.float32)
         else:
             # 30ms 윈도우 추출 (마지막 n_fft 샘플)
             windowed = self._get_windowed_frame()
             
             # FFT → 멜 스펙트로그램 → 로그 → DCT
-            stft = np.fft.rfft(windowed)
-            power_spec = np.abs(stft) ** 2
-            mel_spec = np.dot(self.mel_basis, power_spec)
-            log_mel = np.log(mel_spec + 1e-10)
-            mfcc_frame = np.dot(self.dct_matrix, log_mel).astype(np.float32)
+            stft = self._np.fft.rfft(windowed)
+            power_spec = self._np.abs(stft) ** 2
+            mel_spec = self._np.dot(self._mel_basis, power_spec)
+            log_mel = self._np.log(mel_spec + 1e-10)
+            mfcc_frame = self._np.dot(self._dct_matrix, log_mel).astype(np.float32)
         
         # 3. MFCC 버퍼 업데이트 (슬라이딩 윈도우)
-        self.mfcc_buffer = np.roll(self.mfcc_buffer, shift=-1, axis=0)
-        self.mfcc_buffer[-1] = mfcc_frame
-        self.mfcc_count += 1
+        self._mfcc_buffer = self._np.roll(self._mfcc_buffer, shift=-1, axis=0)
+        self._mfcc_buffer[-1] = mfcc_frame
+        self._mfcc_count += 1
         
         return mfcc_frame
     
-    def _get_windowed_frame(self) -> np.ndarray:
+    def _get_windowed_frame(self) -> "np.ndarray":
         """현재 위치에서 30ms 윈도우 추출"""
-        start = (self.buffer_pos - self.n_fft) % self.n_fft
+        self._ensure_librosa()
+        start = (self._buffer_pos - self.n_fft) % self.n_fft
         if start + self.n_fft <= self.n_fft:
-            frame = self.audio_buffer[start:start + self.n_fft].copy()
+            frame = self._audio_buffer[start:start + self.n_fft].copy()
         else:
-            frame = np.concatenate([
-                self.audio_buffer[start:],
-                self.audio_buffer[:self.n_fft - (self.n_fft - start)]
+            frame = self._np.concatenate([
+                self._audio_buffer[start:],
+                self._audio_buffer[:self.n_fft - (self.n_fft - start)]
             ])
-        return frame * self.window
+        return frame * self._window
     
-    def get_input_tensor(self) -> np.ndarray:
+    def get_input_tensor(self) -> "np.ndarray":
         """모델 입력 텐서 생성 (1, 200, 13, 1)"""
+        self._ensure_librosa()
+        
         # MFCC 버퍼가 충분히 찼으면 그대로, 아니면 0 패딩
-        if self.mfcc_count >= self.n_frames:
-            tensor = self.mfcc_buffer.copy()
+        if self._mfcc_count >= self.n_frames:
+            tensor = self._mfcc_buffer.copy()
         else:
-            tensor = np.zeros((self.n_frames, self.n_mfcc), dtype=np.float32)
-            if self.mfcc_count > 0:
-                tensor[-self.mfcc_count:] = self.mfcc_buffer[-self.mfcc_count:]
+            tensor = self._np.zeros((self.n_frames, self.n_mfcc), dtype=np.float32)
+            if self._mfcc_count > 0:
+                tensor[-self._mfcc_count:] = self._mfcc_buffer[-self._mfcc_count:]
         
         # (1, 200, 13, 1) 형태로 리셰이프
-        return tensor[np.newaxis, ..., np.newaxis].astype(np.float32)
+        return tensor[self._np.newaxis, ..., self._np.newaxis].astype(np.float32)
     
     def reset(self):
         """버퍼 초기화"""
-        self.audio_buffer.fill(0)
-        self.buffer_pos = 0
-        self.mfcc_buffer.fill(0)
-        self.mfcc_count = 0
+        self._ensure_librosa()
+        self._audio_buffer.fill(0)
+        self._buffer_pos = 0
+        self._mfcc_buffer.fill(0)
+        self._mfcc_count = 0
 
 
 class KWSRuntime:
@@ -171,31 +206,33 @@ class KWSRuntime:
         threshold_override: Optional[Dict[str, float]] = None,
         smoothing_frames: int = 3
     ):
-        # TFLite 인터프리터
-        self.interpreter = tflite.Interpreter(model_path=model_path)
-        self.interpreter.allocate_tensors()
-        self.input_details = self.interpreter.get_input_details()
-        self.output_details = self.interpreter.get_output_details()
+        # 지연 import용 플레이스홀더
+        self._tflite = None
+        self._np = None
         
-        # 입력/출력 양자화 파라미터
-        self.input_quant = self.input_details[0].get('quantization', (1.0, 0))
-        self.output_quant = self.output_details[0].get('quantization', (1.0, 0))
+        # TFLite 인터프리터 지연 초기화
+        self._model_path = model_path
+        self._interpreter = None
+        self._input_details = None
+        self._output_details = None
         
         # 라벨
         with open(labels_path, 'r', encoding='utf-8') as f:
+            import json
             self.idx_to_label = json.load(f)
         
         # 명령 스펙
         if specs_path and Path(specs_path).exists():
             with open(specs_path, 'r', encoding='utf-8') as f:
+                import json
                 self.specs = json.load(f)
         else:
             self.specs = [s.to_dict() for s in KEYWORD_SPECS]
         
         self.command_map = {s['keyword']: s for s in self.specs}
         
-        # 컴포넌트
-        self.mfcc_extractor = MFCCExtractor()
+        # 컴포넌트 (지연 초기화)
+        self._mfcc_extractor = None
         
         # 임계값 (키워드별 조정)
         self.thresholds = {cmd: 0.85 for cmd in self.command_map}
@@ -209,7 +246,9 @@ class KWSRuntime:
         
         # 시간 평활화 버퍼
         self.smoothing_frames = smoothing_frames
-        self.prob_buffer = deque(maxlen=smoothing_frames)
+        self._prob_buffer = None
+        from collections import deque
+        self._prob_buffer = deque(maxlen=smoothing_frames)
         
         # 상태
         self.last_detection_time = 0
@@ -226,48 +265,93 @@ class KWSRuntime:
         print(f"KWS 런타임 초기화 완료:")
         print(f"  모델: {model_path}")
         print(f"  클래스: {len(self.idx_to_label)}개")
-        print(f"  입력 양자화: {self.input_quant}")
-        print(f"  출력 양자화: {self.output_quant}")
         print(f"  평활화: {smoothing_frames}프레임")
     
-    def process_audio_frame(self, audio_10ms: np.ndarray) -> Optional[KWSResult]:
+    def _ensure_tflite(self):
+        """TFLite 인터프리터와 numpy, librosa 지연 초기화"""
+        if self._interpreter is None:
+            import tflite_runtime.interpreter as tflite
+            import numpy as np
+            import librosa
+            self._tflite = tflite
+            self._np = np
+            
+            self._interpreter = tflite.Interpreter(model_path=self._model_path)
+            self._interpreter.allocate_tensors()
+            self._input_details = self._interpreter.get_input_details()
+            self._output_details = self._interpreter.get_output_details()
+            
+            # 입력/출력 양자화 파라미터
+            self._input_quant = self._input_details[0].get('quantization', (1.0, 0))
+            self._output_quant = self._output_details[0].get('quantization', (1.0, 0))
+            
+            # MFCC 추출기 초기화
+            if self._mfcc_extractor is None:
+                self._mfcc_extractor = MFCCExtractor()
+            
+            # 확률 버퍼
+            from collections import deque
+            self._prob_buffer = deque(maxlen=self.smoothing_frames)
+            
+            print(f"  TFLite 모델 로드: {self._model_path}")
+            print(f"  입력 양자화: {self._input_details[0].get('quantization', 'N/A')}")
+            print(f"  출력 양자화: {self._output_details[0].get('quantization', 'N/A')}")
+    
+    def _get_quant_params(self, quant) -> Tuple[float, int]:
+        """양자화 파라미터 안전하게 추출"""
+        if isinstance(quant, tuple) and len(quant) == 2:
+            return quant
+        return 1.0, 0
+    
+    @staticmethod
+    def _softmax(x: "np.ndarray") -> "np.ndarray":
+        # numpy 지연 로드
+        if hasattr(x, 'exp'):  # 이미 numpy 배열
+            e = x.exp(x - x.max())
+        else:
+            import numpy as np
+            e = np.exp(x - np.max(x))
+        return e / e.sum()
+    
+    def process_audio_frame(self, audio_10ms: "np.ndarray") -> Optional[KWSResult]:
         """
         10ms 오디오 프레임 처리 → KWS 결과
         전체 지연: MFCC 0.5ms + 추론 1-2ms + 후처리 0.5ms = ~2-3ms
         """
+        self._ensure_tflite()
         import time
         start_time = time.perf_counter()
         
         # 1. MFCC 추출
-        self.mfcc_extractor.process_frame(audio_10ms)
+        self._mfcc_extractor.process_frame(audio_10ms)
         
         # 2. 입력 텐서 준비
-        input_tensor = self.mfcc_extractor.get_input_tensor()
+        input_tensor = self._mfcc_extractor.get_input_tensor()
         
         # 3. 입력 양자화 (INT8 모델인 경우)
-        if self.input_details[0]['dtype'] == np.int8:
-            scale, zero_point = self._get_quant_params(self.input_quant)
-            input_tensor = (input_tensor / scale + zero_point).astype(np.int8)
+        if self._input_details[0]['dtype'] == self._np.int8:
+            scale, zero_point = self._get_quant_params(self._input_quant)
+            input_tensor = (input_tensor / scale + zero_point).astype(self._np.int8)
         
         # 3. TFLite 추론
-        self.interpreter.set_tensor(self.input_details[0]['index'], input_tensor)
-        self.interpreter.invoke()
+        self._interpreter.set_tensor(self._input_details[0]['index'], input_tensor)
+        self._interpreter.invoke()
         
         # 4. 출력 디퀀타이즈
-        output = self.interpreter.get_tensor(self.output_details[0]['index'])
-        if self.output_details[0]['dtype'] == np.int8:
-            scale, zero_point = self._get_quant_params(self.output_quant)
+        output = self._interpreter.get_tensor(self._output_details[0]['index'])
+        if self._output_details[0]['dtype'] == self._np.int8:
+            scale, zero_point = self._get_quant_params(self._output_quant)
             output = (output.astype(np.float32) - zero_point) * scale
         
         logits = output[0]
         probs = self._softmax(logits)
         
         # 5. 시간 평활화
-        self.prob_buffer.append(probs)
-        avg_probs = np.mean(self.prob_buffer, axis=0)
+        self._prob_buffer.append(probs)
+        avg_probs = self._np.mean(self._prob_buffer, axis=0)
         
         # 6. 최대 확률 클래스
-        max_idx = np.argmax(avg_probs)
+        max_idx = self._np.argmax(avg_probs)
         confidence = avg_probs[max_idx]
         keyword = self.idx_to_label.get(str(max_idx), "unknown")
         
@@ -318,11 +402,6 @@ class KWSRuntime:
             return quant
         return 1.0, 0
     
-    @staticmethod
-    def _softmax(x: np.ndarray) -> np.ndarray:
-        e = np.exp(x - np.max(x))
-        return e / e.sum()
-    
     def process_audio_stream(
         self,
         audio_generator,
@@ -342,8 +421,10 @@ class KWSRuntime:
         return self.stats.copy()
     
     def reset(self):
-        self.mfcc_extractor.reset()
-        self.prob_buffer.clear()
+        if self._mfcc_extractor:
+            self._mfcc_extractor.reset()
+        if self._prob_buffer:
+            self._prob_buffer.clear()
         self.last_detection_time = 0
 
 
@@ -380,6 +461,7 @@ def test_kws_runtime():
     # 더미 오디오 생성 (10ms * 100 = 1초)
     for i in range(100):
         # 실제로는 마이크에서 읽음
+        import numpy as np
         dummy_audio = np.random.randn(160).astype(np.float32) * 0.01
         
         result = runtime.process_audio_frame(dummy_audio)
