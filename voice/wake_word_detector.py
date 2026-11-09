@@ -2,6 +2,7 @@
 Wake Word Detection Module using Porcupine (Picovoice)
 Always-on "Hey Drone" / "드론아" detection
 """
+
 import os
 import struct
 import threading
@@ -21,15 +22,17 @@ logger = logging.getLogger(__name__)
 
 class WakeWordState(Enum):
     """웨이크 워드 상태"""
-    LISTENING = "listening"      # 대기 중
-    DETECTED = "detected"        # 감지됨
-    COOLDOWN = "cooldown"        # 쿨다운 중 (연속 감지 방지)
-    DISABLED = "disabled"        # 비활성화
+
+    LISTENING = "listening"  # 대기 중
+    DETECTED = "detected"  # 감지됨
+    COOLDOWN = "cooldown"  # 쿨다운 중 (연속 감지 방지)
+    DISABLED = "disabled"  # 비활성화
 
 
 @dataclass
 class WakeWordConfig:
     """웨이크 워드 설정"""
+
     # 내장 키워드: "porcupine", "hey google", "alexa", "hey siri", "computer", "jarvis", "bumblebee", "terminator"
     # 커스텀 키워드는 Picovoice Console에서 .ppn 파일 생성 필요
     keywords: List[str] = None
@@ -50,6 +53,7 @@ class WakeWordConfig:
 @dataclass
 class WakeWordEvent:
     """웨이크 워드 감지 이벤트"""
+
     keyword: str
     keyword_index: int
     timestamp: float
@@ -100,7 +104,9 @@ class WakeWordDetector:
             # 액세스 키 필요 (Picovoice Console에서 무료 발급)
             access_key = os.getenv("PICOVOICE_ACCESS_KEY")
             if not access_key:
-                logger.warning("PICOVOICE_ACCESS_KEY 환경변수 미설정 - 웨이크 워드 비활성화")
+                logger.warning(
+                    "PICOVOICE_ACCESS_KEY 환경변수 미설정 - 웨이크 워드 비활성화"
+                )
                 return
 
             keyword_paths = self.config.keyword_paths or []
@@ -114,7 +120,9 @@ class WakeWordDetector:
                 library_path=self.config.library_path,
                 model_path=self.config.model_path,
             )
-            logger.info(f"Porcupine 초기화 완료: {len(self._porcupine.keywords)} 키워드")
+            logger.info(
+                f"Porcupine 초기화 완료: {len(self._porcupine.keywords)} 키워드"
+            )
             self._state = WakeWordState.LISTENING
 
         except pvporcupine.PorcupineInvalidArgumentError as e:
@@ -176,7 +184,9 @@ class WakeWordDetector:
         while self._running:
             try:
                 # 오디오 프레임 읽기
-                pcm_data = self._audio_stream.read(self.frame_length, exception_on_overflow=False)
+                pcm_data = self._audio_stream.read(
+                    self.frame_length, exception_on_overflow=False
+                )
                 pcm = struct.unpack_from("h" * self.frame_length, pcm_data)
 
                 # Porcupine 처리
@@ -209,7 +219,9 @@ class WakeWordDetector:
         # 통계 업데이트
         self._stats["total_detections"] += 1
         self._stats["last_detection_time"] = timestamp
-        self._stats["keywords_detected"][keyword] = self._stats["keywords_detected"].get(keyword, 0) + 1
+        self._stats["keywords_detected"][keyword] = (
+            self._stats["keywords_detected"].get(keyword, 0) + 1
+        )
 
         # 이벤트 생성
         event = WakeWordEvent(

@@ -14,7 +14,11 @@ from core_arbitrator import CommandPriority, UnifiedCommand
 
 # TYPE_CHECKING으로 타입 힌트만 가져오고 런타임 import는 선택적으로 처리
 if TYPE_CHECKING:
-    from voice.speaker_adapter import SpeakerAdapter, SpeakerProfile, AdaptiveWhisperModel
+    from voice.speaker_adapter import (
+        SpeakerAdapter,
+        SpeakerProfile,
+        AdaptiveWhisperModel,
+    )
     from voice.wake_word_detector import (
         WakeWordDetector,
         WakeWordConfig,
@@ -29,15 +33,36 @@ if TYPE_CHECKING:
         VoiceEnrollmentSession,
     )
     from voice.nlu_learning import NLUModelConfig, NLULearningPipeline
-    from voice.ambiguous_quantification import parse_korean_command, quantify_korean_ambiguity
+    from voice.ambiguous_quantification import (
+        parse_korean_command,
+        quantify_korean_ambiguity,
+    )
+    from voice.tactical_normalizer import TacticalNormalizer
 
 # 런타임 선택적 import (가용성 플래그만 설정)
 try:
     from faster_whisper import WhisperModel
+
     WHISPER_AVAILABLE = True
 except ImportError:
     WHISPER_AVAILABLE = False
     WhisperModel = None  # type: ignore
+
+# tactical_normalizer 지연 import
+TACTICAL_NORMALIZER_AVAILABLE = False
+
+
+def _check_tactical_normalizer() -> bool:
+    global TACTICAL_NORMALIZER_AVAILABLE
+    if not TACTICAL_NORMALIZER_AVAILABLE:
+        try:
+            from voice.tactical_normalizer import TacticalNormalizer
+
+            TACTICAL_NORMALIZER_AVAILABLE = True
+        except ImportError:
+            pass
+    return TACTICAL_NORMALIZER_AVAILABLE
+
 
 # speaker_adapter, wake_word_detector, voice_enrollment, nlu_learning, ambiguous_quantification는 지연 import
 # (torch, pvporcupine 등 무거운 의존성 회피)
@@ -47,64 +72,88 @@ ENROLLMENT_AVAILABLE = False
 NLU_LEARNING_AVAILABLE = False
 AMBIGUOUS_QUANTIFICATION_AVAILABLE = False
 
+
 def _check_speaker_adapter() -> bool:
     global SPEAKER_ADAPTER_AVAILABLE
     if not SPEAKER_ADAPTER_AVAILABLE:
         try:
-            from voice.speaker_adapter import SpeakerAdapter, SpeakerProfile, AdaptiveWhisperModel
+            from voice.speaker_adapter import (
+                SpeakerAdapter,
+                SpeakerProfile,
+                AdaptiveWhisperModel,
+            )
+
             SPEAKER_ADAPTER_AVAILABLE = True
         except ImportError:
             pass
     return SPEAKER_ADAPTER_AVAILABLE
+
 
 def _check_wake_word() -> bool:
     global WAKE_WORD_AVAILABLE
     if not WAKE_WORD_AVAILABLE:
         try:
             from voice.wake_word_detector import WakeWordDetector
+
             WAKE_WORD_AVAILABLE = True
         except ImportError:
             pass
     return WAKE_WORD_AVAILABLE
+
 
 def _check_enrollment() -> bool:
     global ENROLLMENT_AVAILABLE
     if not ENROLLMENT_AVAILABLE:
         try:
             from voice.voice_enrollment import VoiceEnrollmentManager
+
             ENROLLMENT_AVAILABLE = True
         except ImportError:
             pass
     return ENROLLMENT_AVAILABLE
+
 
 def _check_nlu_learning() -> bool:
     global NLU_LEARNING_AVAILABLE
     if not NLU_LEARNING_AVAILABLE:
         try:
             from voice.nlu_learning import NLULearningPipeline
+
             NLU_LEARNING_AVAILABLE = True
         except ImportError:
             pass
     return NLU_LEARNING_AVAILABLE
 
+
 def _check_ambiguous_quantification() -> bool:
     global AMBIGUOUS_QUANTIFICATION_AVAILABLE
     if not AMBIGUOUS_QUANTIFICATION_AVAILABLE:
         try:
-            from voice.ambiguous_quantification import parse_korean_command, quantify_korean_ambiguity
+            from voice.ambiguous_quantification import (
+                parse_korean_command,
+                quantify_korean_ambiguity,
+            )
+
             AMBIGUOUS_QUANTIFICATION_AVAILABLE = True
         except ImportError:
             pass
     return AMBIGUOUS_QUANTIFICATION_AVAILABLE
+
 
 logger = logging.getLogger(__name__)
 
 
 class FastPathEmergencyMatcher:
     """초저지연 비상 명령어 매칭 (STT 신뢰도 무시)"""
+
     EMERGENCY_STOP_PATTERN = re.compile(
-        r"(비상\s*정지|긴급\s*정지|즉시\s*정지|올\s*스톱|all\s*stop)", re.IGNORECASE
+        r"(비상\s*정지|긴급\s*정지|즉시\s*정지|올\s*스톱|all\s*stop|임무\s*중지)",
+        re.IGNORECASE,
     )
+    RTL_PATTERN = re.compile(
+        r"(긴급\s*복귀|즉시\s*복귀|복귀\s*명령|RTL)", re.IGNORECASE
+    )
+    EMCON_PATTERN = re.compile(r"(전파\s*침묵|엠콘|EMCON|무전\s*침묵)", re.IGNORECASE)
     HOLD_PATTERN = re.compile(r"^(멈춰|정지|스톱|홀드|잠깐|대기)$", re.IGNORECASE)
     LAND_PATTERN = re.compile(r"(비상\s*착륙|즉시\s*착륙)", re.IGNORECASE)
 
@@ -127,6 +176,26 @@ class FastPathEmergencyMatcher:
                 priority=CommandPriority.FAILSAFE_ESTOP,
                 target_id=target,
                 action="ESTOP",
+                confidence=1.0,
+            )
+
+        if cls.RTL_PATTERN.search(clean_text):
+            return UnifiedCommand(
+                command_id=str(uuid.uuid4()),
+                source="FAILSAFE",
+                priority=CommandPriority.FAILSAFE_ESTOP,
+                target_id="drone_1",
+                action="RTL",
+                confidence=1.0,
+            )
+
+        if cls.EMCON_PATTERN.search(clean_text):
+            return UnifiedCommand(
+                command_id=str(uuid.uuid4()),
+                source="FAILSAFE",
+                priority=CommandPriority.FAILSAFE_ESTOP,
+                target_id=target,
+                action="EMCON",
                 confidence=1.0,
             )
 
@@ -154,7 +223,7 @@ class FastPathEmergencyMatcher:
 
 
 class LocalWhisperSTT:
-    """로컬 Whisper STT (화자 적응 지원)"""
+    """로컬 Whisper STT (화자 적응 지원 + 전술 프롬프트/정규화)"""
 
     def __init__(
         self,
@@ -162,6 +231,10 @@ class LocalWhisperSTT:
         device: str = "cpu",
         compute_type: str = "int8",
         speaker_adapter: Optional["SpeakerAdapter"] = None,
+        tactical_normalizer: Optional["TacticalNormalizer"] = None,
+        operation_area: str = "",
+        callsigns: Optional[List[str]] = None,
+        tactical_terms: Optional[List[str]] = None,
     ):
         if not WHISPER_AVAILABLE:
             raise RuntimeError("faster-whisper 패키지가 설치되어 있지 않습니다.")
@@ -176,6 +249,12 @@ class LocalWhisperSTT:
 
         # 화자별 어댑터 적용 모델 캐시
         self._adapted_models: Dict[str, "AdaptiveWhisperModel"] = {}
+
+        # 전술 정규화기
+        self.tactical_normalizer = tactical_normalizer
+        self.operation_area = operation_area
+        self.callsigns = callsigns or []
+        self.tactical_terms = tactical_terms or []
 
         logger.info(f"Whisper STT 초기화: {model_size} ({device}, {compute_type})")
 
@@ -196,6 +275,7 @@ class LocalWhisperSTT:
         if profile.adapter_path and Path(profile.adapter_path).exists():
             try:
                 from voice.speaker_adapter import AdaptiveWhisperModel as AWM
+
                 adapted = AWM(
                     model_size=profile.adapter_path,
                     device=self.device,
@@ -215,15 +295,24 @@ class LocalWhisperSTT:
         speaker_id: Optional[str] = None,
         language: str = "ko",
     ) -> Tuple[str, float]:
-        """음성 인식 실행"""
+        """음성 인식 실행 (전술 프롬프트 적용)"""
         model = self._get_model_for_speaker(speaker_id)
+
+        # 전술 프롬프트 동적 생성
+        initial_prompt = "드론 1번, 로봇 1번, 하이브리드 1번, 이륙, 착륙, 정지, 앞으로 이동, 복귀, 고도, 미터, 다이브, 기만, 순항, 기동, 비상"
+        if self.tactical_normalizer and _check_tactical_normalizer():
+            initial_prompt = self.tactical_normalizer.generate_whisper_initial_prompt(
+                operation_area=self.operation_area,
+                callsigns=self.callsigns,
+                tactical_terms=self.tactical_terms,
+            )
 
         segments, _ = model.transcribe(
             audio_np,
             language=language,
             beam_size=3,
             vad_filter=True,
-            initial_prompt="드론 1번, 로봇 1번, 하이브리드 1번, 이륙, 착륙, 정지, 앞으로 이동, 복귀, 고도, 미터, 다이브, 기만, 순항, 기동, 비상",
+            initial_prompt=initial_prompt,
         )
 
         texts = []
@@ -261,17 +350,10 @@ class VoiceIntentParser:
     - 결정론적 폴백
     """
 
-    SYSTEM_PROMPT = """
-    당신은 드론/로봇/하이브리드 제어용 NLU 파서입니다.
-    사용자의 음성 텍스트를 분석하여 반드시 지정된 JSON 스키마로만 응답하십시오.
-    - 전진/앞으로: vx_mps 양수(+), 후진/뒤로: vx_mps 음수(-)
-    - 좌측 이동: vy_mps 양수(+), 우측 이동: vy_mps 음수(-)
-    - 상승: vz_mps 양수(+), 하강: vz_mps 음수(-)
-    - 이륙 고도 지정 시 z_m에 미터 단위로 기록하십시오.
-    - 모드 전환: SET_MODE 액션, params에 mode 필드
-    - 다이브: DIVE_ATTACK 액션, params에 target_alt, angle
-    - 기만: DECEPTION_START 액션, params에 pattern, duration, auto
-    """
+    SYSTEM_PROMPT = open(
+        Path(__file__).parent.parent / "config" / "tactical_parser_prompt.md",
+        encoding="utf-8",
+    ).read()
 
     def __init__(
         self,
@@ -287,8 +369,14 @@ class VoiceIntentParser:
         stt_confidence: float,
         active_target: str = "drone_1",
         speaker_id: Optional[str] = None,
+        tactical_normalizer: Optional["TacticalNormalizer"] = None,
     ) -> UnifiedCommand:
-        # 1) 초저지연 Fast-Path 긴급 명령어
+        # 0) 전술 정규화 (STT 직후, 파싱 전)
+        if tactical_normalizer and _check_tactical_normalizer():
+            original_text = text
+            text = tactical_normalizer.normalize(text)
+            if text != original_text:
+                logger.info(f"[TACTICAL-NORM] '{original_text}' -> '{text}'")
         fast_cmd = FastPathEmergencyMatcher.match(text, default_target=active_target)
         if fast_cmd is not None:
             logger.info(f"[FAST-PATH] '{text}' -> {fast_cmd.action}")
@@ -309,7 +397,9 @@ class VoiceIntentParser:
             )
             if custom_mapping:
                 logger.info(f"[CUSTOM-MAPPING] '{text}' -> {custom_mapping.action}")
-                return self._mapping_to_command(custom_mapping, text, stt_confidence, active_target)
+                return self._mapping_to_command(
+                    custom_mapping, text, stt_confidence, active_target
+                )
 
         # 4) LLM 구조화 파싱
         clarification_needed = False
@@ -318,7 +408,9 @@ class VoiceIntentParser:
             intent = await self._call_structured_llm(text, active_target)
         else:
             # 5) 결정론적 폴백 파서
-            intent, clarification_needed, reason = self._deterministic_fallback_parser(text, active_target)
+            intent, clarification_needed, reason = self._deterministic_fallback_parser(
+                text, active_target
+            )
 
         return UnifiedCommand(
             command_id=str(uuid.uuid4()),
@@ -509,19 +601,24 @@ class VoiceIntentParser:
         if _check_ambiguous_quantification():
             try:
                 from voice.ambiguous_quantification import parse_korean_command
+
                 parsed = parse_korean_command(text)
                 if parsed.get("clarification_needed"):
-                    return ParsedVoiceIntent(
-                        target_id=target,
-                        action=parsed["action"],
-                        x_m=parsed.get("forward_m", 0.0),
-                        y_m=parsed.get("right_m", 0.0),
-                        z_m=parsed.get("down_m", 0.0),
-                        vx_mps=parsed.get("vx_mps", 0.0),
-                        vy_mps=parsed.get("vy_mps", 0.0),
-                        vz_mps=parsed.get("vz_mps", 0.0),
-                        yaw_rate_radps=parsed.get("yaw_rate_radps", 0.0),
-                    ), True, parsed.get("reason", "명령이 모호하여 명확화가 필요함")
+                    return (
+                        ParsedVoiceIntent(
+                            target_id=target,
+                            action=parsed["action"],
+                            x_m=parsed.get("forward_m", 0.0),
+                            y_m=parsed.get("right_m", 0.0),
+                            z_m=parsed.get("down_m", 0.0),
+                            vx_mps=parsed.get("vx_mps", 0.0),
+                            vy_mps=parsed.get("vy_mps", 0.0),
+                            vz_mps=parsed.get("vz_mps", 0.0),
+                            yaw_rate_radps=parsed.get("yaw_rate_radps", 0.0),
+                        ),
+                        True,
+                        parsed.get("reason", "명령이 모호하여 명확화가 필요함"),
+                    )
                 else:
                     # 모호 표현이 정량화되었으면 해당 값 사용
                     action = parsed["action"]
@@ -530,17 +627,21 @@ class VoiceIntentParser:
                         action = "MOVE_VEL"
                     # 키 매핑: parse_korean_command는 forward_m/right_m/down_m/yaw_deg 사용
                     # ParsedVoiceIntent는 vx_mps/vy_mps/vz_mps/yaw_rate_radps 사용
-                    return ParsedVoiceIntent(
-                        target_id=target,
-                        action=action,
-                        x_m=parsed.get("forward_m", 0.0),
-                        y_m=parsed.get("right_m", 0.0),
-                        z_m=parsed.get("down_m", 0.0),
-                        vx_mps=parsed.get("forward_m", 0.0),
-                        vy_mps=parsed.get("right_m", 0.0),
-                        vz_mps=parsed.get("down_m", 0.0),
-                        yaw_rate_radps=parsed.get("yaw_deg", 0.0) * 3.14159 / 180.0,
-                    ), False, parsed.get("reason", "")
+                    return (
+                        ParsedVoiceIntent(
+                            target_id=target,
+                            action=action,
+                            x_m=parsed.get("forward_m", 0.0),
+                            y_m=parsed.get("right_m", 0.0),
+                            z_m=parsed.get("down_m", 0.0),
+                            vx_mps=parsed.get("forward_m", 0.0),
+                            vy_mps=parsed.get("right_m", 0.0),
+                            vz_mps=parsed.get("down_m", 0.0),
+                            yaw_rate_radps=parsed.get("yaw_deg", 0.0) * 3.14159 / 180.0,
+                        ),
+                        False,
+                        parsed.get("reason", ""),
+                    )
             except Exception:
                 pass  # 폴백 파서로 진행
 
@@ -548,9 +649,13 @@ class VoiceIntentParser:
         val = float(num_match.group(1)) if num_match else 1.0
 
         if "이륙" in text:
-            return ParsedVoiceIntent(
-                target_id=target, action="TAKEOFF", z_m=val if num_match else 2.5
-            ), False, ""
+            return (
+                ParsedVoiceIntent(
+                    target_id=target, action="TAKEOFF", z_m=val if num_match else 2.5
+                ),
+                False,
+                "",
+            )
         elif "착륙" in text:
             return ParsedVoiceIntent(target_id=target, action="LAND"), False, ""
         elif "복귀" in text or "돌아와" in text:
@@ -558,35 +663,79 @@ class VoiceIntentParser:
         elif "정지" in text or "멈춰" in text or "홀드" in text:
             return ParsedVoiceIntent(target_id=target, action="HOLD"), False, ""
         elif "앞으로" in text or "전진" in text:
-            return ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vx_mps=val), False, ""
+            return (
+                ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vx_mps=val),
+                False,
+                "",
+            )
         elif "뒤로" in text or "후진" in text:
-            return ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vx_mps=-val), False, ""
+            return (
+                ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vx_mps=-val),
+                False,
+                "",
+            )
         elif "좌측" in text or "왼쪽" in text:
-            return ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vy_mps=-val), False, ""
+            return (
+                ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vy_mps=-val),
+                False,
+                "",
+            )
         elif "우측" in text or "오른쪽" in text:
-            return ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vy_mps=val), False, ""
+            return (
+                ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vy_mps=val),
+                False,
+                "",
+            )
         elif "상승" in text or "올라" in text:
-            return ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vz_mps=val), False, ""
+            return (
+                ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vz_mps=val),
+                False,
+                "",
+            )
         elif "하강" in text or "내려" in text:
-            return ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vz_mps=-val), False, ""
+            return (
+                ParsedVoiceIntent(target_id=target, action="MOVE_VEL", vz_mps=-val),
+                False,
+                "",
+            )
         elif "좌회전" in text:
-            return ParsedVoiceIntent(
-                target_id=target, action="MOVE_VEL", yaw_rate_radps=0.5
-            ), False, ""
+            return (
+                ParsedVoiceIntent(
+                    target_id=target, action="MOVE_VEL", yaw_rate_radps=0.5
+                ),
+                False,
+                "",
+            )
         elif "우회전" in text:
-            return ParsedVoiceIntent(
-                target_id=target, action="MOVE_VEL", yaw_rate_radps=-0.5
-            ), False, ""
+            return (
+                ParsedVoiceIntent(
+                    target_id=target, action="MOVE_VEL", yaw_rate_radps=-0.5
+                ),
+                False,
+                "",
+            )
         elif "복귀" in text or "돌아와" in text:
             return ParsedVoiceIntent(target_id=target, action="RTL"), False, ""
         elif "고도" in text and "변경" in text:
-            return ParsedVoiceIntent(target_id=target, action="MOVE_VEL", z_m=val), False, ""
+            return (
+                ParsedVoiceIntent(target_id=target, action="MOVE_VEL", z_m=val),
+                False,
+                "",
+            )
         elif "좌표" in text or "이동" in text:
-            return ParsedVoiceIntent(
-                target_id=target, action="NAV_TO_POSE", x_m=val, y_m=0.0
-            ), False, ""
+            return (
+                ParsedVoiceIntent(
+                    target_id=target, action="NAV_TO_POSE", x_m=val, y_m=0.0
+                ),
+                False,
+                "",
+            )
 
-        return ParsedVoiceIntent(target_id=target, action="HOLD"), True, f"해석할 수 없는 음성 명령입니다: '{text}'"
+        return (
+            ParsedVoiceIntent(target_id=target, action="HOLD"),
+            True,
+            f"해석할 수 없는 음성 명령입니다: '{text}'",
+        )
 
     async def _call_structured_llm(
         self, text: str, active_target: str
@@ -602,6 +751,7 @@ class VoiceIntentParser:
 @dataclass
 class VoicePipelineConfig:
     """음성 파이프라인 설정"""
+
     # STT
     whisper_model_size: str = "base"
     whisper_device: str = "cpu"
@@ -668,6 +818,7 @@ class VoiceCommandPipeline:
         self.speaker_adapter = None
         if self.config.enable_speaker_adaptation and _check_speaker_adapter():
             from voice.speaker_adapter import SpeakerAdapter as SA
+
             self.speaker_adapter = SA(self.config.speaker_profiles_dir)
             self.active_speaker_id = self.speaker_adapter.active_profile_id
         else:
@@ -685,12 +836,19 @@ class VoiceCommandPipeline:
         self.enrollment_manager = None
         if self.config.enable_enrollment and _check_enrollment():
             from voice.voice_enrollment import VoiceEnrollmentManager as VEM
+
             self.enrollment_manager = VEM(self.config.enrollment_storage_dir)
 
         # NLU 학습 파이프라인
         self.nlu_learning = None
         if self.config.enable_nlu_learning and _check_nlu_learning():
-            from voice.nlu_learning import NLUModelConfig, NLULearningPipeline, LearningVoiceIntentParser, NLUModelType
+            from voice.nlu_learning import (
+                NLUModelConfig,
+                NLULearningPipeline,
+                LearningVoiceIntentParser,
+                NLUModelType,
+            )
+
             nlu_config = self.config.nlu_learning_config or NLUModelConfig()
             # 모델 타입 설정
             if self.config.nlu_model_type == "lora":
@@ -699,7 +857,7 @@ class VoiceCommandPipeline:
                 nlu_config.model_type = NLUModelType.CLASSIFIER
             else:
                 nlu_config.model_type = NLUModelType.LLM_FEWSHOT
-            
+
             self.nlu_learning = NLULearningPipeline(nlu_config)
             # 기본 파서를 학습 래퍼로 감싸기
             base_parser = VoiceIntentParser(
@@ -722,6 +880,7 @@ class VoiceCommandPipeline:
                 WakeWordDetector,
                 WakeWordConfig,
             )
+
             if self.config.wake_word_keyword_paths:
                 self.wake_word_detector = KoreanWakeWordDetector(
                     keyword_paths=self.config.wake_word_keyword_paths,
@@ -875,7 +1034,7 @@ class VoiceCommandPipeline:
         action: str,
         params: dict = None,
         speaker_id: str = None,
-        **kwargs
+        **kwargs,
     ):
         """커스텀 명령어 추가"""
         if self.enrollment_manager:
@@ -886,7 +1045,7 @@ class VoiceCommandPipeline:
                 action=action,
                 params=params or {},
                 speaker_id=sid,
-                **kwargs
+                **kwargs,
             )
 
     def get_stats(self) -> dict:
@@ -920,9 +1079,11 @@ class VoiceCommandPipeline:
         self.active_target = target_id
         logger.info(f"활성 타겟 변경: {target_id}")
 
-    def submit_nlu_feedback(self, sample_id: str, is_correct: bool, correct_text: str = "") -> bool:
+    def submit_nlu_feedback(
+        self, sample_id: str, is_correct: bool, correct_text: str = ""
+    ) -> bool:
         """NLU 파싱 결과에 대한 사용자 피드백 제출"""
-        if self.nlu_learning and hasattr(self.parser, 'submit_feedback'):
+        if self.nlu_learning and hasattr(self.parser, "submit_feedback"):
             return self.parser.submit_feedback(sample_id, is_correct, correct_text)
         logger.warning("NLU 학습이 활성화되지 않음")
         return False
@@ -982,10 +1143,9 @@ if __name__ == "__main__":
 
     # 테스트용 직접 텍스트 처리
     import asyncio
+
     async def test():
-        cmd = await pipeline.parser.parse_to_command(
-            "내 드론 이륙", 0.95, "drone_1"
-        )
+        cmd = await pipeline.parser.parse_to_command("내 드론 이륙", 0.95, "drone_1")
         print(f"파싱 결과: {cmd.action} {cmd.params}")
 
     asyncio.run(test())

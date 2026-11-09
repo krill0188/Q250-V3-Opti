@@ -2,6 +2,7 @@
 Speaker Adaptation Module for Whisper Fine-tuning
 Uses faster-whisper with LoRA adapters for personalization
 """
+
 import os
 import json
 import logging
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SpeakerProfile:
     """화자 프로필 - 음성 특징 + 커스텀 명령어"""
+
     speaker_id: str
     name: str
     language: str = "ko"
@@ -77,11 +79,15 @@ class SpeakerAdapter:
                     data = json.load(f)
                     profile = SpeakerProfile.from_dict(data)
                     self.profiles[profile.speaker_id] = profile
-                    logger.info(f"화자 프로필 로드: {profile.name} ({profile.speaker_id})")
+                    logger.info(
+                        f"화자 프로필 로드: {profile.name} ({profile.speaker_id})"
+                    )
             except Exception as e:
                 logger.error(f"프로필 로드 실패 {profile_file}: {e}")
 
-    def create_profile(self, speaker_id: str, name: str, language: str = "ko") -> SpeakerProfile:
+    def create_profile(
+        self, speaker_id: str, name: str, language: str = "ko"
+    ) -> SpeakerProfile:
         """새 화자 프로필 생성"""
         if speaker_id in self.profiles:
             raise ValueError(f"이미 존재하는 speaker_id: {speaker_id}")
@@ -123,7 +129,9 @@ class SpeakerAdapter:
         profile.custom_commands[phrase] = target
         self._save_profile(profile)
 
-    def enroll_audio_sample(self, speaker_id: str, audio_path: str, transcript: str = "") -> bool:
+    def enroll_audio_sample(
+        self, speaker_id: str, audio_path: str, transcript: str = ""
+    ) -> bool:
         """음성 샘플 등록 (파인튜닝용 데이터셋 구성)"""
         profile = self.get_profile(speaker_id)
         if not profile:
@@ -184,7 +192,11 @@ class LoRAFineTuner:
 
     def __init__(self, base_model: str = "large-v3", device: str = "auto"):
         self.base_model = base_model
-        self.device = device if device != "auto" else ("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = (
+            device
+            if device != "auto"
+            else ("cuda" if torch.cuda.is_available() else "cpu")
+        )
         logger.info(f"LoRA 파인튜너 초기화: {base_model} on {self.device}")
 
     def train_lora(
@@ -240,12 +252,16 @@ class LoRAFineTuner:
         Path(adapter_path).mkdir(parents=True, exist_ok=True)
 
         # 플레이스홀더 파일 생성
-        (Path(adapter_path) / "adapter_config.json").write_text(json.dumps({
-            "base_model": f"openai/whisper-{self.base_model}",
-            "lora_rank": lora_rank,
-            "lora_alpha": lora_alpha,
-            "target_modules": ["q_proj", "v_proj", "k_proj", "out_proj"],
-        }))
+        (Path(adapter_path) / "adapter_config.json").write_text(
+            json.dumps(
+                {
+                    "base_model": f"openai/whisper-{self.base_model}",
+                    "lora_rank": lora_rank,
+                    "lora_alpha": lora_alpha,
+                    "target_modules": ["q_proj", "v_proj", "k_proj", "out_proj"],
+                }
+            )
+        )
 
         logger.info(f"어댑터 경로 생성됨 (학습 필요): {adapter_path}")
         return adapter_path
@@ -267,7 +283,11 @@ class AdaptiveWhisperModel:
     ):
         self.model_size = model_size
         self.adapter_path = adapter_path
-        self.device = device if device != "auto" else ("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = (
+            device
+            if device != "auto"
+            else ("cuda" if torch.cuda.is_available() else "cpu")
+        )
         self.compute_type = compute_type
 
         # 기본 모델 로드
@@ -287,14 +307,11 @@ class AdaptiveWhisperModel:
         audio_path: str,
         language: Optional[str] = None,
         vad_filter: bool = True,
-        **kwargs
+        **kwargs,
     ) -> Tuple[List, dict]:
         """음성 인식 실행"""
         segments, info = self.model.transcribe(
-            audio_path,
-            language=language,
-            vad_filter=vad_filter,
-            **kwargs
+            audio_path, language=language, vad_filter=vad_filter, **kwargs
         )
         return list(segments), info._asdict()
 
@@ -311,7 +328,9 @@ class AdaptiveWhisperModel:
 
 
 # 편의 함수
-def create_speaker_adapter(profiles_dir: str = "~/models/speaker_profiles") -> SpeakerAdapter:
+def create_speaker_adapter(
+    profiles_dir: str = "~/models/speaker_profiles",
+) -> SpeakerAdapter:
     return SpeakerAdapter(profiles_dir)
 
 

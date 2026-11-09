@@ -1,15 +1,18 @@
 """
 Whisper Fine-tuning Pipeline for Drone Voice Control
 1. Dataset preparation from STT logs + ground truth
-2. Whisper fine-tuning with LoRA (PEFT)
-3. Convert to CTranslate2 format for faster-whisper
-4. Deploy model path update
+2. Data augmentation with DREGON flight noise (SNR -10dB ~ +5dB)
+3. Whisper fine-tuning with LoRA (PEFT)
+4. Convert to CTranslate2 format for faster-whisper
+5. Deploy model path update
 """
+
 import os
 import json
 import logging
 import subprocess
 import shutil
+import random
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Tuple
@@ -18,6 +21,7 @@ from collections import defaultdict
 
 import torch
 import torchaudio
+import numpy as np
 from datasets import Dataset, Audio
 from transformers import (
     WhisperForConditionalGeneration,
@@ -35,8 +39,9 @@ logger = logging.getLogger(__name__)
 @dataclass
 class FinetuneConfig:
     """파인튜닝 설정"""
+
     # 기본 모델
-    base_model: str = "openai/whisper-large-v3"  # or medium, small, base, tiny
+    base_model: str = "openai/whisper-small"  # or medium, small, base, tiny
     language: str = "korean"
     task: str = "transcribe"
 
@@ -44,7 +49,9 @@ class FinetuneConfig:
     lora_rank: int = 16
     lora_alpha: int = 32
     lora_dropout: float = 0.1
-    target_modules: List[str] = field(default_factory=lambda: ["q_proj", "v_proj", "k_proj", "out_proj"])
+    target_modules: List[str] = field(
+        default_factory=lambda: ["q_proj", "v_proj", "k_proj", "out_proj"]
+    )
 
     # 학습 설정
     output_dir: str = "~/models/whisper-finetuned"
@@ -62,6 +69,12 @@ class FinetuneConfig:
     max_audio_length: float = 30.0  # 초
     sampling_rate: int = 16000
 
+    # 데이터 증강 설정 (DREGON 노이즈 합성)
+    enable_augmentation: bool = True
+    dregon_noise_dir: str = "~/data/dregon_noise"  # DREGON 노이즈 파일 디렉토리
+    snr_range_db: Tuple[float, float] = (-10.0, 5.0)  # SNR 범위 (dB)
+    augmentation_prob: float = 0.5  # 증강 적용 확률
+
     # CTranslate2 변환 설정
     ct2_output_dir: str = "~/models/whisper-finetuned-ct2"
     ct2_quantization: str = "int8"  # int8, float16, int8_float16
@@ -74,6 +87,7 @@ class FinetuneConfig:
     def __post_init__(self):
         self.output_dir = str(Path(self.output_dir).expanduser())
         self.ct2_output_dir = str(Path(self.ct2_output_dir).expanduser())
+        self.dregon_noise_dir = str(Path(self.dregon_noise_dir).expanduser())
         Path(self.output_dir).mkdir(parents=True, exist_ok=True)
         Path(self.ct2_output_dir).mkdir(parents=True, exist_ok=True)
 
@@ -91,7 +105,14 @@ class STTLogCollector:
         self.pairs_file = self.log_dir / "stt_pairs.jsonl"
         self.pending_file = self.log_dir / "pending_review.jsonl"
 
-    def add_pair(self, audio_path: str, stt_text: str, ground_truth: str, confidence: float, metadata: dict = None):
+    def add_pair(
+        self,
+        audio_path: str,
+        stt_text: str,
+        ground_truth: str,
+        confidence: float,
+        metadata: dict = None,
+    ):
         """STT 결과와 정답 쌍 저장"""
         entry = {
             "audio_path": audio_path,
@@ -104,9 +125,13 @@ class STTLogCollector:
         }
         with open(self.pairs_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-        logger.info(f"STT 쌍 저장: {audio_path} | STT: '{stt_text}' | GT: '{ground_truth}'")
+        logger.info(
+            f"STT 쌍 저장: {audio_path} | STT: '{stt_text}' | GT: '{ground_truth}'"
+        )
 
-    def add_pending_review(self, audio_path: str, stt_text: str, confidence: float, metadata: dict = None):
+    def add_pending_review(
+        self, audio_path: str, stt_text: str, confidence: float, metadata: dict = None
+    ):
         """검토 대기 항목 추가 (정답 텍스트 미확정)"""
         entry = {
             "audio_path": audio_path,
@@ -126,12 +151,18 @@ class STTLogCollector:
             with open(self.pairs_file, "r", encoding="utf-8") as f:
                 for line in f:
                     entry = json.loads(line.strip())
-                    if entry.get("confidence", 0) >= min_confidence and entry.get("reviewed", False):
-                        data.append({
-                            "audio": entry["audio_path"],
-                            "text": entry["ground_truth"],
-                            "language": self._detect_language(entry["ground_truth"]),
-                        })
+                    if entry.get("confidence", 0) >= min_confidence and entry.get(
+                        "reviewed", False
+                    ):
+                        data.append(
+                            {
+                                "audio": entry["audio_path"],
+                                "text": entry["ground_truth"],
+                                "language": self._detect_language(
+                                    entry["ground_truth"]
+                                ),
+                            }
+                        )
         logger.info(f"학습 데이터 로드: {len(data)}개 (신뢰도 >= {min_confidence})")
         return data
 
@@ -164,7 +195,7 @@ class STTLogCollector:
                 entry["stt_text"],
                 ground_truth,
                 entry["confidence"],
-                entry["metadata"]
+                entry["metadata"],
             )
 
             # 대기 목록에서 제거
@@ -175,9 +206,109 @@ class STTLogCollector:
 
     def _detect_language(self, text: str) -> str:
         """간단한 언어 감지"""
-        korean_chars = sum(1 for c in text if '\uac00' <= c <= '\ud7a3')
+        korean_chars = sum(1 for c in text if "\uac00" <= c <= "\ud7a3")
         english_chars = sum(1 for c in text if c.isascii() and c.isalpha())
         return "korean" if korean_chars > english_chars else "english"
+
+
+class DREGONNoiseAugmenter:
+    """
+    DREGON 비행 소음 데이터셋을 사용한 오디오 데이터 증강
+    - AI Hub 명령어 음성 데이터에 DREGON 노이즈를 SNR -10dB ~ +5dB로 합성
+    - 실시간 증강 또는 오프라인 증강 지원
+    """
+
+    def __init__(
+        self,
+        noise_dir: str,
+        snr_range_db: Tuple[float, float] = (-10.0, 5.0),
+        prob: float = 0.5,
+    ):
+        self.noise_dir = Path(noise_dir).expanduser()
+        self.snr_range_db = snr_range_db
+        self.prob = prob
+        self.noise_files = []
+        self._load_noise_files()
+
+    def _load_noise_files(self):
+        """노이즈 파일 목록 로드"""
+        if self.noise_dir.exists():
+            self.noise_files = (
+                list(self.noise_dir.glob("*.wav"))
+                + list(self.noise_dir.glob("*.flac"))
+                + list(self.noise_dir.glob("*.mp3"))
+            )
+            logger.info(f"DREGON 노이즈 파일 로드: {len(self.noise_files)}개")
+        else:
+            logger.warning(f"DREGON 노이즈 디렉토리 없음: {self.noise_dir}")
+            self.noise_files = []
+
+    def _calculate_rms(self, audio: np.ndarray) -> float:
+        """RMS 계산"""
+        return np.sqrt(np.mean(audio**2) + 1e-10)
+
+    def _mix_with_snr(
+        self, speech: np.ndarray, noise: np.ndarray, snr_db: float
+    ) -> np.ndarray:
+        """지정된 SNR로 음성과 노이즈 합성"""
+        speech_rms = self._calculate_rms(speech)
+        noise_rms = self._calculate_rms(noise)
+
+        # 목표 노이즈 RMS 계산: noise_rms_target = speech_rms / 10^(SNR/20)
+        target_noise_rms = speech_rms / (10 ** (snr_db / 20))
+
+        # 노이즈 스케일링
+        if noise_rms > 0:
+            noise_scaled = noise * (target_noise_rms / noise_rms)
+        else:
+            noise_scaled = noise
+
+        # 길이 맞추기
+        if len(noise_scaled) < len(speech):
+            # 노이즈 반복
+            repeats = int(np.ceil(len(speech) / len(noise_scaled)))
+            noise_scaled = np.tile(noise_scaled, repeats)[: len(speech)]
+        else:
+            noise_scaled = noise_scaled[: len(speech)]
+
+        # 합성
+        mixed = speech + noise_scaled
+
+        # 클리핑 방지
+        max_val = np.max(np.abs(mixed))
+        if max_val > 1.0:
+            mixed = mixed / max_val * 0.95
+
+        return mixed.astype(np.float32)
+
+    def augment(self, speech: np.ndarray, sr: int) -> np.ndarray:
+        """단일 오디오에 노이즈 증강 적용"""
+        if not self.noise_files or random.random() > self.prob:
+            return speech
+
+        # 랜덤 노이즈 파일 선택
+        noise_file = random.choice(self.noise_files)
+        try:
+            noise, noise_sr = torchaudio.load(str(noise_file))
+            if noise_sr != sr:
+                resampler = torchaudio.transforms.Resample(noise_sr, sr)
+                noise = resampler(noise)
+            if noise.shape[0] > 1:
+                noise = noise.mean(dim=0, keepdim=True)
+            noise = noise.squeeze().numpy()
+
+            # 랜덤 SNR
+            snr_db = random.uniform(self.snr_range_db[0], self.snr_range_db[1])
+
+            # 합성
+            return self._mix_with_snr(speech, noise, snr_db)
+        except Exception as e:
+            logger.warning(f"노이즈 증강 실패 ({noise_file}): {e}")
+            return speech
+
+    def augment_batch(self, audios: List[np.ndarray], sr: int) -> List[np.ndarray]:
+        """배치 증강"""
+        return [self.augment(audio, sr) for audio in audios]
 
 
 class WhisperFinetuner:
@@ -228,20 +359,39 @@ class WhisperFinetuner:
         )
         self.model.config.suppress_tokens = []
 
+        # 데이터 증강기 초기화
+        if self.config.enable_augmentation:
+            self.augmenter = DREGONNoiseAugmenter(
+                noise_dir=self.config.dregon_noise_dir,
+                snr_range_db=self.config.snr_range_db,
+                prob=self.config.augmentation_prob,
+            )
+        else:
+            self.augmenter = None
+
     def prepare_dataset(self, train_data: List[Dict], eval_data: List[Dict] = None):
-        """데이터셋 준비 및 전처리"""
+        """데이터셋 준비 및 전처리 (DREGON 노이즈 증강 포함)"""
+
         def preprocess_function(batch):
             # 오디오 로드 및 리샘플링
             audio_arrays = []
             for audio_path in batch["audio"]:
                 waveform, sr = torchaudio.load(audio_path)
                 if sr != self.config.sampling_rate:
-                    resampler = torchaudio.transforms.Resample(sr, self.config.sampling_rate)
+                    resampler = torchaudio.transforms.Resample(
+                        sr, self.config.sampling_rate
+                    )
                     waveform = resampler(waveform)
                 # 모노 채널로 변환
                 if waveform.shape[0] > 1:
                     waveform = waveform.mean(dim=0, keepdim=True)
-                audio_arrays.append(waveform.squeeze().numpy())
+                audio = waveform.squeeze().numpy()
+
+                # 데이터 증강 적용 (학습 데이터만)
+                if self.augmenter is not None:
+                    audio = self.augmenter.augment(audio, self.config.sampling_rate)
+
+                audio_arrays.append(audio)
 
             # 특징 추출
             inputs = self.processor.feature_extractor(
@@ -266,7 +416,9 @@ class WhisperFinetuner:
             inputs["labels"] = labels
             return inputs
 
-        train_dataset = Dataset.from_list(train_data).cast_column("audio", Audio(sampling_rate=self.config.sampling_rate))
+        train_dataset = Dataset.from_list(train_data).cast_column(
+            "audio", Audio(sampling_rate=self.config.sampling_rate)
+        )
         train_dataset = train_dataset.map(
             preprocess_function,
             batched=True,
@@ -275,7 +427,9 @@ class WhisperFinetuner:
         )
 
         if eval_data:
-            eval_dataset = Dataset.from_list(eval_data).cast_column("audio", Audio(sampling_rate=self.config.sampling_rate))
+            eval_dataset = Dataset.from_list(eval_data).cast_column(
+                "audio", Audio(sampling_rate=self.config.sampling_rate)
+            )
             eval_dataset = eval_dataset.map(
                 preprocess_function,
                 batched=True,
@@ -288,7 +442,9 @@ class WhisperFinetuner:
         self.train_dataset = train_dataset
         self.eval_dataset = eval_dataset
 
-        logger.info(f"데이터셋 준비 완료: Train={len(train_dataset)}, Eval={len(eval_dataset) if eval_dataset else 0}")
+        logger.info(
+            f"데이터셋 준비 완료: Train={len(train_dataset)}, Eval={len(eval_dataset) if eval_dataset else 0}"
+        )
 
     def train(self):
         """학습 실행"""
@@ -318,11 +474,16 @@ class WhisperFinetuner:
 
         def compute_metrics(pred):
             from jiwer import wer
+
             pred_ids = pred.predictions
             label_ids = pred.label_ids
             label_ids[label_ids == -100] = self.processor.tokenizer.pad_token_id
-            pred_str = self.processor.tokenizer.batch_decode(pred_ids, skip_special_tokens=True)
-            label_str = self.processor.tokenizer.batch_decode(label_ids, skip_special_tokens=True)
+            pred_str = self.processor.tokenizer.batch_decode(
+                pred_ids, skip_special_tokens=True
+            )
+            label_str = self.processor.tokenizer.batch_decode(
+                label_ids, skip_special_tokens=True
+            )
             return {"wer": wer(label_str, pred_str)}
 
         self.trainer = Seq2SeqTrainer(
@@ -393,9 +554,12 @@ class CTranslate2Converter:
         # ct2 변환 명령 실행
         cmd = [
             "ct2-transformers-converter",
-            "--model", str(model_path),
-            "--output_dir", str(output_path),
-            "--quantization", self.config.ct2_quantization,
+            "--model",
+            str(model_path),
+            "--output_dir",
+            str(output_path),
+            "--quantization",
+            self.config.ct2_quantization,
             "--force",
         ]
 
@@ -407,7 +571,9 @@ class CTranslate2Converter:
             logger.error(f"CTranslate2 변환 실패: {e.stderr}")
             raise RuntimeError(f"ct2 변환 실패: {e.stderr}")
         except FileNotFoundError:
-            raise RuntimeError("ct2-transformers-converter를 찾을 수 없습니다. `pip install ctranslate2` 실행 필요")
+            raise RuntimeError(
+                "ct2-transformers-converter를 찾을 수 없습니다. `pip install ctranslate2` 실행 필요"
+            )
 
         # 변환 검증
         if not (output_path / "model.bin").exists():
@@ -423,9 +589,11 @@ class CTranslate2Converter:
 
         try:
             from faster_whisper import WhisperModel
+
             model = WhisperModel(model_path, device="cpu", compute_type="int8")
             # 더미 오디오로 테스트
             import numpy as np
+
             dummy_audio = np.zeros(16000, dtype=np.float32)  # 1초 무음
             segments, _ = model.transcribe(dummy_audio, language="ko", beam_size=1)
             list(segments)  # 소비
@@ -468,7 +636,9 @@ class FinetunePipeline:
         train_data = data[:split_idx]
         eval_data = data[split_idx:] if test_size > 0 else None
 
-        logger.info(f"  Train: {len(train_data)}개, Eval: {len(eval_data) if eval_data else 0}개")
+        logger.info(
+            f"  Train: {len(train_data)}개, Eval: {len(eval_data) if eval_data else 0}개"
+        )
 
         # 2. 모델 준비
         logger.info("2단계: 모델 및 LoRA 준비")
@@ -510,6 +680,7 @@ class FinetunePipeline:
         if target == "speaker_adapter":
             # SpeakerAdapter 프로필에 어댑터 경로 업데이트
             from voice.speaker_adapter import SpeakerAdapter
+
             adapter = SpeakerAdapter()
             # 활성 화자 프로필에 어댑터 경로 설정
             if adapter.active_profile_id:
@@ -517,12 +688,15 @@ class FinetunePipeline:
                 if profile:
                     profile.adapter_path = ct2_path
                     adapter._save_profile(profile)
-                    logger.info(f"화자 프로필 어댑터 업데이트: {adapter.active_profile_id} -> {ct2_path}")
+                    logger.info(
+                        f"화자 프로필 어댑터 업데이트: {adapter.active_profile_id} -> {ct2_path}"
+                    )
 
         elif target == "voice_pipeline":
             # VoicePipelineConfig 기본 모델 경로 업데이트
             # (실제로는 설정 파일이나 환경변수로 관리)
             import os
+
             os.environ["WHISPER_FINETUNED_MODEL"] = ct2_path
             logger.info(f"환경변수 설정: WHISPER_FINETUNED_MODEL={ct2_path}")
 
@@ -560,7 +734,7 @@ def quick_finetune(
             stt_text="",  # 빈 STT
             ground_truth=text,
             confidence=1.0,
-            metadata={"source": "quick_finetune", "index": i}
+            metadata={"source": "quick_finetune", "index": i},
         )
 
     return pipeline.run_full_pipeline(min_confidence=0.5, test_size=0.0)
@@ -570,20 +744,46 @@ def quick_finetune(
 if __name__ == "__main__":
     import argparse
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    )
 
-    parser = argparse.ArgumentParser(description="Whisper Fine-tuning Pipeline for Drone Voice Control")
-    parser.add_argument("--base-model", default="openai/whisper-large-v3", help="Base model name")
-    parser.add_argument("--output-dir", default="~/models/whisper-finetuned", help="Output directory")
-    parser.add_argument("--ct2-dir", default="~/models/whisper-finetuned-ct2", help="CTranslate2 output")
+    parser = argparse.ArgumentParser(
+        description="Whisper Fine-tuning Pipeline for Drone Voice Control"
+    )
+    parser.add_argument(
+        "--base-model", default="openai/whisper-large-v3", help="Base model name"
+    )
+    parser.add_argument(
+        "--output-dir", default="~/models/whisper-finetuned", help="Output directory"
+    )
+    parser.add_argument(
+        "--ct2-dir", default="~/models/whisper-finetuned-ct2", help="CTranslate2 output"
+    )
     parser.add_argument("--epochs", type=int, default=3, help="Number of epochs")
     parser.add_argument("--batch-size", type=int, default=4, help="Batch size")
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
     parser.add_argument("--lora-rank", type=int, default=16, help="LoRA rank")
-    parser.add_argument("--min-confidence", type=float, default=0.7, help="Min confidence for training data")
-    parser.add_argument("--quantization", default="int8", choices=["int8", "float16", "int8_float16"], help="CT2 quantization")
-    parser.add_argument("--skip-train", action="store_true", help="Skip training, only convert existing model")
-    parser.add_argument("--model-path", help="Existing model path to convert (for --skip-train)")
+    parser.add_argument(
+        "--min-confidence",
+        type=float,
+        default=0.7,
+        help="Min confidence for training data",
+    )
+    parser.add_argument(
+        "--quantization",
+        default="int8",
+        choices=["int8", "float16", "int8_float16"],
+        help="CT2 quantization",
+    )
+    parser.add_argument(
+        "--skip-train",
+        action="store_true",
+        help="Skip training, only convert existing model",
+    )
+    parser.add_argument(
+        "--model-path", help="Existing model path to convert (for --skip-train)"
+    )
 
     args = parser.parse_args()
 

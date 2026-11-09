@@ -2,6 +2,7 @@
 Voice Package - 음성 제어 모듈
 선택적 의존성(faster-whisper, pvporcupine, torch 등)이 없을 때도 import 가능하도록 지연 로딩 사용
 """
+
 from typing import TYPE_CHECKING
 
 # 항상 사용 가능한 것들 (voice_command_engine만)
@@ -27,6 +28,23 @@ __all__ = [
     "VoicePipelineConfig",
     "VoiceCommandPipeline",
     "create_voice_pipeline",
+    # tactical_normalizer (군사 용어 정규화)
+    "TacticalNormalizer",
+    "TacticalNormalizerConfig",
+    "create_tactical_normalizer",
+    "normalize_tactical_text",
+    # military_coords (군사 좌표계/병과 프로파일)
+    "CoordinateType",
+    "MilitaryBranch",
+    "ParsedCoordinate",
+    "BranchFlightProfile",
+    "CoordinateParser",
+    "CoordinateConverter",
+    "BranchProfileManager",
+    "parse_coordinates",
+    "detect_branches",
+    "convert_coordinate",
+    "get_branch_flight_params",
     # speaker_adapter (faster-whisper, torch 필요)
     "SpeakerAdapter",
     "SpeakerProfile",
@@ -132,6 +150,25 @@ __all__ = [
 
 # 지연 로딩을 위한 모듈 매핑
 _OPTIONAL_MODULES = {
+    "tactical_normalizer": [
+        "TacticalNormalizer",
+        "TacticalNormalizerConfig",
+        "create_tactical_normalizer",
+        "normalize_tactical_text",
+    ],
+    "military_coords": [
+        "CoordinateType",
+        "MilitaryBranch",
+        "ParsedCoordinate",
+        "BranchFlightProfile",
+        "CoordinateParser",
+        "CoordinateConverter",
+        "BranchProfileManager",
+        "parse_coordinates",
+        "detect_branches",
+        "convert_coordinate",
+        "get_branch_flight_params",
+    ],
     "speaker_adapter": [
         "SpeakerAdapter",
         "SpeakerProfile",
@@ -251,6 +288,25 @@ _OPTIONAL_MODULES = {
 
 # 타입 체커용 (실제 import는 런타임에만)
 if TYPE_CHECKING:
+    from voice.tactical_normalizer import (
+        TacticalNormalizer,
+        TacticalNormalizerConfig,
+        create_tactical_normalizer,
+        normalize_tactical_text,
+    )
+    from voice.military_coords import (
+        CoordinateType,
+        MilitaryBranch,
+        ParsedCoordinate,
+        BranchFlightProfile,
+        CoordinateParser,
+        CoordinateConverter,
+        BranchProfileManager,
+        parse_coordinates,
+        detect_branches,
+        convert_coordinate,
+        get_branch_flight_params,
+    )
     from voice.speaker_adapter import (
         SpeakerAdapter,
         SpeakerProfile,

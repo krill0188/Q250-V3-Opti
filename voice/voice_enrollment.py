@@ -2,6 +2,7 @@
 Voice Enrollment Module - Custom Command Mapping per User
 사용자별 커스텀 음성 명령어 매핑 등록/관리
 """
+
 import os
 import json
 import logging
@@ -17,23 +18,25 @@ logger = logging.getLogger(__name__)
 
 class CommandCategory(Enum):
     """명령어 카테고리"""
-    NAVIGATION = "navigation"       # 이동/내비게이션
-    FLIGHT_MODE = "flight_mode"     # 비행 모드
-    EMERGENCY = "emergency"         # 비상
-    CAMERA = "camera"               # 카메라/짐벌
-    PAYLOAD = "payload"             # 페이로드
-    CUSTOM = "custom"               # 사용자 정의
+
+    NAVIGATION = "navigation"  # 이동/내비게이션
+    FLIGHT_MODE = "flight_mode"  # 비행 모드
+    EMERGENCY = "emergency"  # 비상
+    CAMERA = "camera"  # 카메라/짐벌
+    PAYLOAD = "payload"  # 페이로드
+    CUSTOM = "custom"  # 사용자 정의
 
 
 @dataclass
 class VoiceCommandMapping:
     """음성 명령어 매핑"""
-    phrase: str                     # 음성 구문: "내 드론 이륙"
-    target_device: str              # 대상 기기: "drone_1", "hybrid_drone_1"
-    action: str                     # UnifiedCommand action: "TAKEOFF", "DIVE_ATTACK"
+
+    phrase: str  # 음성 구문: "내 드론 이륙"
+    target_device: str  # 대상 기기: "drone_1", "hybrid_drone_1"
+    action: str  # UnifiedCommand action: "TAKEOFF", "DIVE_ATTACK"
     params: Dict = field(default_factory=dict)  # 추가 파라미터
     category: CommandCategory = CommandCategory.CUSTOM
-    priority: int = 2               # 우선순위 (0=FAILSAFE, 1=MANUAL, 2=VOICE)
+    priority: int = 2  # 우선순위 (0=FAILSAFE, 1=MANUAL, 2=VOICE)
     confidence_threshold: float = 0.85
     enabled: bool = True
     speaker_id: Optional[str] = None  # 특정 화자만 적용 (None=전체)
@@ -67,6 +70,7 @@ class VoiceCommandMapping:
 @dataclass
 class VoiceEnrollmentSession:
     """음성 등록 세션"""
+
     session_id: str
     speaker_id: str
     phrase: str
@@ -304,7 +308,9 @@ class VoiceEnrollmentManager:
             self.speaker_mappings.setdefault(speaker_id, []).append(key)
 
         self._save_mappings()
-        logger.info(f"명령어 매핑 추가: {phrase} -> {action} ({speaker_id or 'global'})")
+        logger.info(
+            f"명령어 매핑 추가: {phrase} -> {action} ({speaker_id or 'global'})"
+        )
         return mapping
 
     def remove_mapping(self, phrase: str, speaker_id: Optional[str] = None) -> bool:
@@ -321,7 +327,9 @@ class VoiceEnrollmentManager:
             return True
         return False
 
-    def get_mapping(self, phrase: str, speaker_id: Optional[str] = None) -> Optional[VoiceCommandMapping]:
+    def get_mapping(
+        self, phrase: str, speaker_id: Optional[str] = None
+    ) -> Optional[VoiceCommandMapping]:
         """매핑 조회 (화자별 우선, 없으면 글로벌)"""
         # 화자별 매핑 우선
         if speaker_id:
@@ -333,7 +341,9 @@ class VoiceEnrollmentManager:
         key = self._make_key(phrase, None)
         return self.mappings.get(key)
 
-    def get_all_mappings(self, speaker_id: Optional[str] = None) -> List[VoiceCommandMapping]:
+    def get_all_mappings(
+        self, speaker_id: Optional[str] = None
+    ) -> List[VoiceCommandMapping]:
         """모든 매핑 조회 (화자별 + 글로벌)"""
         result = []
 
@@ -351,15 +361,15 @@ class VoiceEnrollmentManager:
         return result
 
     def get_mappings_by_category(
-        self,
-        category: CommandCategory,
-        speaker_id: Optional[str] = None
+        self, category: CommandCategory, speaker_id: Optional[str] = None
     ) -> List[VoiceCommandMapping]:
         """카테고리별 매핑 조회"""
         all_mappings = self.get_all_mappings(speaker_id)
         return [m for m in all_mappings if m.category == category]
 
-    def enable_mapping(self, phrase: str, speaker_id: Optional[str] = None, enabled: bool = True):
+    def enable_mapping(
+        self, phrase: str, speaker_id: Optional[str] = None, enabled: bool = True
+    ):
         """매핑 활성화/비활성화"""
         mapping = self.get_mapping(phrase, speaker_id)
         if mapping:
@@ -473,7 +483,9 @@ class VoiceEnrollmentManager:
 
 
 # 편의 함수
-def create_enrollment_manager(storage_dir: str = "~/models/voice_enrollment") -> VoiceEnrollmentManager:
+def create_enrollment_manager(
+    storage_dir: str = "~/models/voice_enrollment",
+) -> VoiceEnrollmentManager:
     return VoiceEnrollmentManager(storage_dir)
 
 

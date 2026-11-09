@@ -50,6 +50,13 @@ class UnifiedCommand(BaseModel):
         "TRANSITION_CRUISE_TO_FPV",
         "TRANSITION_FPV_TO_CRUISE",
         "GET_RISK_STATUS",
+        # 전술 임무 액션
+        "RECON_AREA",
+        "BDA_OBSERVE",
+        "MINEFIELD_RECON",
+        "ROUTE_SECURITY",
+        "TERRAIN_FOLLOW",
+        "EMCON",
     ]
     x_m: float = 0.0
     y_m: float = 0.0

@@ -1,0 +1,53 @@
+{
+  "export": {
+    "onnx_version": "1.22.0",
+    "onnxruntime_version": "1.27.0",
+    "opset": 17,
+    "torch_version": "2.3.1"
+  },
+  "files": {
+    "deepfilter-auxiliary.bin": {
+      "bytes": 126976,
+      "sha256": "47e84480f823ab95bee69d9f8a2344074e3d8e7dbb4370d44785b91698a4dca1"
+    },
+    "deepfilter.onnx": {
+      "bytes": 8608859,
+      "sha256": "e1157049059434ae0d5857e32c812abea227b975e946b2eb64d001abbce156d3"
+    }
+  },
+  "format_version": 1,
+  "pytorch_onnxruntime_parity": {
+    "cases": [
+      {
+        "df_coefs_max_abs_error": 9.5367431640625e-07,
+        "erb_mask_max_abs_error": 7.152557373046875e-07,
+        "frames": 5
+      },
+      {
+        "df_coefs_max_abs_error": 1.0132789611816406e-06,
+        "erb_mask_max_abs_error": 8.940696716308594e-07,
+        "frames": 20
+      },
+      {
+        "df_coefs_max_abs_error": 1.430511474609375e-06,
+        "erb_mask_max_abs_error": 1.4901161193847656e-06,
+        "frames": 137
+      }
+    ],
+    "provider": "CPUExecutionProvider",
+    "tolerance": 2e-05,
+    "worst_df_coefs_max_abs_error": 1.430511474609375e-06,
+    "worst_erb_mask_max_abs_error": 1.4901161193847656e-06
+  },
+  "source": {
+    "archive_sha256": "49c52edc8947ae1f9bf50d81530beaf3a2c3245aeaf34b6f31ff535cd22284d2",
+    "archive_url": "https://github.com/Rikorose/DeepFilterNet/raw/v0.5.6/models/DeepFilterNet3.zip",
+    "checkpoint": "DeepFilterNet3/checkpoints/model_120.ckpt.best",
+    "checkpoint_sha256": "23b92884f63ccf54bb026014604625ab231657b6480df65db4095c4c171e6003",
+    "commit": "978576aa8400552a4ce9730838c635aa30db5e61",
+    "config": "DeepFilterNet3/config.ini",
+    "config_sha256": "415eb925d44990d938fb739f514aa3662c1ec0ea836cff044fa1291b82cb4290",
+    "project": "Rikorose/DeepFilterNet",
+    "release": "v0.5.6"
+  }
+}

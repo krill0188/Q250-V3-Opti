@@ -4,6 +4,7 @@ STT 데이터 라벨링 도구 (CLI/Web)
 - 오디오 재생 및 정답 텍스트 입력
 - 학습 데이터로 승인/거절
 """
+
 import os
 import json
 import logging
@@ -20,6 +21,7 @@ class STTLabelingTool:
 
     def __init__(self, log_dir: str = "~/models/stt_logs"):
         from voice.finetune_pipeline import STTLogCollector
+
         self.collector = STTLogCollector(log_dir)
 
     def list_pending(self) -> List[Dict]:
@@ -35,7 +37,7 @@ class STTLabelingTool:
             print(f"    STT: '{item['stt_text']}'")
             print(f"    신뢰도: {item['confidence']:.2f}")
             print(f"    시간: {item['timestamp']}")
-            meta = item.get('metadata', {})
+            meta = item.get("metadata", {})
             if meta:
                 print(f"    메타: {meta}")
 
@@ -78,7 +80,7 @@ class STTLabelingTool:
 
         # 오디오 재생
         print("\n오디오 재생 중... (Enter로 계속)")
-        self.play_audio(item['audio_path'])
+        self.play_audio(item["audio_path"])
         input()
 
         # 정답 텍스트 입력
@@ -119,12 +121,12 @@ class STTLabelingTool:
         print("\n명령어: [Enter]=재생/검토, 'q'=종료, 's'=건너뛰기")
         for i in range(len(pending)):
             print(f"\n[{i+1}/{len(pending)}]")
-            self.play_audio(pending[i]['audio_path'])
+            self.play_audio(pending[i]["audio_path"])
 
             cmd = input("명령 (Enter/검토, s/건너뛰기, q/종료): ").strip().lower()
-            if cmd == 'q':
+            if cmd == "q":
                 break
-            elif cmd == 's':
+            elif cmd == "s":
                 continue
             else:
                 self.review_item(i)
@@ -134,6 +136,7 @@ class STTLabelingTool:
     def export_training_data(self, output_path: str, min_confidence: float = 0.7):
         """학습 데이터 내보내기 (HuggingFace datasets 형식)"""
         from datasets import Dataset
+
         data = self.collector.load_training_data(min_confidence=min_confidence)
 
         if not data:
@@ -154,27 +157,34 @@ class STTLabelingTool:
         print(f"검토 대기: {len(pending)}개")
 
         if data:
-            confidences = [d.get('confidence', 0) for d in data if 'confidence' in d]
+            confidences = [d.get("confidence", 0) for d in data if "confidence" in d]
             if confidences:
                 print(f"평균 신뢰도: {sum(confidences)/len(confidences):.2f}")
-                print(f"최소/최대 신뢰도: {min(confidences):.2f} / {max(confidences):.2f}")
+                print(
+                    f"최소/최대 신뢰도: {min(confidences):.2f} / {max(confidences):.2f}"
+                )
 
             # 텍스트 길이 통계
-            lengths = [len(d.get('ground_truth', '')) for d in data]
+            lengths = [len(d.get("ground_truth", "")) for d in data]
             print(f"평균 텍스트 길이: {sum(lengths)/len(lengths):.1f}자")
 
 
 def main():
     import argparse
+
     logging.basicConfig(level=logging.INFO)
 
-    parser = argparse.ArgumentParser(description="STT Labeling Tool for Whisper Fine-tuning")
+    parser = argparse.ArgumentParser(
+        description="STT Labeling Tool for Whisper Fine-tuning"
+    )
     parser.add_argument("--log-dir", default="~/models/stt_logs", help="Log directory")
     parser.add_argument("--list", action="store_true", help="List pending items")
     parser.add_argument("--review", type=int, help="Review specific index")
     parser.add_argument("--review-all", action="store_true", help="Review all pending")
     parser.add_argument("--export", help="Export training data to path")
-    parser.add_argument("--min-conf", type=float, default=0.7, help="Min confidence for export")
+    parser.add_argument(
+        "--min-conf", type=float, default=0.7, help="Min confidence for export"
+    )
     parser.add_argument("--stats", action="store_true", help="Show statistics")
 
     args = parser.parse_args()
