@@ -1,0 +1,67 @@
+drone_1:
+  device_id: "drone_1"
+  device_type: "drone"
+  environment: "sitl"
+  max_altitude_m: 30.0
+  min_altitude_m: 1.0
+  max_linear_vel_mps: 5.0
+  max_angular_vel_radps: 1.5
+  min_battery_percent: 20.0
+  capabilities:
+    - ESTOP
+    - ARM
+    - TAKEOFF
+    - LAND
+    - HOLD
+    - MOVE_VEL
+    - RTL
+
+robot_1:
+  device_id: "robot_1"
+  device_type: "robot"
+  environment: "sitl"
+  max_altitude_m: 0.0
+  min_altitude_m: 0.0
+  max_linear_vel_mps: 1.5
+  max_angular_vel_radps: 1.2
+  min_battery_percent: 15.0
+  capabilities:
+    - ESTOP
+    - HOLD
+    - MOVE_VEL
+    - NAV_TO_POSE
+
+hybrid_drone_1:
+  device_id: "hybrid_drone_1"
+  device_type: "hybrid_fixed_wing_fpv"
+  environment: "sitl"
+  max_altitude_m: 500.0
+  min_altitude_m: 10.0
+  max_linear_vel_mps: 80.0
+  max_angular_vel_radps: 3.0
+  min_battery_percent: 25.0
+  max_dive_angle_deg: 80.0
+  max_dive_speed_mps: 80.0
+  min_pullup_altitude_m: 30.0
+  max_deception_duration_sec: 60
+  deception_patterns:
+    - SPIRAL_DIVE
+    - SINE_DIVE
+    - RANDOM_JINK
+    - FAKE_CRASH
+    - MULTI_PULSE
+  capabilities:
+    - ESTOP
+    - ARM
+    - TAKEOFF
+    - LAND
+    - HOLD
+    - MOVE_VEL
+    - RTL
+    - SET_MODE
+    - DIVE_ATTACK
+    - DECEPTION_START
+    - DECEPTION_PATTERN
+    - DECEPTION_STOP
+    - TRANSITION_CRUISE_TO_FPV
+    - TRANSITION_FPV_TO_CRUISE
