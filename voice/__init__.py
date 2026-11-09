@@ -68,6 +68,15 @@ __all__ = [
     "NLULearningPipeline",
     "LearningVoiceIntentParser",
     "create_nlu_learning_pipeline",
+    # ultra_low_latency (faster-whisper, pvporcupine, torch 필요)
+    "StreamingVAD",
+    "FastWhisperSTT",
+    "CommandCache",
+    "PredictiveCommander",
+    "UltraLowLatencyPipeline",
+    "LatencyProfile",
+    "PipelineStage",
+    "create_ultra_low_latency_pipeline",
 ]
 
 # 지연 로딩을 위한 모듈 매핑
@@ -119,6 +128,16 @@ _OPTIONAL_MODULES = {
         "LearningVoiceIntentParser",
         "create_nlu_learning_pipeline",
     ],
+    "ultra_low_latency": [
+        "StreamingVAD",
+        "FastWhisperSTT",
+        "CommandCache",
+        "PredictiveCommander",
+        "UltraLowLatencyPipeline",
+        "LatencyProfile",
+        "PipelineStage",
+        "create_ultra_low_latency_pipeline",
+    ],
 }
 
 # 타입 체커용 (실제 import는 런타임에만)
@@ -167,6 +186,16 @@ if TYPE_CHECKING:
         NLULearningPipeline,
         LearningVoiceIntentParser,
         create_nlu_learning_pipeline,
+    )
+    from voice.ultra_low_latency import (
+        StreamingVAD,
+        FastWhisperSTT,
+        CommandCache,
+        PredictiveCommander,
+        UltraLowLatencyPipeline,
+        LatencyProfile,
+        PipelineStage,
+        create_ultra_low_latency_pipeline,
     )
 
 
