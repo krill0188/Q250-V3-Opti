@@ -5,6 +5,7 @@ DroneAudioDataset 오디오 분류 모델 학습
 - Multiclass: unknown, bebop_1, membo_1
 - Input: MFCC (40차원, 157 timesteps)
 - Architecture: CNN + LSTM
+- Class imbalance handling: Class weights + Focal Loss
 """
 
 import os
@@ -13,8 +14,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader, TensorDataset
+from torch.utils.data import Dataset, DataLoader
 from sklearn.metrics import accuracy_score, f1_score, classification_report
+from sklearn.utils.class_weight import compute_class_weight
 import argparse
 from pathlib import Path
 
@@ -24,7 +26,7 @@ class AudioDataset(Dataset):
         """NPZ 파일에서 특징과 라벨 로드"""
         data = np.load(features_path)
         self.features = data["features"]  # (N, 6280) = (N, 157*40) - flattened
-        self.labels = data["labels"]  # (N,)
+        self.labels = data["labels"]      # (N,)
 
         # Flatten된 (N, 6280) -> (N, 157, 40) -> (N, 1, 157, 40) for CNN
         self.features = self.features.astype(np.float32)
@@ -100,6 +102,33 @@ class AudioCNNLSTM(nn.Module):
         # Classification
         x = self.classifier(x)
         return x
+
+
+class FocalLoss(nn.Module):
+    """Focal Loss for addressing class imbalance"""
+    def __init__(self, alpha=None, gamma=2.0, reduction='mean'):
+        super().__init__()
+        self.alpha = alpha  # 클래스별 가중치 (Tensor)
+        self.gamma = gamma  # focusing parameter
+        self.reduction = reduction
+
+    def forward(self, inputs, targets):
+        ce_loss = nn.functional.cross_entropy(inputs, targets, weight=self.alpha, reduction='none')
+        pt = torch.exp(-ce_loss)
+        focal_loss = (1 - pt) ** self.gamma * ce_loss
+        
+        if self.reduction == 'mean':
+            return focal_loss.mean()
+        elif self.reduction == 'sum':
+            return focal_loss.sum()
+        return focal_loss
+
+
+def compute_class_weights(labels, num_classes):
+    """클래스별 가중치 계산 (inverse frequency)"""
+    classes = np.arange(num_classes)
+    weights = compute_class_weight('balanced', classes=classes, y=labels)
+    return torch.tensor(weights, dtype=torch.float32)
 
 
 def train_epoch(model, loader, criterion, optimizer, device):
@@ -178,10 +207,14 @@ def main():
         "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
     parser.add_argument("--save_dir", type=str, default="./checkpoints")
+    parser.add_argument("--loss", type=str, choices=["ce", "focal", "weighted_ce"], default="weighted_ce",
+                        help="Loss function: ce (CrossEntropy), focal (FocalLoss), weighted_ce (Class weighted CE)")
+    parser.add_argument("--gamma", type=float, default=2.0, help="Focal loss gamma")
     args = parser.parse_args()
 
     device = torch.device(args.device)
     print(f"Using device: {device}")
+    print(f"Loss function: {args.loss}")
 
     # 데이터 경로 설정
     task_dir = Path(args.data) / args.task
@@ -201,21 +234,35 @@ def main():
     test_dataset = AudioDataset(str(test_features))
 
     train_loader = DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4
+        train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0
     )
     val_loader = DataLoader(
-        val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4
+        val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0
     )
     test_loader = DataLoader(
-        test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4
+        test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0
     )
 
     # 모델 생성
     model = AudioCNNLSTM(num_classes=num_classes).to(device)
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 
-    # 손실 함수 및 옵티마이저
-    criterion = nn.CrossEntropyLoss()
+    # Class weights 계산 (train set 기준)
+    train_labels = train_dataset.labels
+    class_weights = compute_class_weights(train_labels, num_classes).to(device)
+    print(f"Class weights: {class_weights}")
+
+    # 손실 함수 설정
+    if args.loss == "focal":
+        criterion = FocalLoss(alpha=class_weights, gamma=args.gamma)
+        print(f"Using Focal Loss (gamma={args.gamma}) with class weights")
+    elif args.loss == "weighted_ce":
+        criterion = nn.CrossEntropyLoss(weight=class_weights)
+        print(f"Using CrossEntropyLoss with class weights")
+    else:
+        criterion = nn.CrossEntropyLoss()
+        print(f"Using standard CrossEntropyLoss")
+
     optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
@@ -255,6 +302,7 @@ def main():
                     "val_acc": val_acc,
                     "num_classes": num_classes,
                     "task": args.task,
+                    "loss_type": args.loss,
                 },
                 save_dir / "best_model.pth",
             )
@@ -279,7 +327,7 @@ def main():
         target_names = ["unknown", "yes_drone"]
     else:
         target_names = ["unknown", "bebop_1", "membo_1"]
-    print(classification_report(test_labels, test_preds, target_names=target_names))
+    print(classification_report(test_labels, test_preds, target_names=target_names, zero_division=0))
 
     # ONNX 내보내기 (배포용)
     dummy_input = torch.randn(1, 1, 157, 40).to(device)
