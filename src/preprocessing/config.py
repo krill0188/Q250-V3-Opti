@@ -173,4 +173,16 @@ DATASET_CONFIGS = {
         column_mapping={},
         max_gap_sec=0.0,
     ),
+    "drone_audio": DatasetConfig(
+        name="drone_audio",
+        raw_data_path=Path(
+            "~/projectm/drone_datasets/04_special_direct/ew_acoustic_air2air/DroneAudioDataset"
+        ).expanduser(),
+        processed_path=Path("~/data/drone_datasets/processed/drone_audio").expanduser(),
+        coordinate_frame=CoordinateFrame.BODY,
+        native_freq_hz=16000.0,
+        sensors=["audio_binary", "audio_multiclass"],
+        column_mapping={},
+        max_gap_sec=0.0,
+    ),
 }

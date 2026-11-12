@@ -170,9 +170,11 @@ class StratifiedSplitter(SplitStrategy):
 
         from sklearn.model_selection import StratifiedShuffleSplit
 
-        # 라벨 추출
+        # 라벨 추출 (정수로 변환)
         label_sensor = multi_sensor.sensors[multi_sensor.reference_sensor]
-        labels = label_sensor.data[:, label_sensor.columns.index(self.label_column)]
+        labels = label_sensor.data[
+            :, label_sensor.columns.index(self.label_column)
+        ].astype(int)
 
         sss = StratifiedShuffleSplit(
             n_splits=1,
@@ -189,6 +191,9 @@ class StratifiedSplitter(SplitStrategy):
             n_splits=1, test_size=val_ratio, random_state=self.random_state
         )
         val_idx, test_idx = next(sss2.split(temp_idx, labels[temp_idx]))
+        # temp_idx 기준 상대 인덱스를 원래 인덱스로 변환
+        val_idx = temp_idx[val_idx]
+        test_idx = temp_idx[test_idx]
 
         splits = {}
         for split_name, indices in [
@@ -212,6 +217,12 @@ class StratifiedSplitter(SplitStrategy):
                 reference_sensor=multi_sensor.reference_sensor,
                 synchronized=multi_sensor.synchronized,
                 metadata=multi_sensor.metadata.copy(),
+            )
+            # Debug: print label distribution
+            label_col_idx = sensors[name].columns.index(self.label_column)
+            split_labels = sensors[name].data[:, label_col_idx]
+            print(
+                f"  [DEBUG] {split_name.value}: {len(sensors[name])} samples, labels: {np.bincount(split_labels.astype(int))}"
             )
 
         return splits
