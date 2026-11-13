@@ -5,6 +5,8 @@
 ```
 Q250-V3-Opti/
 ├── README.md                    # 이 파일
+├── .specs/
+│   └── tasks.md                 # SpecKit 작업 명세 (Phase 1~8)
 ├── docs/                        # 문서 (마크다운 + 완성본)
 │   ├── manual-draft.md          # 초안 (마크다운)
 │   ├── manual-final.docx        # 완성본 (워드, 그림 포함)
@@ -14,137 +16,99 @@ Q250-V3-Opti/
 │   ├── px4/                     # PX4 파라미터 파일
 │   ├── jetson/                  # Jetson 설정 파일
 │   ├── network/                 # 네트워크 설정
-│   └── ros2/                    # ROS 2 설정
+│   ├── ros2/                    # ROS 2 설정
+│   └── silvus/                  # Silvus 설정
 ├── scripts/                     # 자동화 스크립트
 │   ├── setup/                   # 설치 스크립트
 │   ├── preflight/               # 비행 전 체크
 │   ├── inflight/                # 비행 중 모니터링
 │   └── postflight/              # 비행 후 처리
-├── ros2_ws/                     # ROS 2 워크스페이스 소스
-│   └── src/
-├── px4_params/                  # PX4 파라미터 백업/버전관리
-├── flight_logs/                 # 비행 로그 아카이브
+├── src/                         # 소스 코드
+│   ├── bridge/                  # MAVSDK + MAVROS2 듀얼 브릿지
+│   ├── collision_avoidance/     # APF+VO 충돌 회피 모듈
+│   ├── deception/               # 기만 엔진
+│   ├── deployment/              # TensorRT 배포
+│   ├── nongps/                  # Non-GPS 내비게이션
+│   ├── safety/                  # 위험 분석/안전 게이트
+│   ├── swarm/                   # Silvus + IQP + 재최적화
+│   ├── training/                # 모델 학습
+│   └── voice/                   # 음성 파이프라인
+├── generated/                   # 자동 생성 코드
+│   └── mavlink/                 # MAVLink Python/C++ 바인딩
+├── q250_msgs/                   # 커스텀 MAVLink 메시지
+├── q250_msgs/voice_control.xml  # MAVLink 메시지 정의
+├── ros2_ws/                     # ROS 2 워크스페이스
+├── px4_params/                  # PX4 파라미터
+├── flight_logs/                 # 비행 로그
 ├── simulation/                  # 시뮬레이션 환경
-└── references/                  # 참조 자료 링크/아카이브
+├── Dockerfile                   # 개발 환경 이미지
+├── docker-compose.yml           # 멀티 컨테이너 오케스트레이션
+├── docker-entrypoint.sh         # 컨테이너 진입점
+├── check_env_q250.sh            # 환경 검증
+├── package_datasets_for_transfer.sh  # 데이터셋 패키징
+├── .github/workflows/ci.yml     # GitHub Actions CI
+└── references/                  # 참조 자료
 ```
 
-## 🎯 문서 작성 순서 (HW → SW 설치 → SW 설정 → SW 운용 융합)
+## 🎯 프로젝트 개요
 
-### 1단계: 하드웨어 설정 (HW Setup)
-- 기체 조립 및 점검
-- FC 포트맵 및 배선
-- 컴패니언 컴퓨터 장착 및 전원
-- RC 수신기 연결
-- 네트워크 토폴로지 구성
+**Q250-V3 Opti**는 재난 대응 및 군사 작전을 위한 자율비행 드론 시스템입니다. 음성 제어, Non-GPS 내비게이션, 다이브 어택, 기만 엔진, 실시간 통신 최적화, 안전 게이트, **실시간 충돌 회피(APF+VO)**를 통합한 완전 자율 비행 시스템입니다.
 
-### 2단계: 소프트웨어 설치 (SW Installation)
-- PX4 펌웨어 빌드/플래싱
-- Jetson OS (JetPack) 설치
-- ROS 2 Humble 설치
-- QGroundControl 설치
-- 필수 드라이버/라이브러리
+### 핵심 특징
+- 🎤 **음성 제어**: faster-whisper + Silero VAD 실시간 한국어 인식
+- 🛰️ **Non-GPS 내비게이션**: VIO, Optical Flow, LiDAR, EKF2 융합
+- 🎯 **다이브 어택**: MPC/LUT/기하학적 궤적 + 실시간 충돌 회피(APF+VO)
+- 🎭 **기만 엔진**: 위협 평가 + 자동 패턴 선택 + 효과 모델링
+- 📡 **Silvus MANET + IQP 최적화**: 실시간 링크 품질 기반 주파수 재할당
+- 🛡️ **안전 게이트**: LLM 위험 분석 + 위험 인식 중재자 + 비상 핸들러
+- 🛑 **실시간 충돌 회피(APF+VO)**: 실시간 장애물/타 UAV 회피 (5ms 루프)
 
-### 3단계: 소프트웨어 설정 (SW Configuration)
-- PX4 파라미터 설정 (QGC)
-- MAVLink Router 설정
-- uXRCE-DDS Agent 설정
-- ROS 2 워크스페이스 빌드
-- 네트워크/방화벽/보안 설정
+---
 
-### 4단계: 운용 융합 (Operation Integration)
-- 비행 전 체크리스트
-- 비행 모드별 운용 절차
-- 비상 절차
-- 로그 분석 및 튜닝
-- 군집비행 확장
+## 📋 Phase 개요 (Phase 1~8)
+
+| Phase | 작업 수 | 기간 | 핵심 내용 |
+|-------|---------|------|-----------|
+| **Phase 1** | 10 | 2주 | 인프라 (ROS2, MAVLink, Docker, CI/CD) |
+| **Phase 2** | 10 | 3주 | 음성인식 (faster-whisper + VAD) |
+| **Phase 3** | 10 | 4주 | Non-GPS 융합 (VIO, Optical Flow, EKF2) |
+| **Phase 4** | 7 | 3주 | 다이브 어택 (MPC, 기만 패턴, 풀업) |
+| **Phase 5** | 13 | 4주 | 기만 엔진 + Silvus 통신 백본 |
+| **Phase 6** | 8 | 2주 | 위험 분석 + 안전 게이트 |
+| **Phase 7** | 15 | 3주 | 통합/검증 (SITL, 실외 비행) |
+| **Phase 8** | 6 | 3주 | **충돌 회피 (APF+VO)** |
+
+**총계: 79개 작업, 약 24주 (병렬화 시 ~19주)**
 
 ---
 
 ## 🚀 빠른 시작
 
 ```bash
-# 1. 저장소 클론 (이 폴더에서 작업)
+# 1. 저장소 클론
 cd /Users/amaster/projectm/Q250-V3-Opti
 
-# 2. 설치 스크립트 실행 (순서대로)
+# 2. Docker 개발 환경 실행
+docker compose build q250-dev
+docker compose up -d q250-dev
+docker exec -it q250-dev bash
+
+# 3. 환경 검증
+bash check_env_q250.sh
+
+# 4. 설치 스크립트 실행 (컨테이너 내부)
 ./scripts/setup/01_jetson_base.sh
 ./scripts/setup/02_ros2_humble.sh
 ./scripts/setup/03_px4_firmware.sh
 ./scripts/setup/04_mavlink_router.sh
 ./scripts/setup/05_uxrce_dds_agent.sh
-
-# 3. 설정 적용
 ./scripts/setup/apply_configs.sh
 
-# 4. 비행 전 체크
+# 5. 비행 전 체크
 ./scripts/preflight/check_all.sh
 ```
 
 ---
-
-## 📋 문서 버전 관리
-
-| 버전 | 날짜 | 작성자 | 주요 변경사항 |
-|------|------|--------|---------------|
-| 0.1 (초안) | 2026-11-02 | Hermes Agent | 전체 구조 및 내용 초안 작성 |
-| 1.0 (완성) | - | - | 그림/사진/개념도 포함 완성본 |
-
----
-
-## 🔗 핵심 참조 링크
-
-- **Q250-V3 Opti 공식**: https://quad-drone-lab.gitbook.io/quad-drone-start/q250/q250-v3-opti
-- **PX4 공식 문서**: https://docs.px4.io/main/en/
-- **ROS 2 PX4 가이드**: https://docs.px4.io/main/en/ros2/user_guide
-- **쿼드 드론연구소**: https://quad-drone-lab.co.kr/
-
----
-
-## 📄 완성본 생성 방법 (manual-final.docx)
-
-### 필요 도구 설치
-```bash
-# Python 패키지
-pip install python-docx markdown2 beautifulsoup4 pillow
-
-# Mermaid CLI (다이어그램 렌더링용)
-npm install -g @mermaid-js/mermaid-cli
-
-# 또는 Docker 사용
-docker run --rm -v $(pwd)/docs/diagrams:/data -v $(pwd)/docs/images:/output minlag/mermaid-cli -i /data/*.mmd -o /output
-```
-
-### 변환 실행
-```bash
-cd /Users/amaster/projectm/Q250-V3-Opti
-python3 scripts/convert_to_docx.py
-```
-
-### 수동 변환 대안 (Pandoc)
-```bash
-# Pandoc 설치 후
-pandoc docs/manual-draft.md -o docs/manual-final.docx \
-    --from markdown+mermaid \
-    --to docx \
-    --resource-path=docs/images \
-    --pdf-engine=weasyprint
-```
-
-### 이미지/다이어그램 추가 가이드
-1. `docs/images/` 폴더에 실제 기체 사진 배치:
-   - `q250-v3-opti-top.jpg` (기체 상단 뷰)
-   - `q250-v3-opti-side.jpg` (측면 뷰)
-   - `pixhawk6c-mini-ports.jpg` (FC 포트 클로즈업)
-   - `jetson-nano-mount.jpg` (Jetson 장착)
-   - `wiring-t2-telem2.jpg` (TELEM2 배선)
-   - `wiring-uart4-oflidar.jpg` (Optical-Flow/LiDAR 배선)
-   - `rc-receiver-connection.jpg` (RC 수신기 연결)
-   - `battery-ubec-mount.jpg` (배터리/UBEC 마운트)
-
-2. Mermaid 다이어그램 자동 렌더링 시 `docs/images/`에 PNG 생성됨
-
-3. 초안의 `[[IMAGE:...]]` 플레이스홀더가 실제 이미지로 치환됨
-
 
 ## 📡 실버스(StreamCaster) 데이터링크 통합
 
@@ -154,6 +118,7 @@ pandoc docs/manual-draft.md -o docs/manual-final.docx \
 - **웨이브폼**: **MN-MIMO** (군용급 MANET, TDMA/OFDMA, AES-256)
 
 ### 핵심 성능
+
 | 지표 | 값 |
 |------|-----|
 | 단일 홉 처리량 | 80~120 Mbps |
@@ -163,16 +128,152 @@ pandoc docs/manual-draft.md -o docs/manual-final.docx \
 | 암호화 | AES-256 + TRANSEC |
 
 ### 관련 파일
-- `config/mavlink-router/main_silvus.conf` — MAVLink 라우팅 설정
+- `config/silvus/silvus.yaml` — Silvus 설정
+- `config/mavlink-router/main_silvus.conf` — MAVLink 라우팅
 - `config/jetson/fastdds_silvus_config.xml` — ROS2 DDS 설정
 - `scripts/silvus_monitor.py` — 링크 상태 모니터링 ROS2 노드
-- `config/silvus_checklist.md` — 초기 설정 체크리스트
 
-### 빠른 시작
+---
+
+## 🛑 실시간 충돌 회피 (APF+VO) - Phase 8
+
+### 핵심 개념
+- **APF (Artificial Potential Field)**: 목표 인력 + 장애물 척력 → 선호 속도 생성
+- **VO (Velocity Obstacle)**: 충돌 유발 속도 공간 식별 → 안전 후보 필터링
+- **하이브리드 선택**: 선호 속도와 가장 가까운 안전 속도 선택
+
+### 핵심 성능
+| 지표 | 목표 |
+|------|------|
+| 연산 주기 | ≤ 5ms (200Hz) |
+| VO 구성 시간 | < 1ms (이웃 10개) |
+| 후보 필터링 | < 2ms (후보 50개) |
+| 최종 선택 | < 0.5ms |
+| **전체 루프** | **< 5ms** (200Hz) |
+
+### 주요 파일
+- `src/collision_avoidance/apf_vo_core.py` — 핵심 엔진
+- `src/collision_avoidance/velocity_obstacle.py` — VO 계산
+- `src/collision_avoidance/heterogeneous_params.py` — 이기종 파라미터
+- `src/dive/apf_vo_integration.py` — 다이브 어택 연동
+- `src/swarm/formation_apf_vo.py` — 편대 비행 연동
+- `src/safety/collision_safety_gate.py` — 안전 게이트 연동
+- `tests/test_apf_vo_sitl.py` — SITL 검증
+
+---
+
+## 📡 MAVLink 커스텀 메시지 (8종)
+
+| ID | 메시지 | 방향 | 설명 |
+|----|--------|------|------|
+| 30000 | VOICE_COMMAND | GCS → Drone | 음성 명령 (TAKEOFF, LAND, GOTO 등) |
+| 30001 | VOICE_STATUS | Drone → GCS | 음성 시스템 상태 |
+| 30002 | VOICE_FEEDBACK | Drone → GCS | 명령 실행 피드백 |
+| 30003 | VOICE_WAYPOINT | GCS ↔ Drone | 음성 정의 웨이포인트 |
+| 30004 | VOICE_EMERGENCY | GCS → Drone | 긴급 명령 |
+| **30010** | **SILVUS_LINK_STATUS** | **Drone → GCS** | **링크 품질 (SNR, PER, ETX 등)** |
+| **30011** | **SILVUS_REOPT_STATUS** | **Drone → GCS** | **재최적화 상태** |
+| **30012** | **SILVUS_CHANNEL_CMD** | **GCS → Drone** | **채널 변경 명령** |
+
+생성된 코드: `generated/mavlink/python.py`, `generated/mavlink/cpp/voice_control/`
+
+---
+
+## 🔧 개발 환경
+
 ```bash
-# 1. 펌웨어 통일 (5대 모두 동일 버전)
-# 2. 웹 UI에서 주파수/파워/암호화 키 설정
-# 3. 벤치 테스트: 5대 연결 → 웹 UI 토폴로지 확인
-# 4. 기체 1대 통합 → MAVLink/ROS2 트래픽 검증
-# 5. 실내 비행 테스트 → 2~4대 순차 확장
+# Docker 개발 환경
+docker compose build q250-dev
+docker compose up -d q250-dev
+docker exec -it q250-dev bash
+
+# 환경 검증
+bash check_env_q250.sh
+
+# 유용한 별칭 (컨테이너 내부)
+colcon-build      # 전체 빌드
+colcon-test       # 테스트 실행
+pytest-voice      # 음성 파이프라인 테스트
+pytest-bridge     # 브릿지 테스트
+bridge-test       # 브릿지 구조 검증
+asr-test          # 실시간 ASR 테스트
+mavlink-check     # 커스텀 메시지 확인
 ```
+
+---
+
+## 📋 작업 현황 (SpecKit Phase 1~8)
+
+| Phase | 작업 수 | 상태 | 비고 |
+|-------|---------|------|------|
+| Phase 1: 인프라 | 10 | ✅ 완료 | Docker, CI/CD, MAVLink, 브릿지 |
+| Phase 2: 음성 | 10 | ✅ 완료 | faster-whisper + VAD 검증됨 |
+| Phase 3: Non-GPS | 10 | 🔄 설계 완료 | MASt3R-SLAM 후보 추가 |
+| Phase 4: 다이브 | 7 | 🔄 설계 완료 | MPC, 기만 패턴, 풀업 |
+| Phase 5: 기만+통신 | 13 | 🔄 설계 완료 | Silvus + IQP + 재최적화 |
+| Phase 6: 안전 | 8 | 🔄 설계 완료 | LLM 위험 분석 + 중재자 |
+| Phase 7: 통합 | 15 | 🔄 설계 완료 | SITL, 실외 비행 |
+| **Phase 8: 충돌 회피** | **6** | **🔄 설계 완료** | **APF+VO** |
+
+---
+
+## 📦 데이터셋 패키징 (타겟 PC 전송용)
+
+```bash
+# Mac에서 패키징
+./package_datasets_for_transfer.sh ~/q250_transfer_package
+
+# 생성 파일
+q250_datasets_YYYYMMDD_HHMMSS.tar.gz      (289MB)
+q250_datasets_YYYYMMDD_HHMMSS.tar.gz.sha256
+
+# 포함 데이터셋
+- drone_audio (processed) — 132MB (Binary/Multiclass)
+- uzh_fpv (processed) — 1.2MB (IMU+Images+GT)
+- idf_ds (processed) — 87MB
+- fixed_wing_attitude — 68MB
+- ign_fixed_wing — 68KB
+- checkpoints — 20MB (Binary/Multiclass best_model.pth)
+
+# 제외 (용량 과다)
+- fpv_analog (processed) — 55GB (별도 전송 필요)
+```
+
+### 타겟 PC(WSL2)에서 복원
+```bash
+cd ~/data/drone_datasets/
+tar -xzf q250_datasets_*.tar.gz
+sha256sum -c *.sha256
+```
+
+---
+
+## 🚀 릴리즈 정보
+
+### v0.4.0 (2026-11-13)
+- **Phase 1-2 완료**: 인프라, 음성 파이프라인
+- **Phase 3-5 설계 완료**: Non-GPS, 다이브, 기만+통신
+- **Phase 8 추가**: APF+VO 충돌 회피 모듈
+
+### GitHub Release
+- Tag: `v0.4.0`
+- URL: https://github.com/krill0188/Q250-V3-Opti/releases/tag/v0.4.0
+
+---
+
+## 📚 참고 자료
+
+- **Q250-V3 Opti 공식**: https://quad-drone-lab.gitbook.io/quad-drone-start/q250/q250-v3-opti
+- **PX4 공식 문서**: https://docs.px4.io/main/en/
+- **ROS 2 PX4 가이드**: https://docs.px4.io/main/en/ros2/user_guide
+- **쿼드 드론연구소**: https://quad-drone-lab.co.kr/
+- **SpecKit 명세**: `.specs/tasks.md` (Phase 1~8, T-01~T-106)
+
+---
+
+## 📄 라이선스
+이 프로젝트는 쿼드 드론연구소 내부 프로젝트입니다. 무단 배포를 금합니다.
+
+---
+
+*Last updated: 2026-11-13 | Q250-V3-Opti Team*

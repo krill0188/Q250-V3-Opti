@@ -63,5 +63,51 @@
     <field type="uint8_t" name="source">0=VOICE, 1=BUTTON, 2=AUTO</field>
   </message>
 
+  <!-- Silvus 링크 상태 메시지 (Drone → GCS) -->
+  <message id="30010" name="SILVUS_LINK_STATUS">
+    <description>Silvus radio link status from drone to GCS</description>
+    <field type="uint32_t" name="timestamp_ms">Timestamp in milliseconds since boot</field>
+    <field type="uint8_t" name="radio_id">Radio ID (0-255)</field>
+    <field type="uint8_t" name="neighbor_count">Number of active neighbors</field>
+    <field type="float[8]" name="snr_db_array">SNR per neighbor (dB)</field>
+    <field type="float[8]" name="per_array">Packet Error Rate per neighbor</field>
+    <field type="float[8]" name="rssi_dbm_array">RSSI per neighbor (dBm)</field>
+    <field type="uint16_t[8]" name="etx_array">ETX per neighbor (x100)</field>
+    <field type="uint8_t[8]" name="hop_count_array">Hop count per neighbor</field>
+    <field type="uint16_t[8]" name="channel_mhz_array">Channel per neighbor (MHz)</field>
+    <field type="float" name="cpu_usage">CPU usage percentage</field>
+    <field type="float" name="temperature_c">Temperature (Celsius)</field>
+    <field type="uint32_t" name="uptime_sec">Uptime in seconds</field>
+  </message>
+
+  <!-- Silvus 재최적화 상태 메시지 (Drone → GCS) -->
+  <message id="30011" name="SILVUS_REOPT_STATUS">
+    <description>Silvus reoptimization status from drone to GCS</description>
+    <field type="uint32_t" name="timestamp_ms">Timestamp in milliseconds since boot</field>
+    <field type="uint16_t" name="cycle_id">Reoptimization cycle ID</field>
+    <field type="uint8_t" name="status">0=SUCCESS, 1=ROLLED_BACK, 2=DEGRADED, 3=FAILED</field>
+    <field type="uint8_t" name="trigger_type">0=PER_HIGH, 1=SNR_LOW, 2=ETX_HIGH, 3=HOP_INCREASE, 4=LINK_LOST, 5=MANUAL, 6=PERIODIC</field>
+    <field type="uint8_t" name="trigger_source_id">Trigger source radio ID</field>
+    <field type="float" name="prev_objective">Previous objective value</field>
+    <field type="float" name="new_objective">New objective value</field>
+    <field type="uint32_t" name="solve_time_ms">Solve time in milliseconds</field>
+    <field type="uint8_t" name="freq_changes_count">Number of frequency changes</field>
+    <field type="uint16_t[8]" name="old_freq_mhz">Old frequencies (MHz)</field>
+    <field type="uint16_t[8]" name="new_freq_mhz">New frequencies (MHz)</field>
+  </message>
+
+  <!-- Silvus 채널 변경 명령 메시지 (GCS → Drone) -->
+  <message id="30012" name="SILVUS_CHANNEL_CMD">
+    <description>Silvus channel change command from GCS to drone</description>
+    <field type="uint32_t" name="timestamp_ms">Timestamp in milliseconds since boot</field>
+    <field type="uint8_t" name="target_radio_id">Target radio ID (0=broadcast all)</field>
+    <field type="uint16_t" name="channel_mhz">Channel frequency (MHz)</field>
+    <field type="uint8_t" name="bandwidth_mhz">Bandwidth (MHz)</field>
+    <field type="uint8_t" name="tx_power_dbm">TX power (dBm)</field>
+    <field type="uint8_t" name="priority">Priority: 0=normal, 1=high, 2=emergency</field>
+    <field type="uint32_t" name="valid_from_ms">Valid from timestamp (ms)</field>
+    <field type="uint32_t" name="valid_until_ms">Valid until timestamp (ms, 0=indefinite)</field>
+  </message>
+
   </messages>
 </mavlink>

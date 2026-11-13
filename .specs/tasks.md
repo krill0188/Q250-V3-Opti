@@ -21,10 +21,13 @@
 - **예상**: 1일
 
 ### T-02: MAVLink 커스텀 메시지 생성 (mavgen)
-- **설명**: XML 정의 → C/Python 헤더 생성 (메시지 ID 30000-30004)
+- **설명**: XML 정의 → C/Python 헤더 생성 (메시지 ID 30000-30004, 30010-30012)
 - **산출물**: `mavlink/q250_custom.xml`, 생성된 헤더
 - **의존성**: T-01
-- **DoD**: `mavgen.py` 실행 성공, PX4/MAVROS2에서 메시지 인식
+- **DoD**: 
+  - `mavgen.py` 실행 성공, PX4/MAVROS2에서 메시지 인식
+  - 음성 제어 메시지 5종 (ID 30000-30004)
+  - Silvus 연동 메시지 3종 (ID 30010-30012): LINK_STATUS, REOPT_STATUS, CHANNEL_CMD
 - **예상**: 1일
 
 ### T-03: PX4 EKF2 외부 측정 인터페이스 검증
@@ -35,13 +38,14 @@
 - **예상**: 2일
 
 ### T-04: MAVSDK + MAVROS2 듀얼 브릿지 구축
-- **설명**: MAVSDK(미션) + MAVROS2(속도제어) 동시 실행 브릿지
-- **산출물**: `bridge/mavsdk_bridge.py`, `bridge/mavros2_bridge.py`, `bridge/coordinator.py`
+- **설명**: MAVSDK(미션) + MAVROS2(속도제어) 동시 실행 브릿지 + Silvus gRPC/REST 프록시
+- **산출물**: `bridge/mavsdk_bridge.py`, `bridge/mavros2_bridge.py`, `bridge/coordinator.py`, `bridge/silvus_proxy.py`
 - **의존성**: T-02, T-03
 - **DoD**: 
   - MAVSDK: ARM/TAKEOFF/LAND/미션 업로드 작동
   - MAVROS2: `/mavros/setpoint_velocity/cmd_vel` 20Hz 제어 작동
   - 코디네이터: 선점/해제 로직 동작 (수동 > 음성 > 미션)
+  - Silvus gRPC/REST 프록시: 링크 품질 수집, 채널 변경 명령 전달
 - **예상**: 3일
 
 ### T-05: Gazebo SITL 환경 구성 (PX4 + 하이브리드 기체)
@@ -189,14 +193,18 @@
 
 ## Phase 3: Non-GPS 융합 (T-21 ~ T-40)
 
-### T-21: VIO 파이프라인 선택 (ORB-SLAM3 vs OpenVINS)
-- **설명**: ORB-SLAM3 vs OpenVINS 비교 평가 + 선택
-- **산출물**: `nongps/vio/orb_slam3_wrapper.py` 또는 `openvins_wrapper.py`
+### T-21: VIO 파이프라인 선택 (ORB-SLAM3 vs OpenVINS vs MASt3R-SLAM)
+- **설명**: ORB-SLAM3 vs OpenVINS vs **MASt3R-SLAM** 3파전 비교 평가 + 선택
+- **산출물**: `nongps/vio/orb_slam3_wrapper.py` 또는 `openvins_wrapper.py` 또는 `mast3r_slam_wrapper.py`
 - **의존성**: T-05, T-06
-- **DoD**: 
+- **DoD**:
   - 실내/실외에서 위치 추적 드리프트 < 1% 거리
   - 루프 클로저 작동 확인
   - 실시간 30fps 처리
+  - **단일 카메라 지원 여부**
+  - **IMU 융합 용이성 (별도 레이어 필요성 평가)**
+  - **불확도/공분산 출력 지원 여부 (EKF2 주입용)**
+  - **Jetson Orin Nano 배포 가능성 (INT8 양자화)**
 - **예상**: 3일
 
 ### T-22: VIO 파이프라인 구현 (선택된 것)
@@ -231,13 +239,14 @@
 - **예상**: 2일
 
 ### T-25: EKF2 외부 측정 인터페이스 구현
-- **설명**: PX4 EKF2에 VIO/Optical Flow/LiDAR 측정값 주입
+- **설명**: PX4 EKF2에 VIO/Optical Flow/LiDAR/Silvus OLSR 측정값 주입
 - **산출물**: `nongps/fusion/ekf2_interface.py`, `external_measurement.py`
-- **의존성**: T-03, T-22, T-23, T-24
+- **의존성**: T-03, T-22, T-23, T-24, T-71 (Silvus 인터페이스)
 - **DoD**: 
   - `VISION_POSITION_ESTIMATE` (10Hz) 주입 → EKF2 위치 수렴
   - `VISION_SPEED_ESTIMATE` (10Hz) 주입 → EKF2 속도 수렴
   - `DISTANCE_SENSOR` (하향 라이다) → EKF2 고도 보정
+  - Silvus OLSR 상대 위치/링크 품질 → EKF2 보조 측정값 주입
   - 공분산 행렬 적절히 설정 (대각성분 기반)
 - **예상**: 3일
 
@@ -435,17 +444,55 @@
 - **산출물**: `tests/test_deception_regression.py`
 - **예상**: 1일
 
+### T-71: Silvus MANET 백본 연동 (신규)
+- **설명**: Silvus StreamCaster SDK 연동, 실시간 링크 품질 수집, MAVLink 브릿지
+- **산출물**: `swarm/silvus_interface.py`, `swarm/mavlink_bridge.py`, `config/silvus.yaml`
+- **의존성**: T-02, T-04, T-07
+- **DoD**:
+  - Silvus REST/gRPC/SNMP 인터페이스 구현
+  - 실시간 링크 품질 (SNR, PER, ETX, RSSI) 10Hz 수집
+  - MAVLink `SILVUS_LINK_STATUS` (ID 30010) 발행
+  - 주파수/채널 변경 명령 수신 및 Silvus 설정 적용
+  - 4대 Silvus 메쉬 형성 → 이동 중 링크 품질 로깅
+- **예상**: 3일
+
+### T-72: IQP 폐루프 최적화 엔진 (신규)
+- **설명**: Silvus 실측 데이터 주입 → CPLEX/Gurobi 실시간 재최적화
+- **산출물**: `swarm/iqp_optimizer.py`, `swarm/frequency_planner.py`
+- **의존성**: T-71, T-25, T-74 (위험 분석기)
+- **DoD**:
+  - 목적함수: Coverage - λ₁·Interference - λ₂·ETX_Cost
+  - 변수: UAV 위치(이산 그리드), 주파수 채널, 안테나 빔
+  - 제약: 연결성(ETX 기반), 최대 홉 수, 주파수 충돌 방지
+  - CPLEX Python API 연동, 해결 시간 < 5초 (20 UAV)
+  - Silvus 링크 품질 변화 시 증분 재최적화 트리거
+  - 주파수 재할당 → Silvus 채널 변경 API 호출
+- **예상**: 4일
+
+### T-73: 실시간 재최적화 파이프라인 (신규)
+- **설명**: 링크 품질 저하 감지 → IQP 재실행 → Silvus 채널 변경 자동화
+- **산출물**: `swarm/reopt_pipeline.py`, `swarm/trigger_monitor.py`
+- **의존성**: T-71, T-72
+- **DoD**:
+  - 트리거: PER > 0.1, SNR < 10dB, ETX > 3, 홉 수 증가
+  - 증분 최적화 (이전 해 warm-start)
+  - 주파수 변경 완료까지 < 2초
+  - 롤백 메커니즘 (품질 악화 시 이전 채널 복구)
+  - MAVLink `SILVUS_REOPT_STATUS` (ID 30011) 발행
+- **예상**: 2일
+
 ---
 
 ## Phase 6: 위험 분석 + 안전 게이트 (T-71 ~ T-85)
 
-### T-71: Local LLM 위험 분석기 (llama.cpp Function Calling)
+### T-74: Local LLM 위험 분석기 (llama.cpp Function Calling)
 - **산출물**: `safety/risk_analyzer.py`
 - **DoD**: 
-  - 입력: 슬라이딩 윈도우 로그 (배터리/자세/모드/센서)
+  - 입력: 슬라이딩 윈도우 로그 (배터리/자세/모드/센서, **Silvus 링크 품질: SNR, PER, ETX, 홉 수**)
   - 출력: 위험도(CRITICAL/HIGH/MEDIUM/LOW), 카테고리, 권장액션, 자동실행
   - Function Calling 스키마 준수
   - 타임아웃 200ms 내 응답 (폴백 포함)
+  - **Silvus 링크 품질 저하(PER>0.1, SNR<10dB) → 통신 위험도 상승 → 자동 재최적화/RTL 권고**
 - **예상**: 3일
 
 ### T-72: 위험 인식 중재자 (RiskAwareArbitrator)
@@ -503,9 +550,9 @@
 
 ## Phase 7: 통합 및 검증 (T-86 ~ T-100)
 
-### T-86: 전체 시스템 통합 (SITL)
+### T-89: 전체 시스템 통합 (SITL)
 - **산출물**: `tests/test_full_integration_sitl.py`
-- **DoD**: 음성→Non-GPS→다이브→기만→위험분석 전체 파이프라인 SITL 통과
+- **DoD**: 음성→Non-GPS→다이브→기만→위험분석 전체 파이프라인 SITL 통과, **Silvus 4대 + UAV 4대 메쉬 형성 → 음성 명령 배치 → IQP 최적화 → 이동 중 실시간 재최적화 시연**
 - **예상**: 3일
 
 ### T-87: 안전 게이트 종합 테스트
@@ -566,6 +613,56 @@
 
 ---
 
+## Phase 8: 실시간 충돌 회피 모듈 (APF+VO) (T-81 ~ T-86)
+
+### T-81: APF+VO 핵심 엔진 구현
+- **설명**: APF 선호 속도 생성 + VO 필터링 + 안전 후보 선택 엔진
+- **산출물**: `collision_avoidance/apf_vo_core.py`, `collision_avoidance/velocity_obstacle.py`
+- **의존성**: T-03, T-04, T-25
+- **DoD**:
+  - APF: 목표 인력(역제곱) + 장애물 척력(가우시안/역제곱)
+  - VO: 원뿔형 VO 구성 (이종 UAV 반경/속도 반영)
+  - 후보 필터링: VO 외부 + Clearance > 임계값 + TTC > 임계값
+  - 선택: ||V_pref - V_cand|| 최소 + Clearance 가중치 + TTC 가중치
+  - 연산 시간 < 5ms (100Hz 루프 가능)
+- **예상**: 3일
+
+### T-82: 이기종 UAV 지원 확장
+- **설명**: 기체 반경/최대속도/회전반경 이기종 파라미터 반영
+- **산출물**: `collision_avoidance/heterogeneous_params.py`
+- **의존성**: T-81
+- **DoD**: UAV 타입별 파라미터 테이블, VO 크기/형상 동적 조정
+- **예상**: 2일
+
+### T-83: 다이브 어택 연동
+- **설명**: 다이브 어택 궤적에 실시간 충돌 회피 오버레이
+- **산출물**: `dive/apf_vo_integration.py`
+- **의존성**: T-81, T-44
+- **DoD**: 다이브 중 장애물 감지 시 MPC 궤적 + APF+VO 보정 합성, 풀업 시에도 회피 유지
+- **예상**: 2일
+
+### T-84: 스웜 편대 비행 연동
+- **설명**: 편대 유지 인력 + 상호 충돌 회피 VO 통합
+- **산출물**: `swarm/formation_apf_vo.py`
+- **의존성**: T-81, T-65
+- **DoD**: 편대 형상 인력(APF) + 편대원 간 VO(척력) 동시 적용
+- **예상**: 3일
+
+### T-85: 안전 게이트 연동 (T-74 연계)
+- **설명**: 충돌 임박 시 안전 게이트 즉시 개입
+- **산출물**: `safety/collision_safety_gate.py`
+- **의존성**: T-81, T-74
+- **DoD**: TTC < 2s 시 ESTOP/HOLD 자동 발동, 회피 속도 강제 주입
+- **예상**: 2일
+
+### T-86: 실시간 검증 (SITL)
+- **산출물**: `tests/test_apf_vo_sitl.py`
+- **의존성**: T-81, T-05
+- **DoD**: Gazebo에서 동적 장애물 10개 + UAV 4대 실시간 회피 검증
+- **예상**: 3일
+
+---
+
 ## 작업 의존성 그래프 (핵심 경로)
 
 ```
@@ -581,13 +678,13 @@ T-21 → T-22 → T-23 → T-24 → T-25 → T-26 → T-27 → T-28 → T-29 →
 T-41 → T-42 → T-43 → T-44 → T-45 → T-46 → T-47
                                                     │
                                                     ▼
-T-61 → T-62 → T-63 → T-64 → T-65 → T-66 → T-67 → T-68 → T-69 → T-70
+T-61 → T-62 → T-63 → T-64 → T-65 → T-66 → T-67 → T-68 → T-69 → T-73
                                                     │
                                                     ▼
-T-71 → T-72 → T-73 → T-74 → T-75 → T-76 → T-77 → T-78
+T-74 → T-75 → T-76 → T-77 → T-78 → T-79 → T-80 → T-81
                                                     │
                                                     ▼
-T-86 → T-87 → T-88 → T-89 → T-90 → T-91 → T-92 → T-93 → T-94 → T-95 → T-96 → T-97 → T-98 → T-99 → T-100
+T-89 → T-90 → T-91 → T-92 → T-93 → T-94 → T-95 → T-96 → T-97 → T-98 → T-99 → T-100 → T-101 → T-102 → T-103 → T-104 → T-105 → T-106
 ```
 
 ---
@@ -597,9 +694,9 @@ T-86 → T-87 → T-88 → T-89 → T-90 → T-91 → T-92 → T-93 → T-94 →
 | 그룹 | 작업 | 비고 |
 |------|------|------|
 | **Group A** | T-11~T-20 (음성), T-21~T-30 (Non-GPS) | Phase 2, 3 병렬 가능 |
-| **Group B** | T-41~T-47 (다이브), T-61~T-70 (기만) | Phase 4, 5 병렬 가능 |
-| **Group C** | T-71~T-78 (안전), T-41~T-47 (다이브) | 일부 병렬 가능 |
-| **Group D** | T-86~T-100 (통합) | 순차 필수 |
+| **Group B** | T-41~T-47 (다이브), T-61~T-73 (기만+통신) | Phase 4, 5 병렬 가능 |
+| **Group C** | T-74~T-81 (안전+통신), T-41~T-47 (다이브) | 일부 병렬 가능 |
+| **Group D** | T-82~T-86 (충돌 회피), T-89~T-106 (통합) | 일부 병렬 가능 |
 
 ---
 
@@ -611,10 +708,11 @@ T-86 → T-87 → T-88 → T-89 → T-90 → T-91 → T-92 → T-93 → T-94 →
 | Phase 2 | 10 | 3주 | 음성인식 |
 | Phase 3 | 10 | 4주 | Non-GPS 융합 |
 | Phase 4 | 7 | 3주 | 다이브 어택 |
-| Phase 5 | 10 | 3주 | 기만 엔진 |
+| Phase 5 | 13 | 4주 | 기만 엔진 + 통신 백본 |
 | Phase 6 | 8 | 2주 | 위험/안전 |
 | Phase 7 | 15 | 3주 | 통합/검증 |
-| **총계** | **70** | **약 20주** | 병렬화 시 약 16주 |
+| **Phase 8** | **6** | **3주** | **충돌 회피 (APF+VO)** |
+| **총계** | **79** | **약 24주** | 병렬화 시 약 19주 |
 
 ---
 
@@ -625,9 +723,10 @@ T-86 → T-87 → T-88 → T-89 → T-90 → T-91 → T-92 → T-93 → T-94 →
 | M1: 인프라 완료 | Week 2 | T-10 완료, SITL 기본 비행 가능 |
 | M2: 음성 파이프라인 | Week 5 | T-20 완료, SITL 음성 제어 가능 |
 | M3: Non-GPS 융합 | Week 9 | T-30 완료, GPS 없이 자율 비행 가능 |
-| M4: 다이브/기만 | Week 12 | T-47, T-70 완료, SITL 다이브+기만 시연 |
-| M5: 안전 게이트 | Week 14 | T-78 완료, 안전 게이트 종합 테스트 통과 |
-| M5: 통합/릴리즈 | Week 20 | T-100 완료, v1.0 릴리즈 |
+| M4: 다이브/기만/통신 | Week 13 | T-47, T-73 완료, SITL 다이브+기만+재최적화 시연 |
+| M5: 안전 게이트 | Week 15 | T-81 완료, 안전 게이트 종합 테스트 통과 |
+| **M6: 충돌 회피 (APF+VO)** | **Week 18** | **T-86 완료, SITL 실시간 충돌 회피 시연** |
+| M7: 통합/릴리즈 | Week 24 | T-106 완료, v1.0 릴리즈 |
 
 ---
 
@@ -635,10 +734,11 @@ T-86 → T-87 → T-88 → T-89 → T-90 → T-91 → T-92 → T-93 → T-94 →
 
 | 역할 | 인원 | 담당 Phase |
 |------|------|------------|
-| ROS2/MAVLink 엔지니어 | 1 | Phase 1, 3, 4 |
+| ROS2/MAVLink 엔지니어 | 1 | Phase 1, 3, 4, 5 |
 | ML/음성 엔지니어 | 1 | Phase 2 |
 | 컴퓨터비전/센서융합 엔지니어 | 1 | Phase 3 |
 | 제어/궤적 엔지니어 | 1 | Phase 4, 5 |
 | 안전/임베디드 엔지니어 | 1 | Phase 6 |
+| **충돌 회피/제어 엔지니어 (신규)** | **1** | **Phase 8 (APF+VO)** |
 | 통합/테스트 엔지니어 | 1 | Phase 7 |
-| **총계** | **6명** | **병렬 최적화 시 16주** |
+| **총계** | **7명** | **병렬 최적화 시 19주** |

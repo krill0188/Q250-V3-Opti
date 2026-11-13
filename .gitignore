@@ -88,3 +88,4 @@ flight_logs/
 # OS
 ehthumbs.db
 Desktop.ini
+venv_py39/
