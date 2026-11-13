@@ -1,0 +1,23 @@
+# Q250-V3-Opti Bridge Dependencies
+# Target PC (WSL2 Ubuntu 22.04) 용
+
+# MAVSDK - 고수준 미션/오프보드 제어
+mavsdk==1.0.0
+
+# MAVROS2 - ROS2 토픽/서비스 통신 (ROS 2 Humble에서 apt로 설치)
+# ros-humble-mavros
+# ros-humble-mavros-msgs
+# ros-humble-mavros-extras
+
+# Python ROS2 (이미 ROS2에 포함)
+# rclpy
+# geometry_msgs
+# sensor_msgs
+# std_msgs
+# tf-transformations (pip install tf-transformations)
+
+# 우리 커스텀 MAVLink 메시지
+# generated/mavlink/python.py (mavgen으로 생성)
+
+# 의존성
+pymavlink>=2.4.50

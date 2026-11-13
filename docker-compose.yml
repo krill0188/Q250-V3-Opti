@@ -1,0 +1,195 @@
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------
+  # 메인 개발 컨테이너 (GPU 지원)
+  # ---------------------------------------------------------
+  q250-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USER_UID: ${UID:-1000}
+        USER_GID: ${GID:-1000}
+    image: q250-v3-opti-dev:latest
+    container_name: q250-dev
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - MAVLINK_DIALECT=voice_control
+      - PYTHONPATH=/workspace
+      - DISPLAY=${DISPLAY:-:0}
+      - QT_X11_NO_MITSHM=1
+    volumes:
+      # 소스 코드 마운트
+      - .:/workspace:cached
+      # X11 포워딩 (GUI 앱용: rviz2, gazebo)
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      # Xauthority
+      - ${XAUTHORITY:-$HOME/.Xauthority}:/home/developer/.Xauthority:rw
+      # SSH 키 (GitHub 접근용)
+      - ${HOME}/.ssh:/home/developer/.ssh:ro
+      # Git 설정
+      - ${HOME}/.gitconfig:/home/developer/.gitconfig:ro
+      # ccache 공유
+      - q250-ccache:/workspace/.ccache
+      # pip 캐시
+      - q250-pip-cache:/home/developer/.cache/pip
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    # 포트 포워딩
+    ports:
+      - "8888:8888"   # Jupyter Lab
+      - "6006:6006"   # TensorBoard
+      - "14540:14540/udp"  # MAVLink UDP
+      - "14550:14550/udp"  # MAVLink UDP (시뮬레이터)
+      - "5760:5760/udp"    # MAVLink UDP (오프보드)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - q250-net
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import torch; assert torch.cuda.is_available()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ---------------------------------------------------------
+  # PX4 SITL + Gazebo (시뮬레이션)
+  # ---------------------------------------------------------
+  px4-sitl:
+    build:
+      context: .
+      dockerfile: Dockerfile.px4
+    image: q250-v3-opti-px4:latest
+    container_name: q250-px4-sitl
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
+      - PX4_SIM_MODEL=q250_v3_opti
+      - PX4_DIR=/workspace/PX4-Autopilot
+      - GZ_SIM_RESOURCE_PATH=/workspace/simulation/models
+      - HEADLESS=1
+      - DISPLAY=${DISPLAY:-:0}
+    volumes:
+      - .:/workspace:cached
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${XAUTHORITY:-$HOME/.Xauthority}:/root/.Xauthority:rw
+    working_dir: /workspace/PX4-Autopilot
+    stdin_open: true
+    tty: true
+    networks:
+      - q250-net
+    depends_on:
+      - q250-dev
+    profiles:
+      - simulation
+
+  # ---------------------------------------------------------
+  # MAVROS2 브릿지 (ROS 2 통신)
+  # ---------------------------------------------------------
+  mavros2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: q250-v3-opti-dev:latest
+    container_name: q250-mavros2
+    runtime: nvidia
+    environment:
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - MAVLINK_DIALECT=voice_control
+    volumes:
+      - .:/workspace:cached
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    working_dir: /workspace
+    command: >
+      bash -c "source /opt/ros/humble/setup.bash &&
+               source /workspace/install/setup.bash 2>/dev/null ||
+               ros2 launch mavros px4.launch fcu_url:=udp://:14540@192.168.1.100:14550"
+    networks:
+      - q250-net
+    depends_on:
+      - q250-dev
+    profiles:
+      - bridge
+
+  # ---------------------------------------------------------
+  # Jupyter Lab (개발용)
+  # ---------------------------------------------------------
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: q250-v3-opti-dev:latest
+    container_name: q250-jupyter
+    runtime: nvidia
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    volumes:
+      - .:/workspace:cached
+    working_dir: /workspace
+    command: >
+      bash -c "pip install jupyterlab ipywidgets -q &&
+               jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=''"
+    ports:
+      - "8888:8888"
+    networks:
+      - q250-net
+    profiles:
+      - dev
+
+  # ---------------------------------------------------------
+  # TensorBoard (학습 모니터링)
+  # ---------------------------------------------------------
+  tensorboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: q250-v3-opti-dev:latest
+    container_name: q250-tensorboard
+    runtime: nvidia
+    volumes:
+      - .:/workspace:cached
+      - q250-tensorboard-logs:/workspace/logs/tensorboard
+    working_dir: /workspace
+    command: >
+      bash -c "tensorboard --logdir=/workspace/logs/tensorboard --host=0.0.0.0 --port=6006"
+    ports:
+      - "6006:6006"
+    networks:
+      - q250-net
+    profiles:
+      - dev
+
+# ---------------------------------------------------------
+# 볼륨 정의
+# ---------------------------------------------------------
+volumes:
+  q250-ccache:
+    driver: local
+  q250-pip-cache:
+    driver: local
+  q250-tensorboard-logs:
+    driver: local
+
+# ---------------------------------------------------------
+# 네트워크
+# ---------------------------------------------------------
+networks:
+  q250-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

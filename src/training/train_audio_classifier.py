@@ -26,7 +26,7 @@ class AudioDataset(Dataset):
         """NPZ 파일에서 특징과 라벨 로드"""
         data = np.load(features_path)
         self.features = data["features"]  # (N, 6280) = (N, 157*40) - flattened
-        self.labels = data["labels"]      # (N,)
+        self.labels = data["labels"]  # (N,)
 
         # Flatten된 (N, 6280) -> (N, 157, 40) -> (N, 1, 157, 40) for CNN
         self.features = self.features.astype(np.float32)
@@ -106,20 +106,23 @@ class AudioCNNLSTM(nn.Module):
 
 class FocalLoss(nn.Module):
     """Focal Loss for addressing class imbalance"""
-    def __init__(self, alpha=None, gamma=2.0, reduction='mean'):
+
+    def __init__(self, alpha=None, gamma=2.0, reduction="mean"):
         super().__init__()
         self.alpha = alpha  # 클래스별 가중치 (Tensor)
         self.gamma = gamma  # focusing parameter
         self.reduction = reduction
 
     def forward(self, inputs, targets):
-        ce_loss = nn.functional.cross_entropy(inputs, targets, weight=self.alpha, reduction='none')
+        ce_loss = nn.functional.cross_entropy(
+            inputs, targets, weight=self.alpha, reduction="none"
+        )
         pt = torch.exp(-ce_loss)
         focal_loss = (1 - pt) ** self.gamma * ce_loss
-        
-        if self.reduction == 'mean':
+
+        if self.reduction == "mean":
             return focal_loss.mean()
-        elif self.reduction == 'sum':
+        elif self.reduction == "sum":
             return focal_loss.sum()
         return focal_loss
 
@@ -127,7 +130,7 @@ class FocalLoss(nn.Module):
 def compute_class_weights(labels, num_classes):
     """클래스별 가중치 계산 (inverse frequency)"""
     classes = np.arange(num_classes)
-    weights = compute_class_weight('balanced', classes=classes, y=labels)
+    weights = compute_class_weight("balanced", classes=classes, y=labels)
     return torch.tensor(weights, dtype=torch.float32)
 
 
@@ -207,8 +210,13 @@ def main():
         "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
     parser.add_argument("--save_dir", type=str, default="./checkpoints")
-    parser.add_argument("--loss", type=str, choices=["ce", "focal", "weighted_ce"], default="weighted_ce",
-                        help="Loss function: ce (CrossEntropy), focal (FocalLoss), weighted_ce (Class weighted CE)")
+    parser.add_argument(
+        "--loss",
+        type=str,
+        choices=["ce", "focal", "weighted_ce"],
+        default="weighted_ce",
+        help="Loss function: ce (CrossEntropy), focal (FocalLoss), weighted_ce (Class weighted CE)",
+    )
     parser.add_argument("--gamma", type=float, default=2.0, help="Focal loss gamma")
     args = parser.parse_args()
 
@@ -327,7 +335,11 @@ def main():
         target_names = ["unknown", "yes_drone"]
     else:
         target_names = ["unknown", "bebop_1", "membo_1"]
-    print(classification_report(test_labels, test_preds, target_names=target_names, zero_division=0))
+    print(
+        classification_report(
+            test_labels, test_preds, target_names=target_names, zero_division=0
+        )
+    )
 
     # ONNX 내보내기 (배포용)
     dummy_input = torch.randn(1, 1, 157, 40).to(device)

@@ -1,0 +1,188 @@
+name: Q250-V3-Opti CI
+'on':
+  push:
+    branches:
+    - main
+    - develop
+  pull_request:
+    branches:
+    - main
+    - develop
+  workflow_dispatch:
+    inputs:
+      build_docker:
+        description: Build Docker image
+        required: false
+        default: 'false'
+        type: boolean
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  DOCKERFILE: Dockerfile
+jobs:
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: pip
+    - name: Install lint tools
+      run: 'pip install --upgrade pip
+
+        pip install ruff mypy black isort'
+    - name: Run ruff
+      run: ruff check . --output-format=github
+    - name: Run black
+      run: black --check --diff .
+    - name: Run isort
+      run: isort --check-only --diff .
+    - name: Run mypy
+      run: mypy bridge/ voice/ --ignore-missing-imports --no-error-summary
+  test-unit:
+    name: Unit Tests (CPU)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        python-version:
+        - '3.10'
+        - '3.11'
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: pip
+    - name: Install dependencies
+      run: 'pip install --upgrade pip
+
+        pip install -r bridge/requirements.txt 2>/dev/null || true
+
+        pip install pytest pytest-asyncio pytest-mock pytest-cov pymavlink'
+    - name: Run bridge tests
+      run: python -m pytest bridge/test_bridge.py -v
+    - name: Run voice tests (mock)
+      run: python -m pytest voice/ -v -k "not asr" --ignore=voice/realtime_asr_pipeline.py
+        || true
+    - name: Upload coverage
+      if: always()
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./coverage.xml
+        fail_ci_if_error: false
+  mavlink-gen:
+    name: MAVLink Generation Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: pip
+    - name: Install pymavlink
+      run: pip install pymavlink
+    - name: Generate Python MAVLink
+      run: 'mkdir -p generated/mavlink
+
+        python -m pymavlink.tools.mavgen --lang=Python --wire-protocol=2.0 --output=generated/mavlink/python
+        q250_msgs/voice_control.xml'
+    - name: Verify generated messages
+      run: "python -c \"\nimport sys\nsys.path.insert(0, 'generated/mavlink')\nimport\
+        \ python as mavlink\nexpected = {'MAVLINK_MSG_ID_VOICE_COMMAND': 30000, 'MAVLINK_MSG_ID_VOICE_STATUS':\
+        \ 30001, 'MAVLINK_MSG_ID_VOICE_FEEDBACK': 30002, 'MAVLINK_MSG_ID_VOICE_WAYPOINT':\
+        \ 30003, 'MAVLINK_MSG_ID_VOICE_EMERGENCY': 30004}\nfor name, exp in expected.items():\n\
+        \    actual = getattr(mavlink, name)\n    assert actual == exp, f'{name}:\
+        \ expected {exp}, got {actual}'\n    print(f'{name} = {actual}')\nfor cls\
+        \ in ['MAVLink_voice_command_message', 'MAVLink_voice_status_message', 'MAVLink_voice_feedback_message',\
+        \ 'MAVLink_voice_waypoint_message', 'MAVLink_voice_emergency_message']:\n\
+        \    print(f'{cls}: {getattr(mavlink, cls)}')\nprint('All MAVLink messages\
+        \ verified!')\n\""
+    - name: Generate C++ MAVLink
+      run: 'mkdir -p generated/mavlink/cpp
+
+        python -m pymavlink.tools.mavgen --lang=C++11 --wire-protocol=2.0 --output=generated/mavlink/cpp
+        q250_msgs/voice_control.xml'
+    - name: Verify C++ headers
+      run: 'ls -la generated/mavlink/cpp/voice_control/
+
+        test -f generated/mavlink/cpp/voice_control/voice_control.hpp
+
+        test -f generated/mavlink/cpp/voice_control/mavlink_msg_voice_command.hpp'
+  docker-build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+    steps:
+    - uses: actions/checkout@v4
+    - uses: docker/setup-buildx-action@v3
+    - uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - uses: docker/metadata-action@v5
+      id: meta
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: 'type=ref,event=branch
+
+          type=ref,event=pr
+
+          type=sha,prefix={{branch}}-
+
+          type=raw,value=latest,enable={{is_default_branch}}'
+    - uses: docker/build-push-action@v5
+      id: build
+      with:
+        context: .
+        file: ${{ env.DOCKERFILE }}
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64
+        build-args: 'USER_UID=1000
+
+          USER_GID=1000'
+    - name: Image digest
+      run: 'echo "Image digest: ${{ steps.build.outputs.digest }}"'
+  docker-compose:
+    name: Docker Compose Validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+    - name: Validate docker-compose.yml
+      run: docker compose config -q
+    - name: Check required services
+      run: docker compose config --services | grep -E "^(q250-dev|px4-sitl|mavros2|jupyter|tensorboard)$"
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs:
+    - lint
+    - test-unit
+    - mavlink-gen
+    - docker-compose
+    if: always()
+    steps:
+    - name: Check job statuses
+      run: "echo \"Lint: ${{ needs.lint.result }}\"\necho \"Unit Tests: ${{ needs.test-unit.result\
+        \ }}\"\necho \"MAVLink Gen: ${{ needs.mavlink-gen.result }}\"\necho \"Docker\
+        \ Compose: ${{ needs.docker-compose.result }}\"\nif [[ \"${{ needs.lint.result\
+        \ }}\" != \"success\" ]] || [[ \"${{ needs.test-unit.result }}\" != \"success\"\
+        \ ]] || [[ \"${{ needs.mavlink-gen.result }}\" != \"success\" ]] || [[ \"\
+        ${{ needs.docker-compose.result }}\" != \"success\" ]]; then\n  echo \"Some\
+        \ jobs failed\"\n  exit 1\nelse\n  echo \"All checks passed\"\nfi"

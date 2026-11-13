@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<mavlink>
+  <include>/usr/local/Caskroom/miniconda/base/envs/q250/lib/python3.11/site-packages/pymavlink/message_definitions/v1.0/common.xml</include>
+  <include>/usr/local/Caskroom/miniconda/base/envs/q250/lib/python3.11/site-packages/pymavlink/message_definitions/v1.0/ardupilotmega.xml</include>
+  
+  <messages>
+  <!-- 음성 명령 메시지 (Ground Station → Drone) -->
+  <message id="30000" name="VOICE_COMMAND">
+    <description>Voice command from GCS to drone</description>
+    <field type="uint32_t" name="timestamp_ms">Timestamp in milliseconds since boot</field>
+    <field type="char[128]" name="command_text">Raw recognized text</field>
+    <field type="char[32]" name="parsed_action">Parsed action: TAKEOFF, LAND, GOTO, RTL, HOVER, SET_MODE, ARM, DISARM</field>
+    <field type="float[10]" name="params">Action parameters (lat, lon, alt, speed, heading, etc.)</field>
+    <field type="uint8_t" name="param_count">Number of valid parameters</field>
+    <field type="float" name="confidence">ASR confidence 0.0-1.0</field>
+    <field type="uint8_t" name="is_final">Final result (1) or partial (0)</field>
+    <field type="uint8_t" name="command_id">Unique command sequence ID</field>
+  </message>
+
+  <!-- 음성 시스템 상태 메시지 (Drone → GCS) -->
+  <message id="30001" name="VOICE_STATUS">
+    <description>Voice system status from drone to GCS</description>
+    <field type="uint32_t" name="timestamp_ms">Timestamp in milliseconds since boot</field>
+    <field type="uint8_t" name="vad_active">VAD active (1) or inactive (0)</field>
+    <field type="uint8_t" name="asr_active">ASR active (1) or inactive (0)</field>
+    <field type="char[32]" name="current_model">Current ASR model name</field>
+    <field type="float" name="cpu_usage">CPU usage percentage</field>
+    <field type="float" name="memory_usage_mb">Memory usage in MB</field>
+    <field type="uint32_t" name="commands_processed">Total commands processed</field>
+    <field type="uint32_t" name="commands_failed">Failed commands count</field>
+    <field type="float" name="last_latency_ms">Last command processing latency</field>
+  </message>
+
+  <!-- 드론 상태 피드백 메시지 (Drone → GCS, 음성용) -->
+  <message id="30002" name="VOICE_FEEDBACK">
+    <description>Voice feedback from drone to GCS</description>
+    <field type="uint32_t" name="timestamp_ms">Timestamp in milliseconds since boot</field>
+    <field type="uint8_t" name="feedback_type">0=ACK, 1=EXECUTING, 2=COMPLETED, 3=FAILED, 4=REJECTED</field>
+    <field type="uint8_t" name="command_id">Reference to original command</field>
+    <field type="char[64]" name="message">Human readable feedback</field>
+    <field type="float" name="progress">Execution progress 0.0-1.0</field>
+  </message>
+
+  <!-- 웨이포인트 음성 설정 메시지 -->
+  <message id="30003" name="VOICE_WAYPOINT">
+    <description>Voice-defined waypoint</description>
+    <field type="uint32_t" name="timestamp_ms">Timestamp in milliseconds since boot</field>
+    <field type="uint16_t" name="seq">Waypoint sequence number</field>
+    <field type="char[32]" name="label">Voice label (e.g., "home", "tree", "landing_pad")</field>
+    <field type="int32_t" name="lat">Latitude * 1e7</field>
+    <field type="int32_t" name="lon">Longitude * 1e7</field>
+    <field type="int32_t" name="alt">Altitude in mm (AMSL)</field>
+    <field type="uint8_t" name="frame">MAV_FRAME enum</field>
+    <field type="uint16_t" name="command_id">Reference to voice command</field>
+  </message>
+
+  <!-- 긴급 음성 명령 메시지 (최고 우선순위) -->
+  <message id="30004" name="VOICE_EMERGENCY">
+    <description>Emergency voice command (immediate execution)</description>
+    <field type="uint32_t" name="timestamp_ms">Timestamp in milliseconds since boot</field>
+    <field type="char[16]" name="emergency_type">EMERGENCY_LAND, KILL_MOTORS, RETURN_HOME, ABORT</field>
+    <field type="float" name="confidence">ASR confidence</field>
+    <field type="uint8_t" name="source">0=VOICE, 1=BUTTON, 2=AUTO</field>
+  </message>
+
+  </messages>
+</mavlink>
