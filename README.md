@@ -266,13 +266,12 @@ sha256sum -c *.sha256
 - **Q250-V3 Opti 공식**: https://quad-drone-lab.gitbook.io/quad-drone-start/q250/q250-v3-opti
 - **PX4 공식 문서**: https://docs.px4.io/main/en/
 - **ROS 2 PX4 가이드**: https://docs.px4.io/main/en/ros2/user_guide
-- **쿼드 드론연구소**: https://quad-drone-lab.co.kr/
 - **SpecKit 명세**: `.specs/tasks.md` (Phase 1~8, T-01~T-106)
 
 ---
 
 ## 📄 라이선스
-이 프로젝트는 쿼드 드론연구소 내부 프로젝트입니다. 무단 배포를 금합니다.
+이 프로젝트는 IDL (IT Drone Life) 내부 프로젝트입니다. 무단 배포를 금합니다.
 
 ---
 
