@@ -2,6 +2,7 @@
 """
 TensorRT Export Script for Audio Classification Models
 ONNX -> TensorRT Engine for embedded deployment
+INT8 Calibration + Optimization Profiles + Dynamic CUDA Graph 지원
 """
 
 import os
@@ -10,6 +11,9 @@ import numpy as np
 import torch
 import onnx
 import onnxruntime as ort
+from pathlib import Path
+from typing import Tuple, List, Optional
+import json
 
 
 def export_to_onnx(
@@ -82,9 +86,10 @@ def build_tensorrt_engine(
     fp16_mode: bool = True,
     int8_mode: bool = False,
     calibration_data: np.ndarray = None,
+    calibration_cache: str = None,
     workspace_size: int = 1 << 30,  # 1GB
 ) -> bool:
-    """Build TensorRT engine from ONNX"""
+    """Build TensorRT engine from ONNX with INT8 calibration support"""
 
     try:
         import tensorrt as trt
@@ -115,13 +120,23 @@ def build_tensorrt_engine(
             config.set_flag(trt.BuilderFlag.FP16)
             print("FP16 mode enabled")
 
+        # INT8 Calibration Setup
+        calibrator = None
         if int8_mode and builder.platform_has_fast_int8:
             config.set_flag(trt.BuilderFlag.INT8)
             print("INT8 mode enabled")
-            # Note: INT8 requires calibration data
+
             if calibration_data is not None:
-                # Setup calibrator here if needed
-                pass
+                calibrator = INT8Calibrator(
+                    calibration_data,
+                    cache_file=calibration_cache or f"{engine_path}.calib",
+                )
+                config.int8_calibrator = calibrator
+                print(
+                    f"INT8 calibrator set (cache: {calibration_cache or engine_path + '.calib'})"
+                )
+            else:
+                print("WARNING: INT8 mode requested but no calibration data provided")
 
         # Optimization profiles for dynamic shapes
         profile = builder.create_optimization_profile()
@@ -153,6 +168,88 @@ def build_tensorrt_engine(
     except Exception as e:
         print(f"ERROR building TensorRT engine: {e}")
         return False
+
+
+# =============================================================================
+# INT8 Calibrator for Audio Classification
+# =============================================================================
+
+
+class INT8Calibrator(trt.IInt8EntropyCalibrator2):
+    """INT8 Entropy Calibrator for Audio Classification Models"""
+
+    def __init__(
+        self,
+        calibration_data: np.ndarray,
+        cache_file: str = "calibration.cache",
+        batch_size: int = 8,
+    ):
+        """
+        Args:
+            calibration_data: (N, 1, 157, 40) 대표 데이터셋 (정규화된 float32)
+            cache_file: 캘리브레이션 캐시 파일 경로
+            batch_size: 캘리브레이션 배치 크기
+        """
+        trt.IInt8EntropyCalibrator2.__init__(self)
+
+        self.cache_file = cache_file
+        self.batch_size = batch_size
+
+        # 데이터 정규화 확인 및 전처리
+        self.data = calibration_data.astype(np.float32)
+        if self.data.ndim == 3:  # (N, 157, 40) -> (N, 1, 157, 40)
+            self.data = self.data[:, np.newaxis, :, :]
+        elif self.data.ndim != 4 or self.data.shape[1] != 1:
+            raise ValueError(f"Expected (N, 1, 157, 40), got {self.data.shape}")
+
+        self.num_samples = self.data.shape[0]
+        self.current_batch = 0
+
+        # GPU 메모리 할당 (첫 배치 크기로)
+        self.device_input = None
+        self._allocate_device_memory()
+
+        # 캐시 로드 시도
+        self.calibration_cache = None
+        if os.path.exists(self.cache_file):
+            with open(self.cache_file, "rb") as f:
+                self.calibration_cache = f.read()
+            print(f"Loaded calibration cache from {self.cache_file}")
+
+    def _allocate_device_memory(self):
+        """첫 배치 크기로 GPU 메모리 할당"""
+        import pycuda.driver as cuda
+        import pycuda.autoinit
+
+        batch = self.data[: self.batch_size]
+        self.device_input = cuda.mem_alloc(batch.nbytes)
+
+    def get_batch_size(self) -> int:
+        return self.batch_size
+
+    def get_batch(self, names: List[str], p_str: Optional[List] = None) -> List[int]:
+        """다음 캘리브레이션 배치 반환"""
+        if self.current_batch * self.batch_size >= self.num_samples:
+            return None
+
+        start = self.current_batch * self.batch_size
+        end = min(start + self.batch_size, self.num_samples)
+        batch = self.data[start:end]
+
+        import pycuda.driver as cuda
+
+        cuda.memcpy_htod(self.device_input, batch)
+
+        self.current_batch += 1
+        return [int(self.device_input)]
+
+    def read_calibration_cache(self) -> bytes:
+        return self.calibration_cache
+
+    def write_calibration_cache(self, cache: bytes):
+        with open(self.cache_file, "wb") as f:
+            f.write(cache)
+        print(f"Calibration cache saved to {self.cache_file}")
 
 
 def verify_tensorrt_engine(
@@ -242,19 +339,26 @@ def export_pytorch_to_tensorrt(
     fp16: bool = True,
     int8: bool = False,
     simplify: bool = True,
+    calibration_dataset: Optional[torch.utils.data.DataLoader] = None,
 ) -> Tuple[str, str]:
     """
-    Complete pipeline: PyTorch -> ONNX -> TensorRT
+    Complete pipeline: PyTorch -> ONNX -> TensorRT with INT8 calibration
 
+    Args:
+        calibration_dataset: INT8 캘리브레이션용 DataLoader (필수 if int8=True)
     Returns:
         (onnx_path, engine_path)
     """
+    if int8 and calibration_dataset is None:
+        raise ValueError("INT8 mode requires calibration_dataset (DataLoader)")
+
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     onnx_path = output_dir / f"{model_name}.onnx"
     engine_path = output_dir / f"{model_name}.engine"
     simplified_onnx_path = output_dir / f"{model_name}_simplified.onnx"
+    calibration_cache = output_dir / f"{model_name}.calib"
 
     # 1. PyTorch -> ONNX
     export_to_onnx(model, dummy_input, str(onnx_path))
@@ -265,9 +369,28 @@ def export_pytorch_to_tensorrt(
     else:
         final_onnx = str(onnx_path)
 
-    # 3. ONNX -> TensorRT
+    # 3. Prepare calibration data for INT8
+    calibration_data = None
+    if int8:
+        print("Preparing INT8 calibration data...")
+        calibration_data = []
+        model.eval()
+        with torch.no_grad():
+            for batch_idx, (inputs, _) in enumerate(calibration_dataset):
+                if batch_idx >= 50:  # 최대 50 배치 (배치당 8개면 400 샘플)
+                    break
+                calibration_data.append(inputs.cpu().numpy())
+        calibration_data = np.concatenate(calibration_data, axis=0)
+        print(f"Prepared calibration data: {calibration_data.shape}")
+
+    # 4. ONNX -> TensorRT
     success = build_tensorrt_engine(
-        final_onnx, str(engine_path), fp16_mode=fp16, int8_mode=int8
+        final_onnx,
+        str(engine_path),
+        fp16_mode=fp16,
+        int8_mode=int8,
+        calibration_data=calibration_data,
+        calibration_cache=str(calibration_cache),
     )
 
     if success:
@@ -346,7 +469,9 @@ def benchmark_tensorrt_engine(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Export PyTorch model to TensorRT")
+    parser = argparse.ArgumentParser(
+        description="Export PyTorch model to TensorRT with INT8 calibration"
+    )
     parser.add_argument(
         "--model_path", type=str, required=True, help="Path to PyTorch model (.pth)"
     )
@@ -361,7 +486,15 @@ if __name__ == "__main__":
     )
     parser.add_argument("--fp16", action="store_true", default=True, help="Enable FP16")
     parser.add_argument(
-        "--int8", action="store_true", default=False, help="Enable INT8"
+        "--int8",
+        action="store_true",
+        default=False,
+        help="Enable INT8 (requires --calib_data)",
+    )
+    parser.add_argument(
+        "--calib_data",
+        type=str,
+        help="Path to calibration dataset directory (for INT8)",
     )
     parser.add_argument(
         "--no_simplify", action="store_true", help="Skip ONNX simplification"
@@ -386,8 +519,26 @@ if __name__ == "__main__":
     # Dummy input
     dummy_input = torch.randn(1, 1, 157, 40).to(device)
 
+    # Prepare calibration dataset for INT8
+    calibration_dataset = None
+    if args.int8:
+        if not args.calib_data:
+            raise ValueError(
+                "INT8 mode requires --calib_data argument (path to calibration dataset)"
+            )
+        from torch.utils.data import DataLoader
+        from preprocessing.datasets.drone_audio_dataset import DroneAudioDataset
+
+        calib_dataset = DroneAudioDataset(args.calib_data, split="train", augment=False)
+        calibration_dataset = DataLoader(
+            calib_dataset, batch_size=8, shuffle=False, num_workers=4
+        )
+        print(f"Loaded calibration dataset: {len(calib_dataset.dataset)} samples")
+
     # Export
-    print(f"Exporting {args.model_path} -> TensorRT")
+    print(
+        f"Exporting {args.model_path} -> TensorRT (FP16={args.fp16}, INT8={args.int8})"
+    )
     onnx_path, engine_path = export_pytorch_to_tensorrt(
         model,
         dummy_input,
@@ -396,6 +547,7 @@ if __name__ == "__main__":
         fp16=args.fp16,
         int8=args.int8,
         simplify=not args.no_simplify,
+        calibration_dataset=calibration_dataset,
     )
 
     if args.benchmark:

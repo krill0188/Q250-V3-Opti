@@ -12,9 +12,9 @@
 - [ ] TPC-000E SpecKit CLI/확장 기능 필요 여부와 설치 상태를 Hermes와 별도로 판정
 - [ ] TPC-000F 실제 환경 변경 전 `TPC-*` 작업 ID와 DoD 지정
 - [ ] TPC-000G Hermes 로그에서 API 키·토큰·SSH 키·비밀번호 노출 여부 확인
-- [ ] TPC-000H 공식 Spec Kit CLI `specify` 설치 경로 결정(uv/pipx/pip)
-- [ ] TPC-000I Python 3.11+ 실행 환경 준비 후 `specify version` 확인
-- [ ] TPC-000J Q250 프로젝트에 Spec Kit integration/commands 적용 여부 결정
+- [x] TPC-000H 공식 Spec Kit CLI `specify` 설치 경로 결정(uv/pipx/pip) — `specify-cli 1.4.2` 설치 완료
+- [x] TPC-000I Python 3.11+ 실행 환경 준비 후 `specify version` 확인 — Python `3.11.18` 확인
+- [x] TPC-000J Q250 프로젝트에 Spec Kit integration/commands 적용 여부 결정 — Hermes integration 설치·기본 지정 완료
 - [ ] TPC-000K Mac 기준선과 타겟 PC 점검 결과 비교표 작성
 
 ## Phase A — 기준선과 점검 도구

@@ -6,31 +6,33 @@
 
 | 항목 | Mac 기준(실측) | 타 PC 기준 | 판정 | 증거/조치 |
 |---|---|---|---|---|
-| OS | macOS 13.7.8 | 미점검 | MISMATCH 예상 | 타 PC는 WSL2 Ubuntu 22.04/native Ubuntu 권장 |
-| CPU/arch | Intel x86_64 | 미점검 | NOT_CHECKED | `uname -m`, CPU 확인 |
-| Python | 3.9.4 | 미점검 | NOT_CHECKED | 프로젝트 venv 고정 |
-| Docker CLI | 설치됨 | 미점검 | NOT_CHECKED | daemon 응답까지 확인 |
-| Docker daemon | 응답 없음 | 미점검 | BLOCKED on Mac | 타 PC Docker + NVIDIA runtime 확인 |
-| GPU/CUDA | NVIDIA CUDA 없음 | 미점검 | MISMATCH | RTX/CUDA/driver 확인 |
+| OS | macOS 13.7.8 | Linux/WSL2, `DESKTOP-IAOM8VS` | MISMATCH | WSL2 Ubuntu release/systemd 추가 확인 |
+| CPU/arch | Intel x86_64 | Linux x86_64 | PARTIAL | CPU/RAM 상세 추가 확인 |
+| Python | 3.9.4 | 시스템 3.10.12; Specify 3.11.18 | PARTIAL | Spec Kit은 3.11.18로 해결; Q250 런타임은 별도 venv 필요 |
+| Docker CLI | 설치됨 | Windows Docker Desktop 경로 | PARTIAL | `docker info`, Compose, GPU 확인 |
+| Docker daemon | 응답 없음 | 미점검 | NOT_CHECKED | 타겟에서 daemon 확인 필요 |
+| GPU/CUDA | NVIDIA CUDA 없음 | 미점검 | NOT_CHECKED | `nvidia-smi`, WSL CUDA 확인 |
 | 디스크 | root 약 3% 사용 | 미점검 | NOT_CHECKED | 데이터+컨테이너 여유 확인 |
-| 네트워크 | 타 PC 미점검 | 미점검 | NOT_CHECKED | UDP 14540/14550/5760 |
-| USB/serial | Mac 후보 포트만 별도 확인 | 미점검 | NOT_CHECKED | 실제 FC 전 read-only |
+| 네트워크 | Mac 기준 미점검 | 미점검 | NOT_CHECKED | UDP 14540/14550/5760 |
+| USB/serial | Mac 후보 포트에서 heartbeat 없음 | 미점검 | NOT_CHECKED | 실제 FC 전 read-only |
 
 ## B. 운용·개발 소프트웨어
 
 | 항목 | Mac 기준(실측/저장소) | 타 PC 기준 | 필수 |
 |---|---|---|---|
-| Git | 설치, 저장소 clean 기준 확인 | 미점검 | PASS 필요 |
-| CMake/Ninja/ccache | brew 설치 확인 | 미점검 | PASS 필요 |
-| ROS 2 Humble | `ros2` 없음 | 미점검 | PASS 필요 |
-| colcon/rosdep | 없음 또는 미확인 | 미점검 | PASS 필요 |
-| Gazebo Harmonic | `gz` 없음 | 미점검 | PASS 필요 |
-| PX4 v1.15 | CLI 없음; 소스 checkout은 별도 확인 필요 | 미점검 | PASS 필요 |
-| MAVLink Router | 없음 | 미점검 | PASS 필요 |
-| MicroXRCEAgent | 없음 | 미점검 | PASS 필요 |
-| MAVSDK/pymavlink | Python import 확인 | 미점검 | PASS 필요 |
-| MAVROS2 | ROS 계층 부재 | 미점검 | PASS 필요 |
-| QGroundControl | CLI 미확인 | 미점검 | 운용 PC 필수 |
+| Git | 설치, 저장소 clean 기준 확인 | `/usr/bin/git` | PASS |
+| CMake | brew 설치 확인 | `/usr/bin/cmake` | PASS |
+| Ninja | brew 설치 확인 | 미확인 | GAP |
+| ccache | brew 설치 확인 | 미확인 | OPTIONAL/PERFORMANCE |
+| ROS 2 Humble | `ros2` 없음 | `/opt/ros/humble/bin/ros2` | PASS |
+| colcon/rosdep | 없음 또는 미확인 | `/usr/bin/colcon`; rosdep 미확인 | PARTIAL |
+| Gazebo Harmonic | `gz` 없음 | `/usr/bin/gz` | PASS, version 추가 확인 |
+| PX4 v1.15 | CLI 없음; 소스 checkout은 별도 확인 필요 | 미확인 | NOT_CHECKED |
+| MAVLink Router | 없음 | 미확인 | GAP |
+| MicroXRCEAgent | 없음 | 미확인 | GAP |
+| MAVSDK/pymavlink | Python import 확인 | 미확인 | NOT_CHECKED |
+| MAVROS2 | ROS 계층 부재 | 미확인 | NOT_CHECKED |
+| QGroundControl | CLI 미확인 | 미확인 | GAP |
 | VS Code/Remote WSL | 미점검 | 미점검 | 개발 PC 권장 |
 
 ## C. Python/ML/음성/비전

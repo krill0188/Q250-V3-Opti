@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sdf version="1.9">
+  <!-- Conversion scaffold for Gazebo Sim / PX4 v1.15.4.
+       Original q250_v3_opti/model.sdf is intentionally untouched.
+       Meshes and sensor bridges are added only after this scaffold validates. -->
+  <model name="q250_v3_opti_gz">
+    <static>false</static>
+    <pose>0 0 0.15 0 0 0</pose>
+
+    <link name="base_link">
+      <inertial>
+        <mass>1.08</mass>
+        <inertia>
+          <ixx>0.008</ixx><ixy>0</ixy><ixz>0</ixz>
+          <iyy>0.008</iyy><iyz>0</iyz><izz>0.014</izz>
+        </inertia>
+      </inertial>
+      <collision name="base_collision">
+        <geometry><box><size>0.30 0.30 0.10</size></box></geometry>
+      </collision>
+      <visual name="base_visual">
+        <geometry><box><size>0.30 0.30 0.10</size></box></geometry>
+        <material>
+          <ambient>0.3 0.3 0.3 1</ambient>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
+        </material>
+      </visual>
+
+      <!-- Standard Gazebo Sim sensor definitions; transport/ROS bridges are separate. -->
+      <sensor name="imu" type="imu">
+        <always_on>true</always_on><update_rate>400</update_rate><visualize>false</visualize>
+      </sensor>
+      <sensor name="gps" type="navsat">
+        <always_on>true</always_on><update_rate>10</update_rate><visualize>false</visualize>
+      </sensor>
+      <sensor name="downward_lidar" type="ray">
+        <pose>0 0 -0.06 0 0 0</pose>
+        <always_on>true</always_on><update_rate>100</update_rate><visualize>false</visualize>
+        <ray>
+          <scan><horizontal><samples>1</samples><resolution>1</resolution><min_angle>0</min_angle><max_angle>0</max_angle></horizontal></scan>
+          <range><min>0.02</min><max>11.0</max><resolution>0.01</resolution></range>
+        </ray>
+      </sensor>
+      <sensor name="front_camera" type="camera">
+        <pose>0.15 0 0 0 0 0</pose>
+        <always_on>true</always_on><update_rate>30</update_rate><visualize>false</visualize>
+        <camera><horizontal_fov>1.396</horizontal_fov><image><width>640</width><height>480</height><format>R8G8B8</format></image></camera>
+      </sensor>
+    </link>
+
+    <link name="motor_0"><inertial><mass>0.05</mass><inertia><ixx>0.0001</ixx><iyy>0.0001</iyy><izz>0.0002</izz></inertia></inertial><visual name="motor_visual"><geometry><cylinder><radius>0.025</radius><length>0.03</length></cylinder></geometry></visual></link>
+    <link name="motor_1"><inertial><mass>0.05</mass><inertia><ixx>0.0001</ixx><iyy>0.0001</iyy><izz>0.0002</izz></inertia></inertial><visual name="motor_visual"><geometry><cylinder><radius>0.025</radius><length>0.03</length></cylinder></geometry></visual></link>
+    <link name="motor_2"><inertial><mass>0.05</mass><inertia><ixx>0.0001</ixx><iyy>0.0001</iyy><izz>0.0002</izz></inertia></inertial><visual name="motor_visual"><geometry><cylinder><radius>0.025</radius><length>0.03</length></cylinder></geometry></visual></link>
+    <link name="motor_3"><inertial><mass>0.05</mass><inertia><ixx>0.0001</ixx><iyy>0.0001</iyy><izz>0.0002</izz></inertia></inertial><visual name="motor_visual"><geometry><cylinder><radius>0.025</radius><length>0.03</length></cylinder></geometry></visual></link>
+
+    <joint name="motor_0_joint" type="revolute"><parent>base_link</parent><child>motor_0</child><pose>0.12 -0.12 -0.025 0 0 0</pose><axis><xyz>0 0 1</xyz></axis></joint>
+    <joint name="motor_1_joint" type="revolute"><parent>base_link</parent><child>motor_1</child><pose>-0.12 -0.12 -0.025 0 0 0</pose><axis><xyz>0 0 1</xyz></axis></joint>
+    <joint name="motor_2_joint" type="revolute"><parent>base_link</parent><child>motor_2</child><pose>0.12 0.12 -0.025 0 0 0</pose><axis><xyz>0 0 1</xyz></axis></joint>
+    <joint name="motor_3_joint" type="revolute"><parent>base_link</parent><child>motor_3</child><pose>-0.12 0.12 -0.025 0 0 0</pose><axis><xyz>0 0 1</xyz></axis></joint>
+
+    <plugin filename="gz-sim-multicopter-motor-model-system" name="gz::sim::systems::MulticopterMotorModel">
+      <jointName>motor_0_joint</jointName><linkName>motor_0</linkName><turningDirection>ccw</turningDirection>
+      <timeConstantUp>0.0125</timeConstantUp><timeConstantDown>0.025</timeConstantDown><maxRotVelocity>1000</maxRotVelocity>
+      <motorConstant>8.54858e-06</motorConstant><momentConstant>0.016</momentConstant><commandSubTopic>command/motor_speed</commandSubTopic><motorNumber>0</motorNumber><rotorDragCoefficient>8.06428e-05</rotorDragCoefficient><rollingMomentCoefficient>1e-06</rollingMomentCoefficient><rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim><motorType>velocity</motorType>
+    </plugin>
+    <plugin filename="gz-sim-multicopter-motor-model-system" name="gz::sim::systems::MulticopterMotorModel">
+      <jointName>motor_1_joint</jointName><linkName>motor_1</linkName><turningDirection>ccw</turningDirection>
+      <timeConstantUp>0.0125</timeConstantUp><timeConstantDown>0.025</timeConstantDown><maxRotVelocity>1000</maxRotVelocity>
+      <motorConstant>8.54858e-06</motorConstant><momentConstant>0.016</momentConstant><commandSubTopic>command/motor_speed</commandSubTopic><motorNumber>1</motorNumber><rotorDragCoefficient>8.06428e-05</rotorDragCoefficient><rollingMomentCoefficient>1e-06</rollingMomentCoefficient><rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim><motorType>velocity</motorType>
+    </plugin>
+    <plugin filename="gz-sim-multicopter-motor-model-system" name="gz::sim::systems::MulticopterMotorModel">
+      <jointName>motor_2_joint</jointName><linkName>motor_2</linkName><turningDirection>cw</turningDirection>
+      <timeConstantUp>0.0125</timeConstantUp><timeConstantDown>0.025</timeConstantDown><maxRotVelocity>1000</maxRotVelocity>
+      <motorConstant>8.54858e-06</motorConstant><momentConstant>0.016</momentConstant><commandSubTopic>command/motor_speed</commandSubTopic><motorNumber>2</motorNumber><rotorDragCoefficient>8.06428e-05</rotorDragCoefficient><rollingMomentCoefficient>1e-06</rollingMomentCoefficient><rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim><motorType>velocity</motorType>
+    </plugin>
+    <plugin filename="gz-sim-multicopter-motor-model-system" name="gz::sim::systems::MulticopterMotorModel">
+      <jointName>motor_3_joint</jointName><linkName>motor_3</linkName><turningDirection>cw</turningDirection>
+      <timeConstantUp>0.0125</timeConstantUp><timeConstantDown>0.025</timeConstantDown><maxRotVelocity>1000</maxRotVelocity>
+      <motorConstant>8.54858e-06</motorConstant><momentConstant>0.016</momentConstant><commandSubTopic>command/motor_speed</commandSubTopic><motorNumber>3</motorNumber><rotorDragCoefficient>8.06428e-05</rotorDragCoefficient><rollingMomentCoefficient>1e-06</rollingMomentCoefficient><rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim><motorType>velocity</motorType>
+    </plugin>
+  </model>
+</sdf>

@@ -1,8 +1,23 @@
 import numpy as np
+import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Tuple
 from enum import Enum
+import asyncio
+
+# GPU 가속 백엔드 임포트 시도
+try:
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "cuda"))
+    from trajectory_bindings import get_trajectory_backend, TrajectoryEngineGPU
+
+    GPU_BACKEND_AVAILABLE = True
+except ImportError:
+    GPU_BACKEND_AVAILABLE = False
+
+from pathlib import Path
 
 
 class TrajectoryMethod(Enum):
@@ -25,6 +40,18 @@ class TrajectoryEngine:
         self.specs = specs
         self.lut_cache = {}  # 사전 계산된 궤적 캐시
         self.mpc_horizon = 20  # MPC 예측 호라이즌
+
+        # GPU 가속 백엔드 초기화
+        self.gpu_engine = None
+        if GPU_BACKEND_AVAILABLE:
+            try:
+                self.gpu_engine = TrajectoryEngineGPU(specs, force_python=False)
+                print(
+                    f"[TrajectoryEngine] GPU acceleration enabled: {self.gpu_engine.backend_name}"
+                )
+            except Exception as e:
+                print(f"[TrajectoryEngine] GPU backend failed, using Python: {e}")
+                self.gpu_engine = None
 
     async def generate_dive_trajectory(
         self,
@@ -68,8 +95,15 @@ class TrajectoryEngine:
     async def _mpc_optimize(
         self, start, target_alt, angle, max_speed
     ) -> DiveTrajectory:
-        """MPC 실시간 최적화 (제약 조건 고려)"""
-        # 간단한 구현: 기하학적 계산 + 제약 조건 검증
+        """MPC 실시간 최적화 (제약 조건 고려) - GPU 가속"""
+
+        # GPU 백엔드 사용 시 기하 계산 가속
+        if self.gpu_engine:
+            return await self.gpu_engine.generate_dive_trajectory(
+                start, target_alt, angle, max_speed, method="MPC"
+            )
+
+        # 폴백: 기하학적 계산 + 제약 조건 검증
         traj = self._geometric_fallback(start, target_alt, angle, max_speed)
         traj.method = TrajectoryMethod.MPC
         traj.constraints_satisfied = True
@@ -78,8 +112,7 @@ class TrajectoryEngine:
     def _geometric_fallback(
         self, start, target_alt, angle, max_speed
     ) -> DiveTrajectory:
-        """기하학적 계산으로 다이브 궤적 생성"""
-        import math
+        """기하학적 계산으로 다이브 궤적 생성 (CPU 폴백)"""
 
         # 스펙에서 제약 조건 가져오기 (첫 번째 기체 기준)
         spec = next(iter(self.specs.values()))
@@ -107,8 +140,8 @@ class TrajectoryEngine:
             z = start_z - altitude_change * t
             horiz_dist = horizontal_dist * t
             # 진행 방향 (북쪽 가정)
-            x = start[0] + horiz_dist
-            y = start[1]
+            x = start_x + horiz_dist
+            y = start_y
 
             waypoints.append((x, y, z))
 
@@ -134,7 +167,30 @@ class TrajectoryEngine:
         duration: float,
         params: dict,
     ) -> DiveTrajectory:
-        """기만 패턴별 궤적 생성"""
+        """기만 패턴별 궤적 생성 - GPU 가속"""
+
+        # GPU 백엔드 사용 시 나선/사인/진크 가속
+        if self.gpu_engine and hasattr(
+            self.gpu_engine.backend, pattern.lower() + "_dive"
+        ):
+            if "SPIRAL" in pattern:
+                return await self.gpu_engine.generate_dive_trajectory(
+                    start_pos,
+                    start_pos[2] - params.get("descent_rate", 10.0) * duration,
+                    45,  # 기본 각도
+                    params.get("speed", 20.0),
+                    method="SPIRAL",
+                )
+            elif "SINE" in pattern:
+                return await self.gpu_engine.generate_dive_trajectory(
+                    start_pos,
+                    start_pos[2] - params.get("descent_rate", 15.0) * duration,
+                    45,
+                    params.get("speed", 20.0),
+                    method="SINE",
+                )
+
+        # 폴백: 기존 Python 구현
         if "SPIRAL" in pattern:
             return self._spiral_dive_trajectory(start_pos, duration, params)
         elif "SINE" in pattern:
@@ -143,6 +199,9 @@ class TrajectoryEngine:
             return self._random_jink_trajectory(start_pos, duration, params)
         else:
             return self._geometric_fallback(start_pos, start_pos[2] - 50, 45, 20)
+
+    # 기존 기만 궤적 메서드들 유지 (_spiral_dive_trajectory, _sine_dive_trajectory, _random_jink_trajectory)
+    # ... 기존 코드 유지 ...
 
     def _spiral_dive_trajectory(self, start, duration, params) -> DiveTrajectory:
         """나선형 다이브 궤적"""
