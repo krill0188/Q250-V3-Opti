@@ -1,0 +1,60 @@
+# FALCON Intrusion Detection Config
+seed: 42
+device: "auto"  # auto, cuda, cpu
+
+data:
+  raw_path: "/Users/amaster/data/additional_datasets/FALCON/falcon.csv"
+  target_col: "attacker_ratio"  # 3 classes: 25pct, 50pct, single
+  test_size: 0.15
+  val_size: 0.15
+  stratify: true
+  categorical_cols: ["attack"]  # 공격 유형은 범주형으로 처리
+  drop_cols: ["run_name", "label"]  # run_name은 식별자, label은 인코딩된 버전이라 제거
+
+preprocessing:
+  scaler: "standard"  # standard, minmax, robust, none
+  handle_missing: "median"  # mean, median, mode, drop
+  feature_selection:
+    method: "mutual_info"  # mutual_info, f_classif, l1, tree, none
+    k: 50  # 상위 k개 피처 선택
+
+model:
+  type: "lightgbm"  # lightgbm, xgboost, catboost, tabtransformer
+  params:
+    n_estimators: 500
+    learning_rate: 0.05
+    num_leaves: 64
+    max_depth: -1
+    min_child_samples: 20
+    subsample: 0.8
+    colsample_bytree: 0.8
+    reg_alpha: 0.1
+    reg_lambda: 0.1
+    class_weight: "balanced"
+    random_state: 42
+    n_jobs: -1
+    verbose: -1
+  early_stopping_rounds: 50
+  eval_metric: "multi_logloss"
+
+training:
+  cv_folds: 5
+  cv_strategy: "stratified_kfold"  # stratified_kfold, kfold, group_kfold
+  optimize_threshold: true  # 클래스별 임계값 최적화
+
+evaluation:
+  metrics: ["f1_macro", "f1_weighted", "accuracy", "roc_auc_ovr", "precision_macro", "recall_macro"]
+  per_class_report: true
+  confusion_matrix: true
+  feature_importance: true
+
+export:
+  onnx: true
+  tensorrt: false  # Jetson에서만
+  model_path: "models/falcon_intrusion_detection.txt"
+  onnx_path: "models/falcon_intrusion_detection.onnx"
+
+logging:
+  level: "INFO"
+  save_dir: "logs/falcon/"
+  wandb: false

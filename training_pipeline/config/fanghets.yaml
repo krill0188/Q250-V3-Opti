@@ -1,0 +1,62 @@
+# FAN-GHETS24 Attack Classification Config
+seed: 42
+device: "auto"
+
+data:
+  raw_dir: "/Users/amaster/data/additional_datasets/FAN-GHETS24/finished_dataset"
+  label_col: "att_label"
+  intensity_col: "att_intensity"
+  drop_cols: ["att_label", "att_intensity"]
+  test_size: 0.15
+  val_size: 0.15
+  stratify: true
+  max_seq_len: 1024
+  min_seq_len: 100
+
+preprocessing:
+  scaler: "standard"
+  handle_missing: "median"
+  feature_selection:
+    method: "variance"  # variance, mutual_info, none
+    threshold: 0.01
+
+model:
+  type: "bilstm_attention"  # bilstm_attention, lstm, transformer, 1dcnn
+  params:
+    input_dim: 25  # 27 - 2 (label, intensity) = 25 features
+    hidden_dim: 256
+    num_layers: 2
+    num_classes: 4
+    dropout: 0.3
+    bidirectional: true
+    attention_heads: 8
+    fc_hidden: 128
+
+training:
+  batch_size: 16
+  epochs: 10
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  optimizer: "adamw"
+  scheduler: "cosine"
+  early_stopping_patience: 5
+  gradient_clip: 1.0
+  class_weights: "balanced"
+  cv_folds: 5
+  cv_strategy: "stratified_kfold"
+
+evaluation:
+  metrics: ["f1_macro", "f1_weighted", "accuracy", "roc_auc_ovr", "precision_macro", "recall_macro"]
+  per_class_report: true
+  confusion_matrix: true
+
+export:
+  onnx: true
+  tensorrt: false
+  model_path: "models/fanghets_attack_classification.pth"
+  onnx_path: "models/fanghets_attack_classification.onnx"
+
+logging:
+  level: "INFO"
+  save_dir: "logs/fanghets/"
+  wandb: false
