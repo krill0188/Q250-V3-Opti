@@ -2,8 +2,8 @@
 Main entry point for training pipelines
 """
 
-import sys
 import argparse
+import sys
 from pathlib import Path
 
 # Add pipeline to path

@@ -2,10 +2,11 @@
 Sequence Models for FAN-GHETS24, FANET
 """
 
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional
 
 
 class AttentionPooling(nn.Module):

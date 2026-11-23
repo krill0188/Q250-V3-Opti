@@ -2,27 +2,28 @@
 Sequence Model Training for FAN-GHETS24, FANET
 """
 
+import json
+import time
+import warnings
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
-from torch.optim import AdamW
-from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau, StepLR
+import yaml
 from sklearn.metrics import (
-    f1_score,
     accuracy_score,
-    roc_auc_score,
-    precision_score,
-    recall_score,
     classification_report,
     confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
 )
-import numpy as np
-import yaml
-from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Any
-import time
-import json
-import warnings
+from torch.optim import AdamW
+from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau, StepLR
+from torch.utils.data import DataLoader
 
 warnings.filterwarnings("ignore")
 

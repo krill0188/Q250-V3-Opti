@@ -2,27 +2,28 @@
 Tabular Model Training for FALCON, SkyMimic
 """
 
+import warnings
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import joblib
+import lightgbm as lgb
 import numpy as np
 import pandas as pd
-import lightgbm as lgb
 import xgboost as xgb
+import yaml
 from catboost import CatBoostClassifier
-from sklearn.model_selection import StratifiedKFold
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.metrics import (
-    f1_score,
     accuracy_score,
-    roc_auc_score,
-    precision_score,
-    recall_score,
     classification_report,
     confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
 )
-from sklearn.calibration import CalibratedClassifierCV
-import joblib
-import yaml
-from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Any
-import warnings
+from sklearn.model_selection import StratifiedKFold
 
 warnings.filterwarnings("ignore")
 

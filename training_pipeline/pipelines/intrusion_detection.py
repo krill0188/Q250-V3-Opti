@@ -6,10 +6,12 @@ import sys
 
 sys.path.append("/Users/amaster/data/additional_datasets/training_pipeline")
 
-from data.tabular_dataset import load_falcon_data
-from training.tabular_trainer import run_falcon_training
-import yaml
 from pathlib import Path
+
+import yaml
+from data.tabular_dataset import load_falcon_data
+
+from training.tabular_trainer import run_falcon_training
 
 
 def main():
