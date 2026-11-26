@@ -6,20 +6,16 @@ High-level swarm coordination: formation flight, task allocation, mission coordi
 """
 
 import json
-import time
 import math
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, field
+import time
+from dataclasses import dataclass
 from enum import Enum
+from typing import Dict, List, Tuple
 
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
-from rclpy.parameter import Parameter
-
+from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import String
-from geometry_msgs.msg import PoseStamped, Twist, Point
-from nav_msgs.msg import Odometry
 
 
 class FormationShape(Enum):

@@ -1,9 +1,8 @@
-import asyncio
-import pytest
 import math
-from unittest.mock import MagicMock, patch
 
-from core.trajectory_engine import TrajectoryEngine, TrajectoryMethod, DiveTrajectory
+import pytest
+
+from core.trajectory_engine import DiveTrajectory, TrajectoryEngine, TrajectoryMethod
 from core_arbitrator import HardwareSpec
 
 

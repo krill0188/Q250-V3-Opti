@@ -10,9 +10,9 @@ from voice.voice_command_engine import (
     FastPathEmergencyMatcher,
     LocalWhisperSTT,
     ParsedVoiceIntent,
+    VoiceCommandPipeline,
     VoiceIntentParser,
     VoicePipelineConfig,
-    VoiceCommandPipeline,
     create_voice_pipeline,
 )
 
@@ -288,137 +288,137 @@ _OPTIONAL_MODULES = {
 
 # 타입 체커용 (실제 import는 런타임에만)
 if TYPE_CHECKING:
+    from voice.denoising_dnn import (
+        PRETRAINED_MODELS,
+        BaseDenoiser,
+        DNNModelConfig,
+        DNNNoiseSuppression,
+        ONNXDenoiser,
+        TorchDenoiser,
+        create_denoiser,
+        export_pytorch_to_onnx,
+    )
+    from voice.finetune_pipeline import (
+        CTranslate2Converter,
+        FinetuneConfig,
+        FinetunePipeline,
+        STTLogCollector,
+        WhisperFinetuner,
+        create_finetune_pipeline,
+        quick_finetune,
+    )
+    from voice.keyword_specs import (
+        KEYWORD_SPECS,
+        CommandPriority,
+        KeywordSpec,
+        export_for_training,
+        get_all_specs,
+        get_command_for_keyword,
+        get_keywords_list,
+        get_phrases_for_keyword,
+        get_specs_by_priority,
+        get_specs_by_target,
+    )
+    from voice.kws_augment import (
+        AudioAugmenter,
+        AugmentConfig,
+        create_augmenter,
+        quick_augment,
+    )
+    from voice.kws_data_collector import (
+        CollectionConfig,
+        KWSDataCollector,
+        MultiSpeakerCollector,
+        SampleMetadata,
+        quick_collect,
+    )
+    from voice.kws_runtime import (
+        KWSResult,
+        KWSRuntime,
+        MFCCExtractor,
+        create_kws_runtime,
+        test_kws_runtime,
+    )
+    from voice.kws_train import (
+        build_ds_cnn_model,
+        evaluate_tflite,
+        prepare_dataset,
+        test_tflite_inference_speed,
+        train_kws,
+    )
+    from voice.labeling_tool import STTLabelingTool
+    from voice.military_coords import (
+        BranchFlightProfile,
+        BranchProfileManager,
+        CoordinateConverter,
+        CoordinateParser,
+        CoordinateType,
+        MilitaryBranch,
+        ParsedCoordinate,
+        convert_coordinate,
+        detect_branches,
+        get_branch_flight_params,
+        parse_coordinates,
+    )
+    from voice.nlu_learning import (
+        FeedbackType,
+        FewShotPromptBuilder,
+        LearningVoiceIntentParser,
+        NLUDataCollector,
+        NLULearningPipeline,
+        NLUModelConfig,
+        NLUModelType,
+        NLUTrainingSample,
+        create_nlu_learning_pipeline,
+    )
+    from voice.noise_reduction import (
+        AdaptiveLMSFilter,
+        Beamformer,
+        NotchFilterBank,
+        PropellerNoiseConfig,
+        PropellerNoiseReducer,
+        SpectralSubtraction,
+        create_noise_reducer,
+    )
+    from voice.speaker_adapter import (
+        AdaptiveWhisperModel,
+        LoRAFineTuner,
+        SpeakerAdapter,
+        SpeakerProfile,
+        create_lora_finetuner,
+        create_speaker_adapter,
+    )
     from voice.tactical_normalizer import (
         TacticalNormalizer,
         TacticalNormalizerConfig,
         create_tactical_normalizer,
         normalize_tactical_text,
     )
-    from voice.military_coords import (
-        CoordinateType,
-        MilitaryBranch,
-        ParsedCoordinate,
-        BranchFlightProfile,
-        CoordinateParser,
-        CoordinateConverter,
-        BranchProfileManager,
-        parse_coordinates,
-        detect_branches,
-        convert_coordinate,
-        get_branch_flight_params,
-    )
-    from voice.speaker_adapter import (
-        SpeakerAdapter,
-        SpeakerProfile,
-        LoRAFineTuner,
-        AdaptiveWhisperModel,
-        create_speaker_adapter,
-        create_lora_finetuner,
-    )
-    from voice.wake_word_detector import (
-        WakeWordDetector,
-        WakeWordConfig,
-        WakeWordEvent,
-        WakeWordState,
-        KoreanWakeWordDetector,
-        create_wake_word_detector,
-        create_korean_wake_word_detector,
+    from voice.ultra_low_latency import (
+        CommandCache,
+        FastWhisperSTT,
+        LatencyProfile,
+        PipelineStage,
+        PredictiveCommander,
+        StreamingVAD,
+        UltraLowLatencyPipeline,
+        create_ultra_low_latency_pipeline,
     )
     from voice.voice_enrollment import (
-        VoiceEnrollmentManager,
-        VoiceCommandMapping,
         CommandCategory,
+        VoiceCommandMapping,
+        VoiceEnrollmentManager,
         VoiceEnrollmentSession,
         create_enrollment_manager,
     )
-    from voice.finetune_pipeline import (
-        FinetuneConfig,
-        STTLogCollector,
-        WhisperFinetuner,
-        CTranslate2Converter,
-        FinetunePipeline,
-        create_finetune_pipeline,
-        quick_finetune,
-    )
-    from voice.labeling_tool import STTLabelingTool
-    from voice.nlu_learning import (
-        NLUModelConfig,
-        NLUModelType,
-        FeedbackType,
-        NLUTrainingSample,
-        NLUDataCollector,
-        FewShotPromptBuilder,
-        NLULearningPipeline,
-        LearningVoiceIntentParser,
-        create_nlu_learning_pipeline,
-    )
-    from voice.ultra_low_latency import (
-        StreamingVAD,
-        FastWhisperSTT,
-        CommandCache,
-        PredictiveCommander,
-        UltraLowLatencyPipeline,
-        LatencyProfile,
-        PipelineStage,
-        create_ultra_low_latency_pipeline,
-    )
-    from voice.keyword_specs import (
-        KeywordSpec,
-        CommandPriority,
-        KEYWORD_SPECS,
-        get_all_specs,
-        get_specs_by_priority,
-        get_specs_by_target,
-        get_keywords_list,
-        get_phrases_for_keyword,
-        get_command_for_keyword,
-        export_for_training,
-    )
-    from voice.kws_data_collector import (
-        CollectionConfig,
-        SampleMetadata,
-        KWSDataCollector,
-        MultiSpeakerCollector,
-        quick_collect,
-    )
-    from voice.kws_augment import (
-        AugmentConfig,
-        AudioAugmenter,
-        create_augmenter,
-        quick_augment,
-    )
-    from voice.kws_train import (
-        train_kws,
-        evaluate_tflite,
-        test_tflite_inference_speed,
-        prepare_dataset,
-        build_ds_cnn_model,
-    )
-    from voice.kws_runtime import (
-        MFCCExtractor,
-        KWSRuntime,
-        KWSResult,
-        create_kws_runtime,
-        test_kws_runtime,
-    )
-    from voice.denoising_dnn import (
-        DNNModelConfig,
-        BaseDenoiser,
-        ONNXDenoiser,
-        TorchDenoiser,
-        DNNNoiseSuppression,
-        create_denoiser,
-        export_pytorch_to_onnx,
-        PRETRAINED_MODELS,
-    )
-    from voice.noise_reduction import (
-        PropellerNoiseConfig,
-        NotchFilterBank,
-        SpectralSubtraction,
-        AdaptiveLMSFilter,
-        Beamformer,
-        PropellerNoiseReducer,
-        create_noise_reducer,
+    from voice.wake_word_detector import (
+        KoreanWakeWordDetector,
+        WakeWordConfig,
+        WakeWordDetector,
+        WakeWordEvent,
+        WakeWordState,
+        create_korean_wake_word_detector,
+        create_wake_word_detector,
     )
 
 

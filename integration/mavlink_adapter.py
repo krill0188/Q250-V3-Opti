@@ -7,12 +7,11 @@ Maintains provenance (SHA-256, source path, transform metadata).
 
 import hashlib
 import json
-import struct
-from pathlib import Path
-from typing import Dict, List, Optional, Any, BinaryIO
-from dataclasses import dataclass, asdict
-from datetime import datetime
 from collections import defaultdict
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 try:
     import dpkt

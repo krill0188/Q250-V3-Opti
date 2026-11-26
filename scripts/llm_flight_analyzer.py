@@ -9,10 +9,9 @@ report generation, anomaly detection, and intelligent recommendations.
 import json
 import os
 import sqlite3
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
+from typing import Dict, List, Optional
 
 try:
     import openai
@@ -567,7 +566,7 @@ Analyze flight {flight_id} and generate a professional flight analysis report.
     def _generate_fallback_narrative(self, metrics: Dict, anomalies: List[Dict]) -> str:
         """Fallback narrative when LLM unavailable"""
         lines = [
-            f"# Flight Analysis Report (Fallback Mode)",
+            "# Flight Analysis Report (Fallback Mode)",
             f"**Summary**: {metrics.get('summary', 'No summary available')}",
             "",
             "## Anomalies Detected",

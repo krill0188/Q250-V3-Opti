@@ -5,24 +5,24 @@ T-04 SpecKit 작업
 """
 
 import asyncio
-import rclpy
-from rclpy.node import Node
-from rclpy.executors import MultiThreadedExecutor
-from rclpy.callback_groups import ReentrantCallbackGroup
+import os
+import sys
 import threading
 import time
-from typing import Optional, Callable, Dict, Any
 from dataclasses import dataclass
 from enum import Enum
-import sys
-import os
+from typing import Callable, Optional
+
+import rclpy
+from rclpy.executors import MultiThreadedExecutor
+from rclpy.node import Node
 
 # MAVSDK
 try:
     from mavsdk import System
+    from mavsdk.action import ActionError
     from mavsdk.mission import MissionItem, MissionPlan
     from mavsdk.offboard import OffboardError, VelocityBodyYawspeed
-    from mavsdk.action import ActionError
 
     MAVSDK_AVAILABLE = True
 except ImportError:
@@ -31,10 +31,11 @@ except ImportError:
 
 # MAVROS2 메시지
 try:
-    from mavros_msgs.msg import State, CommandBool, SetMode
-    from mavros_msgs.srv import CommandBool as CommandBoolSrv, SetMode as SetModeSrv
     from geometry_msgs.msg import PoseStamped, TwistStamped
-    from sensor_msgs.msg import NavSatFix, Imu, BatteryState
+    from mavros_msgs.msg import State
+    from mavros_msgs.srv import CommandBool as CommandBoolSrv
+    from mavros_msgs.srv import SetMode as SetModeSrv
+    from sensor_msgs.msg import BatteryState, NavSatFix
     from std_msgs.msg import Header
 
     MAVROS2_AVAILABLE = True
@@ -127,6 +128,26 @@ class MAVLinkHelper:
             return False
 
 
+@dataclass
+class DroneState:
+    """통합 드론 상태"""
+
+    connected: bool = False
+    armed: bool = False
+    in_air: bool = False
+    mode: str = "UNKNOWN"
+    battery_percent: float = 0.0
+    gps_fix_type: int = 0
+    satellites: int = 0
+    latitude: float = 0.0
+    longitude: float = 0.0
+    altitude_amsl: float = 0.0
+    altitude_rel: float = 0.0
+    heading: float = 0.0
+    velocity_ned: tuple = (0.0, 0.0, 0.0)
+    last_update: float = 0.0
+
+
 def merge_state(mavsdk_state: DroneState, mavros2_state: DroneState) -> DroneState:
     """우선순위 기반 상태 병합 (MAVSDK > MAVROS2 for 고수준, MAVROS2 > MAVSDK for 센서)"""
     merged = DroneState()
@@ -185,26 +206,6 @@ class ConnectionState(Enum):
     ARMED = "armed"
     IN_AIR = "in_air"
     ERROR = "error"
-
-
-@dataclass
-class DroneState:
-    """통합 드론 상태"""
-
-    connected: bool = False
-    armed: bool = False
-    in_air: bool = False
-    mode: str = "UNKNOWN"
-    battery_percent: float = 0.0
-    gps_fix_type: int = 0
-    satellites: int = 0
-    latitude: float = 0.0
-    longitude: float = 0.0
-    altitude_amsl: float = 0.0
-    altitude_rel: float = 0.0
-    heading: float = 0.0
-    velocity_ned: tuple = (0.0, 0.0, 0.0)
-    last_update: float = 0.0
 
 
 class MAVSDKBridge:
@@ -414,7 +415,7 @@ class MAVROS2Bridge(Node):
         self._connected = False
 
         # QoS 설정
-        from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+        from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
 
         qos = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,

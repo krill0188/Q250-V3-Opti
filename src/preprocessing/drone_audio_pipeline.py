@@ -4,25 +4,20 @@ DroneAudioDataset 전처리 파이프라인
 Binary 및 Multiclass 드론 오디오 분류 데이터셋 전처리
 """
 
-import sys
-import os
 import json
+import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import numpy as np
 from pathlib import Path
-from tqdm import tqdm
-
-from src.preprocessing.loaders import get_loader
-from src.preprocessing.config import DATASET_CONFIGS, SplitConfig, DatasetConfig
-from src.preprocessing.core.synchronizer import TimeSynchronizer, SyncConfig
-from src.preprocessing.core.normalizer import SensorNormalizer, create_normalizer
-from src.preprocessing.core.splitter import create_splitter
-from src.preprocessing.core.base_loader import MultiSensorData, SensorData
 
 import numpy as np
-import json
+
+from src.preprocessing.config import DATASET_CONFIGS, DatasetConfig, SplitConfig
+from src.preprocessing.core.base_loader import MultiSensorData, SensorData
+from src.preprocessing.core.normalizer import SensorNormalizer
+from src.preprocessing.core.splitter import create_splitter
 
 
 def process_drone_audio():
@@ -41,10 +36,9 @@ def process_drone_audio():
 
     # Create loader with custom audio config
     from src.preprocessing.loaders.drone_audio_loader import (
-        DroneAudioLoader,
         AudioConfig,
+        DroneAudioLoader,
     )
-    from src.preprocessing.config import DatasetConfig
 
     audio_config = AudioConfig(
         sample_rate=16000,
@@ -285,19 +279,13 @@ if __name__ == "__main__":
 
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-    import numpy as np
     from pathlib import Path
-    from tqdm import tqdm
 
-    from src.preprocessing.loaders import get_loader
-    from src.preprocessing.config import DATASET_CONFIGS, SplitConfig, DatasetConfig
-    from src.preprocessing.core.synchronizer import TimeSynchronizer, SyncConfig
-    from src.preprocessing.core.normalizer import SensorNormalizer, create_normalizer
-    from src.preprocessing.core.splitter import create_splitter
+    import numpy as np
+
+    from src.preprocessing.config import DATASET_CONFIGS, SplitConfig
     from src.preprocessing.core.base_loader import MultiSensorData, SensorData
-    from src.preprocessing.loaders.drone_audio_loader import (
-        DroneAudioLoader,
-        AudioConfig,
-    )
+    from src.preprocessing.core.normalizer import SensorNormalizer
+    from src.preprocessing.core.splitter import create_splitter
 
     process_drone_audio()

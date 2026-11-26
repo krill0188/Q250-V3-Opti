@@ -4,14 +4,13 @@ UZH-FPV Dataset 로더
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List, Optional
+
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
-import re
 
-from ..core.base_loader import BaseLoader, SensorData, MultiSensorData
 from ..config import DatasetConfig
+from ..core.base_loader import BaseLoader, MultiSensorData, SensorData
 
 
 class UZHFPVLoader(BaseLoader):

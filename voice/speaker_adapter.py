@@ -3,14 +3,12 @@ Speaker Adaptation Module for Whisper Fine-tuning
 Uses faster-whisper with LoRA adapters for personalization
 """
 
-import os
 import json
 import logging
-import tempfile
-from pathlib import Path
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 import torch
 import torchaudio

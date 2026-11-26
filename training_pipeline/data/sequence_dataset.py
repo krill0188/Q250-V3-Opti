@@ -4,14 +4,12 @@ Sequence Dataset for FAN-GHETS24, FANET
 
 import os
 import warnings
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
 import torch
 import yaml
-from sklearn.feature_selection import VarianceThreshold
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import (
     LabelEncoder,
@@ -119,7 +117,7 @@ class FANGHETSDataset:
                 seq = df[feature_cols].values.astype(np.float32)
                 sequences.append(seq)
 
-            except Exception as e:
+            except Exception:
                 corrupted += 1
                 continue
 

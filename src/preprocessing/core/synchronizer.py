@@ -3,14 +3,14 @@
 GPS, IMU, 카메라, 오디오 등 다중 센서 데이터의 시간 동기화
 """
 
-from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
-import numpy as np
-import pandas as pd
-from scipy import signal, interpolate
+from typing import Dict, Optional, Tuple
 
-from .base_loader import SensorData, MultiSensorData
-from ..config import SyncConfig, CoordinateFrame
+import numpy as np
+from scipy import interpolate, signal
+
+from ..config import SyncConfig
+from .base_loader import MultiSensorData, SensorData
 
 
 @dataclass

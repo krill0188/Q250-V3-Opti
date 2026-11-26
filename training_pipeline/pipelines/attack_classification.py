@@ -9,7 +9,6 @@ sys.path.append("/Users/amaster/data/additional_datasets/training_pipeline")
 import json
 from pathlib import Path
 
-import yaml
 from data.sequence_dataset import load_fanghets_data
 
 from training.sequence_trainer import run_fanghets_training

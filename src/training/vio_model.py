@@ -7,7 +7,6 @@ CNN + LSTM / Transformer for IMU + Camera fusion
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Tuple, Optional
 
 
 class IMUEncoder(nn.Module):

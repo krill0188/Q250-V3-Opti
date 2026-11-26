@@ -11,14 +11,11 @@ Publishes:  mavros_msgs/ObstacleDistance (to MAVROS -> PX4)
 Based on docs/12-obstacle-avoidance-pipeline.md
 """
 
-import math
 import rclpy
+from mavros_msgs.msg import DistanceSensor, ObstacleDistance
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
-
-from mavros_msgs.msg import ObstacleDistance
+from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import Range
-from mavros_msgs.msg import DistanceSensor
 from std_msgs.msg import Header
 
 

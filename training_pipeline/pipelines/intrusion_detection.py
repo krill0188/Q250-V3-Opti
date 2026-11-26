@@ -8,7 +8,6 @@ sys.path.append("/Users/amaster/data/additional_datasets/training_pipeline")
 
 from pathlib import Path
 
-import yaml
 from data.tabular_dataset import load_falcon_data
 
 from training.tabular_trainer import run_falcon_training
@@ -83,7 +82,7 @@ def main():
                 {"feature": fi_features, "importance": fi_importance}
             ).sort_values("importance", ascending=False)
             fi_df.to_csv(output_dir / "feature_importance.csv", index=False)
-            print(f"\nTop 20 Features:")
+            print("\nTop 20 Features:")
             print(fi_df.head(20).to_string(index=False))
         else:
             print(
@@ -95,7 +94,7 @@ def main():
             )
             fi_df.to_csv(output_dir / "feature_importance.csv", index=False)
             print(f"Saved importance only (length: {len(fi_importance)})")
-            print(f"Top 20 Importance values:")
+            print("Top 20 Importance values:")
             print(fi_df.head(20).to_string(index=False))
 
     # 4. ONNX Export (선택적)
@@ -115,8 +114,6 @@ def main():
 
 def export_onnx(trainer, data, output_dir):
     """ONNX 변환"""
-    import onnx
-    from skl2onnx import convert_sklearn
     from skl2onnx.common.data_types import FloatTensorType
 
     # LightGBM을 sklearn wrapper로 감싸서 변환

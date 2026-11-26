@@ -1,25 +1,19 @@
 import asyncio
 import json
 import time
-from collections import deque
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from core.llm_risk_analyzer import LocalLLMRiskAnalyzer
+from core.log_aggregator import LogAggregator, LogSample
+from core.risk_aware_arbitrator import RiskAwareArbitrator
 from core_arbitrator import (
-    CommandArbitrator,
     CommandPriority,
     DynamicSafetyValidator,
     HardwareSpec,
     UnifiedCommand,
 )
-from core.llm_risk_analyzer import (
-    LocalLLMRiskAnalyzer,
-    RiskAssessment,
-    RISK_ANALYSIS_SYSTEM_PROMPT,
-)
-from core.log_aggregator import LogAggregator, LogSample
-from core.risk_aware_arbitrator import RiskAwareArbitrator
 from voice.voice_command_engine import VoiceIntentParser
 
 
@@ -258,8 +252,9 @@ class TestRiskAwareArbitrator:
         log_aggregator = LogAggregator()
 
         # 로그 데이터 추가 (CRITICAL 위험 유도)
-        from core.log_aggregator import LogSample
         import time
+
+        from core.log_aggregator import LogSample
 
         samples = [
             LogSample(
@@ -314,8 +309,9 @@ class TestRiskAwareArbitrator:
         log_aggregator = LogAggregator()
 
         # 로그 데이터 추가 (CRITICAL 위험 유도)
-        from core.log_aggregator import LogSample
         import time
+
+        from core.log_aggregator import LogSample
 
         samples = [
             LogSample(

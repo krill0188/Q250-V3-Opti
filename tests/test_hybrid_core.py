@@ -1,8 +1,16 @@
 import asyncio
 import json
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+
+from bridge.hardware_bridges import DroneHybridBridgeNode
+from core.deception_engine import DeceptionEngine, DeceptionPattern, ThreatProfile
+from core.llm_risk_analyzer import LocalLLMRiskAnalyzer
+from core.log_aggregator import LogAggregator, LogSample
+from core.mode_manager import HybridMode, HybridModeManager
+from core.risk_aware_arbitrator import RiskAwareArbitrator
+from core.trajectory_engine import DiveTrajectory, TrajectoryEngine, TrajectoryMethod
 from core_arbitrator import (
     CommandArbitrator,
     CommandPriority,
@@ -10,13 +18,6 @@ from core_arbitrator import (
     HardwareSpec,
     UnifiedCommand,
 )
-from core.mode_manager import HybridModeManager, HybridMode
-from core.trajectory_engine import TrajectoryEngine, TrajectoryMethod, DiveTrajectory
-from core.deception_engine import DeceptionEngine, DeceptionPattern, ThreatProfile
-from core.log_aggregator import LogAggregator, LogSample
-from core.llm_risk_analyzer import LocalLLMRiskAnalyzer
-from core.risk_aware_arbitrator import RiskAwareArbitrator
-from bridge.hardware_bridges import DroneHybridBridgeNode
 
 
 @pytest.fixture
@@ -342,9 +343,9 @@ class TestHybridBridgeIntegration:
     @pytest.mark.asyncio
     async def test_hybrid_bridge_command_execution(self):
         """하이브리드 브릿지 명령 실행 테스트"""
-        from core_arbitrator import HardwareSpec
-        from core.trajectory_engine import TrajectoryEngine
         from core.deception_engine import DeceptionEngine
+        from core.trajectory_engine import TrajectoryEngine
+        from core_arbitrator import HardwareSpec
 
         spec = HardwareSpec(
             device_id="hybrid_drone_1",
@@ -469,7 +470,6 @@ class TestSafetyIntegration:
         log_aggregator = LogAggregator()
 
         # 로그 데이터 추가 (CRITICAL 위험 유도)
-        from core.log_aggregator import LogSample
         import time
 
         samples = [
@@ -534,7 +534,6 @@ class TestSafetyIntegration:
         log_aggregator = LogAggregator()
 
         # 로그 데이터 추가 (CRITICAL 위험 유도)
-        from core.log_aggregator import LogSample
         import time
 
         samples = [

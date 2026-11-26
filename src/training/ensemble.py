@@ -4,29 +4,27 @@ Ensemble Learning for Audio Classification
 K-fold Cross Validation, Seed Ensemble, Model Averaging
 """
 
-import os
+import copy
 import json
 import random
+from pathlib import Path
+from typing import Dict, List, Optional
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, Subset, ConcatDataset
-from sklearn.model_selection import KFold, StratifiedKFold
-from sklearn.metrics import accuracy_score, f1_score, classification_report
-from pathlib import Path
-from typing import List, Dict, Tuple, Optional
-import copy
-
-from train_audio_classifier import (
-    AudioDataset,
-    AudioCNNLSTM,
-    train_epoch,
-    validate,
-    compute_class_weights,
-    FocalLoss,
-)
 from augmentation import get_augmentation_pipeline, mixup_criterion
+from sklearn.metrics import accuracy_score, classification_report, f1_score
+from sklearn.model_selection import StratifiedKFold
+from torch.utils.data import ConcatDataset, DataLoader, Subset
+from train_audio_classifier import (
+    AudioCNNLSTM,
+    AudioDataset,
+    FocalLoss,
+    compute_class_weights,
+    validate,
+)
 
 
 class EnsembleTrainer:

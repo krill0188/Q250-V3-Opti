@@ -4,10 +4,11 @@ PDF → 비디오 변환기 (TTS 내레이션 포함)
 Fast prototype: 10분 / High quality: Manim + 합성
 """
 
-import fitz  # pymupdf
-from moviepy import ImageClip, AudioFileClip, concatenate_videoclips
-from gtts import gTTS
 import os
+
+import fitz  # pymupdf
+from gtts import gTTS
+from moviepy import AudioFileClip, ImageClip, concatenate_videoclips
 
 PDF_PATH = "/tmp/drone_doc.pdf"
 OUTPUT_DIR = "/tmp/drone_video_output"

@@ -5,14 +5,13 @@ llama.cpp Function Calling을 사용한 실시간 위험 분석
 Silvus 링크 품질 데이터 통합
 """
 
-import asyncio
-import json
-import time
 import logging
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Callable
-from enum import Enum
+import time
 from collections import deque
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
 import numpy as np
 
 logger = logging.getLogger(__name__)

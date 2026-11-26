@@ -3,17 +3,16 @@
 LLM 출력이 시스템 프롬프트의 JSON 스키마와 규칙을 준수하는지 검증
 """
 
-import pytest
 import json
-from pathlib import Path
-from voice.voice_command_engine import VoiceIntentParser, ParsedVoiceIntent
-from voice.tactical_normalizer import create_tactical_normalizer
+
+import pytest
+
 from voice.military_coords import (
-    CoordinateParser,
-    CoordinateConverter,
     BranchProfileManager,
-    MilitaryBranch,
+    CoordinateConverter,
+    CoordinateParser,
 )
+from voice.voice_command_engine import ParsedVoiceIntent, VoiceIntentParser
 
 
 class MockLLMClient:
@@ -411,7 +410,7 @@ class TestTacticalParserPromptCompliance:
 
     def test_unified_command_schema(self):
         """UnifiedCommand 스키마 유효성"""
-        from core_arbitrator import UnifiedCommand, CommandPriority
+        from core_arbitrator import CommandPriority, UnifiedCommand
 
         cmd = UnifiedCommand(
             command_id="test-123",

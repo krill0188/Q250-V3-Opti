@@ -13,15 +13,13 @@ Based on: docs/13-fake-gps-implementation.md
 """
 
 import math
-import rclpy
-from rclpy.node import Node
-from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
-from rclpy.time import Time
 
+import rclpy
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from mavros_msgs.msg import GPSINPUT
+from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import Header
-from builtin_interfaces.msg import Time as BuiltinTime
 
 
 class FakeGPSNode(Node):

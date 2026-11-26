@@ -3,17 +3,16 @@ KWS Data Collector - 음성 명령 학습 데이터 수집
 각 키워드별 자연어 문장을 실제 음성으로 녹음하여 학습 데이터셋 구성
 """
 
-import pyaudio
-import wave
 import json
-import uuid
-import time
-import os
 import shutil
-from pathlib import Path
-from dataclasses import dataclass, asdict
-from typing import List, Optional
+import uuid
+import wave
+from dataclasses import asdict, dataclass
 from datetime import datetime
+from pathlib import Path
+from typing import List, Optional
+
+import pyaudio
 
 from voice.keyword_specs import KEYWORD_SPECS, get_phrases_for_keyword
 
@@ -227,7 +226,7 @@ class KWSDataCollector:
             keywords = [s.keyword for s in KEYWORD_SPECS]
 
         print(f"\n{'#'*60}")
-        print(f"KWS 학습 데이터 수집 시작")
+        print("KWS 학습 데이터 수집 시작")
         print(f"대상 키워드: {len(keywords)}개")
         print(f"화자: {self.speaker_id}")
         print(f"환경: {self.environment}/{self.noise_level}/{self.distance}")
@@ -265,7 +264,7 @@ class KWSDataCollector:
         return self.stats["by_keyword"].get(keyword, 0)
 
     def _print_progress(self):
-        print(f"\n--- 진행 상황 ---")
+        print("\n--- 진행 상황 ---")
         print(f"총 수집: {self.stats['total_collected']}개")
         for kw, cnt in sorted(self.stats["by_keyword"].items()):
             print(f"  {kw}: {cnt}개")

@@ -4,13 +4,12 @@ IQP 폐루프 최적화 엔진 (Prototype with PuLP)
 실제 운영 시 CPLEX/Gurobi로 교체 가능
 """
 
-import numpy as np
-import time
 import logging
+import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple, Optional, Any
-from enum import Enum
-import json
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 
 try:
     import pulp
@@ -21,10 +20,9 @@ except ImportError:
     print("Warning: PuLP not installed. Install with: pip install pulp")
 
 from swarm.silvus_interface import (
-    SilvusInterface,
-    LinkQuality,
-    create_silvus_interface,
     OptimizationStatus,
+    SilvusInterface,
+    create_silvus_interface,
 )
 
 logger = logging.getLogger(__name__)
@@ -527,7 +525,7 @@ if __name__ == "__main__":
     print("Running optimization...")
     result = optimizer.solve(silvus)
 
-    print(f"\n=== Optimization Result ===")
+    print("\n=== Optimization Result ===")
     print(f"Status: {result.status.value}")
     print(f"Objective: {result.objective_value:.2f}")
     print(f"Coverage: {result.coverage_score:.1f}")

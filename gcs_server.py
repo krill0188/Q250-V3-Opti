@@ -4,24 +4,24 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Literal
 
 import yaml
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
+from bridge.hardware_bridges import (
+    ROS2_AVAILABLE,
+    DroneHybridBridgeNode,
+    RobotRos2BridgeNode,
+)
 from core_arbitrator import (
     CommandArbitrator,
     CommandPriority,
     DynamicSafetyValidator,
     HardwareSpec,
     UnifiedCommand,
-)
-from bridge.hardware_bridges import (
-    ROS2_AVAILABLE,
-    DroneHybridBridgeNode,
-    RobotRos2BridgeNode,
 )
 from voice.voice_command_engine import VoiceIntentParser
 
@@ -308,12 +308,12 @@ async def lifespan(app: FastAPI):
     ctx.voice_parser = VoiceIntentParser()
 
     # 로그 어그리게이터 & LLM 위험 분석기 초기화
-    from core.log_aggregator import LogAggregator
-    from core.llm_risk_analyzer import LocalLLMRiskAnalyzer
-    from core.risk_aware_arbitrator import RiskAwareArbitrator
-    from core.mode_manager import HybridModeManager
-    from core.trajectory_engine import TrajectoryEngine
     from core.deception_engine import DeceptionEngine
+    from core.llm_risk_analyzer import LocalLLMRiskAnalyzer
+    from core.log_aggregator import LogAggregator
+    from core.mode_manager import HybridModeManager
+    from core.risk_aware_arbitrator import RiskAwareArbitrator
+    from core.trajectory_engine import TrajectoryEngine
 
     ctx.log_aggregator = LogAggregator()
     ctx.validator = DynamicSafetyValidator(ctx.specs)
@@ -343,8 +343,6 @@ async def lifespan(app: FastAPI):
     )
 
     # 하이브리드 드론 노드 (새로 추가)
-    from bridge.hardware_bridges import DroneHybridBridgeNode
-
     ctx.hybrid_node = DroneHybridBridgeNode(
         ctx.specs["hybrid_drone_1"],
         mavsdk_uri="udp://:14540",

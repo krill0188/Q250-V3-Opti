@@ -1,9 +1,10 @@
 import asyncio
 import time
 from typing import Optional
-from core_arbitrator import CommandArbitrator, CommandPriority, UnifiedCommand
+
 from core.llm_risk_analyzer import LocalLLMRiskAnalyzer, RiskAssessment
 from core.log_aggregator import LogAggregator
+from core_arbitrator import CommandArbitrator, CommandPriority, UnifiedCommand
 
 
 class RiskAwareArbitrator(CommandArbitrator):

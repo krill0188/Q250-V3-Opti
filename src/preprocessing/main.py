@@ -4,20 +4,14 @@
 """
 
 import argparse
+import logging
 import sys
 from pathlib import Path
-import logging
 
 # 프로젝트 루트 추가
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.preprocessing import (
-    create_pipeline,
-    run_all_pipelines,
-    DATASET_CONFIGS,
-    create_pipeline,
-)
-from src.preprocessing.config import DatasetConfig
+from src.preprocessing import DATASET_CONFIGS, run_all_pipelines
 
 # 로깅 설정
 logging.basicConfig(

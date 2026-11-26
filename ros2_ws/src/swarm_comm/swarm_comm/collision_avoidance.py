@@ -9,21 +9,16 @@ Subscribes to swarm position broadcasts and computes avoidance velocities.
 import json
 import math
 import time
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
+from typing import Dict, Optional, Tuple
 
 import rclpy
-from rclpy.node import Node
-from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
-from rclpy.parameter import Parameter
-
-from std_msgs.msg import String
-from geometry_msgs.msg import Twist, Vector3, PoseStamped
+from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
-from px4_msgs.msg import VehicleLocalPosition, VehicleVelocitySetpoint
-from std_msgs.msg import Header
-from builtin_interfaces.msg import Time as BuiltinTime
+from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
+from std_msgs.msg import String
 
 
 class CAAlgorithm(Enum):

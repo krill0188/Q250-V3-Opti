@@ -9,14 +9,12 @@ Based on docs/12-obstacle-avoidance-pipeline.md Section 12.9
 """
 
 import rclpy
-from rclpy.node import Node
-from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
-from rclpy.parameter import Parameter
-
 from geometry_msgs.msg import Twist
-from std_msgs.msg import Float32MultiArray
-from mavros_msgs.srv import ParamSet
 from mavros_msgs.msg import ParamValue
+from mavros_msgs.srv import ParamSet
+from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
+from std_msgs.msg import Float32MultiArray
 
 
 class SafetyWatchdog(Node):

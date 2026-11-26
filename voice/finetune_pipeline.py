@@ -7,31 +7,26 @@ Whisper Fine-tuning Pipeline for Drone Voice Control
 5. Deploy model path update
 """
 
-import os
 import json
 import logging
-import subprocess
-import shutil
 import random
-from pathlib import Path
+import subprocess
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional, Tuple
 from datetime import datetime
-from collections import defaultdict
+from pathlib import Path
+from typing import Dict, List, Tuple
 
+import numpy as np
 import torch
 import torchaudio
-import numpy as np
-from datasets import Dataset, Audio
+from datasets import Audio, Dataset
+from peft import LoraConfig, PeftModel, TaskType, get_peft_model
 from transformers import (
+    Seq2SeqTrainer,
+    Seq2SeqTrainingArguments,
     WhisperForConditionalGeneration,
     WhisperProcessor,
-    WhisperFeatureExtractor,
-    WhisperTokenizer,
-    Seq2SeqTrainingArguments,
-    Seq2SeqTrainer,
 )
-from peft import LoraConfig, get_peft_model, TaskType, PeftModel
 
 logger = logging.getLogger(__name__)
 

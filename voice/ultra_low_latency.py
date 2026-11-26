@@ -8,15 +8,14 @@ Optimized for <500ms end-to-end latency
 - Edge-optimized models (Whisper.cpp, Silero VAD)
 """
 
-import asyncio
 import logging
-import time
 import threading
-from pathlib import Path
+import time
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from typing import Optional, Callable, List, Dict, Any, Tuple
-from collections import deque, defaultdict
 from enum import Enum
+from typing import Callable, Dict, List, Optional, Tuple
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -615,9 +614,10 @@ class UltraLowLatencyPipeline:
 
     def _init_wake_word(self, keywords: List[str]):
         try:
+            import os
+
             import pvporcupine
             import pyaudio
-            import os
 
             access_key = os.getenv("PICOVOICE_ACCESS_KEY")
             if not access_key:

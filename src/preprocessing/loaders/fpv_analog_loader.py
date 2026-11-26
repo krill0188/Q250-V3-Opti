@@ -3,15 +3,16 @@ FPV Analog 오디오 데이터셋 로더 - 전체 디코딩 후 분할 저장
 대용량 오디오 데이터를 순차 디코딩 후 메모리 효율적으로 분할 저장
 """
 
+import io
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
+
 import numpy as np
 import pandas as pd
-import io
 import soundfile as sf
 
-from ..core.base_loader import BaseLoader, SensorData, MultiSensorData
 from ..config import DatasetConfig
+from ..core.base_loader import BaseLoader, MultiSensorData, SensorData
 
 
 # 모듈 레벨 함수 (multiprocessing pickle용 - macOS spawn 호환)
@@ -233,7 +234,7 @@ class FPVAnalogLoader(BaseLoader):
                 "synchronized": False,
             }
             meta_path = split_dir / "metadata.json"
-            temp_path = split_dir / f"metadata.json.tmp"
+            temp_path = split_dir / "metadata.json.tmp"
             with open(temp_path, "w") as f:
                 json.dump(metadata, f, indent=2, default=str)
                 f.flush()
@@ -277,7 +278,7 @@ class FPVAnalogLoader(BaseLoader):
             audio=chunk_audio,
             label=chunk_labels,
         )
-        print(f"      saved")
+        print("      saved")
 
 
 def create_fpv_analog_loader(config: DatasetConfig) -> FPVAnalogLoader:

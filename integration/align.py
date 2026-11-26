@@ -5,14 +5,14 @@ Aligns flight log (ulog), MAVLink (pcap/text), ROS 2 bag, and video timestamps
 using explicit time synchronization with provenance metadata.
 """
 
+import bisect
 import hashlib
 import json
-from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple, Union
-from dataclasses import dataclass, asdict, field
-from datetime import datetime
 from collections import defaultdict
-import bisect
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 
 @dataclass

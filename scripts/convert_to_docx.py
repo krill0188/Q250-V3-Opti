@@ -33,7 +33,7 @@ def render_mermaid_to_png(mmd_file, output_dir):
         result = subprocess.run(["which", "mmdc"], capture_output=True)
         if result.returncode != 0:
             print(
-                f"Warning: mmdc not found. Install with: npm install -g @mermaid-js/mermaid-cli"
+                "Warning: mmdc not found. Install with: npm install -g @mermaid-js/mermaid-cli"
             )
             return False
 
@@ -70,7 +70,6 @@ def markdown_to_docx(md_file, docx_file, images_dir):
     import markdown2
     from docx import Document
     from docx.enum.style import WD_STYLE_TYPE
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Inches, Pt, RGBColor
 
     # Markdown 읽기
@@ -136,9 +135,6 @@ def markdown_to_docx(md_file, docx_file, images_dir):
 
     # 간단한 HTML 파싱하여 DOCX에 추가
     import html
-
-    from docx.oxml import OxmlElement
-    from docx.oxml.ns import qn
 
     def add_html_to_doc(doc, html_content):
         """간단한 HTML을 DOCX 요소로 변환"""

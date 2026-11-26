@@ -5,15 +5,15 @@ ONNX -> TensorRT Engine for embedded deployment
 INT8 Calibration + Optimization Profiles + Dynamic CUDA Graph 지원
 """
 
-import os
 import argparse
+import os
+from pathlib import Path
+from typing import List, Optional, Tuple
+
 import numpy as np
-import torch
 import onnx
 import onnxruntime as ort
-from pathlib import Path
-from typing import Tuple, List, Optional
-import json
+import torch
 
 
 def export_to_onnx(
@@ -219,7 +219,6 @@ class INT8Calibrator(trt.IInt8EntropyCalibrator2):
     def _allocate_device_memory(self):
         """첫 배치 크기로 GPU 메모리 할당"""
         import pycuda.driver as cuda
-        import pycuda.autoinit
 
         batch = self.data[: self.batch_size]
         self.device_input = cuda.mem_alloc(batch.nbytes)
@@ -262,9 +261,9 @@ def verify_tensorrt_engine(
     """Verify TensorRT engine matches ONNX output"""
 
     try:
-        import tensorrt as trt
-        import pycuda.driver as cuda
         import pycuda.autoinit
+        import pycuda.driver as cuda
+        import tensorrt as trt
 
         print(f"Verifying TensorRT engine: {engine_path}")
 
@@ -410,10 +409,11 @@ def benchmark_tensorrt_engine(
     """Benchmark TensorRT engine inference time"""
 
     try:
-        import tensorrt as trt
-        import pycuda.driver as cuda
-        import pycuda.autoinit
         import time
+
+        import pycuda.autoinit
+        import pycuda.driver as cuda
+        import tensorrt as trt
 
         TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
         runtime = trt.Runtime(trt.Logger(trt.Logger.WARNING))
@@ -527,6 +527,7 @@ if __name__ == "__main__":
                 "INT8 mode requires --calib_data argument (path to calibration dataset)"
             )
         from torch.utils.data import DataLoader
+
         from preprocessing.datasets.drone_audio_dataset import DroneAudioDataset
 
         calib_dataset = DroneAudioDataset(args.calib_data, split="train", augment=False)

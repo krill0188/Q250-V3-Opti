@@ -5,28 +5,19 @@
 
 import sys
 from pathlib import Path
-import tempfile
-import shutil
 
 # 프로젝트 루트 추가
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import numpy as np
-import pandas as pd
 
 from src.preprocessing import (
-    DATASET_CONFIGS,
-    create_pipeline,
-    SensorData,
-    MultiSensorData,
-    TimeSynchronizer,
-    SensorNormalizer,
-    DataSplitter,
     DataValidator,
-    create_synchronizer,
-    create_normalizer,
+    MultiSensorData,
+    SensorData,
+    SensorNormalizer,
     create_splitter,
-    create_validator,
+    create_synchronizer,
 )
 
 
@@ -125,7 +116,6 @@ def test_multi_sensor_data():
 def test_synchronizer():
     """TimeSynchronizer 테스트"""
     print("Testing TimeSynchronizer...")
-    from src.preprocessing import TimeSynchronizer, create_synchronizer
 
     data = create_test_data()
     multi = MultiSensorData(sensors=data, reference_sensor="gps")
@@ -147,7 +137,6 @@ def test_synchronizer():
 def test_normalizer():
     """SensorNormalizer 테스트"""
     print("Testing SensorNormalizer...")
-    from src.preprocessing import create_normalizer
 
     data = create_test_data()
 
@@ -177,7 +166,7 @@ def test_normalizer():
 def test_splitter():
     """DataSplitter 테스트"""
     print("Testing DataSplitter...")
-    from src.preprocessing import create_splitter, MultiSensorData
+    from src.preprocessing import MultiSensorData
     from src.preprocessing.config import DataSplit
 
     data = create_test_data()
@@ -218,7 +207,7 @@ def test_splitter():
 def test_validator():
     """DataValidator 테스트"""
     print("Testing DataValidator...")
-    from src.preprocessing import create_validator, SensorData
+    from src.preprocessing import SensorData
 
     # 정상 데이터
     good_data = SensorData(

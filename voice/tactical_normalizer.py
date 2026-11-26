@@ -4,11 +4,10 @@
 - Regex + 사전 기반, 확률적 추론 없음 (파싱 오류율 0% 목표)
 """
 
-import re
-from typing import Dict, List, Tuple, Optional, Pattern
-from dataclasses import dataclass, field
-from pathlib import Path
 import json
+import re
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Pattern
 
 
 @dataclass

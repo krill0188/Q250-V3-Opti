@@ -4,8 +4,8 @@ Bridge 구조 검증 테스트 (타겟 PC에서 실행)
 import 테스트 및 기본 구조 확인
 """
 
-import sys
 import os
+import sys
 
 # 프로젝트 루트 추가
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -15,13 +15,11 @@ def test_dual_bridge_import():
     """DualBridge 클래스 import 테스트"""
     print("Testing DualBridge import...")
     try:
-        from bridge.dual_bridge import (
-            DualBridge,
-            MAVSDKBridge,
-            MAVROS2Bridge,
-            DroneState,
-            ConnectionState,
-        )
+        from bridge.dual_bridge import ConnectionState  # noqa: F401
+        from bridge.dual_bridge import DroneState  # noqa: F401
+        from bridge.dual_bridge import DualBridge  # noqa: F401
+        from bridge.dual_bridge import MAVROS2Bridge  # noqa: F401
+        from bridge.dual_bridge import MAVSDKBridge  # noqa: F401
 
         print("✅ All classes imported successfully")
         return True

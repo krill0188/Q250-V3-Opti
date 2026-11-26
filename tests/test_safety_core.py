@@ -1,4 +1,5 @@
 import asyncio
+
 import pytest
 
 from core_arbitrator import (
@@ -134,7 +135,6 @@ async def test_manual_control_preempts_voice_command(sample_specs):
 @pytest.mark.asyncio
 async def test_fast_path_emergency_matcher():
     """비상 정지 및 즉시 착륙 음성 명령이 LLM 없이 최상위 우선순위로 변환되는지 검증"""
-    from voice.voice_command_engine import VoiceIntentParser
 
     parser = VoiceIntentParser(llm_client=None)
 

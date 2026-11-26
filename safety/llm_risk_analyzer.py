@@ -1,11 +1,10 @@
 import asyncio
 import json
 import time
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
-from llama_cpp import Llama
+from typing import Dict, List
 
-from core.log_aggregator import LogAggregator
+from llama_cpp import Llama
 
 
 @dataclass

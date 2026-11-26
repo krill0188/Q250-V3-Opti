@@ -1,6 +1,6 @@
 import asyncio
+
 import pytest
-from unittest.mock import MagicMock, patch
 
 from core.deception_engine import DeceptionEngine, DeceptionPattern, ThreatProfile
 from core.trajectory_engine import TrajectoryEngine

@@ -3,8 +3,8 @@
 LLM/파서가 한국어의 모호한 부사와 방향 표현을 정량화된 수치로 변환하는 기준
 """
 
-from typing import Dict, Optional
 from dataclasses import dataclass
+from typing import Dict, Optional
 
 
 @dataclass
@@ -232,7 +232,6 @@ def parse_korean_command(text: str) -> Dict:
     """
     한국어 명령어를 파싱하여 정량화된 파라미터 추출
     """
-    import re
 
     result = {
         "action": "MOVE_VEL",

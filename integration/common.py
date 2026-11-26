@@ -5,11 +5,11 @@ Provides base classes, SQL schema, and shared constants used by all adapters.
 """
 
 import hashlib
-from pathlib import Path
-from typing import Dict, List, Optional, Any, Union, Tuple
-from dataclasses import dataclass, asdict, field
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, Optional, Tuple, Union
 
 
 class SourceType(Enum):

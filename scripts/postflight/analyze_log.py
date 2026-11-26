@@ -67,7 +67,7 @@ def analyze_flight_log(ulg_file):
         if len(motor_cols) >= 4:
             motors = act[motor_cols[:4]].values
             hover_motors = motors[motors.mean(axis=1) > 0.2]
-            print(f"\n=== Motor Balance (hover avg) ===")
+            print("\n=== Motor Balance (hover avg) ===")
             for i in range(4):
                 print(f"Motor {i+1}: {hover_motors[:,i].mean():.3f}")
             print(f"Max Deviation: {np.max(np.std(hover_motors, axis=1)):.3f}")
@@ -76,7 +76,7 @@ def analyze_flight_log(ulg_file):
     if "battery_status" in data:
         bat = data["battery_status"]
         if "voltage" in bat.columns and "current" in bat.columns:
-            print(f"\n=== Battery ===")
+            print("\n=== Battery ===")
             print(f"Start Voltage: {bat['voltage'].iloc[0]:.2f} V")
             print(f"End Voltage: {bat['voltage'].iloc[-1]:.2f} V")
             print(f"Avg Current: {bat['current'].mean():.2f} A")

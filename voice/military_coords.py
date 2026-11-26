@@ -5,11 +5,11 @@
 - 병과별 비행/센서 프로파일 자동 분기
 """
 
+import math
 import re
-from typing import Dict, List, Tuple, Optional, NamedTuple, Literal
 from dataclasses import dataclass, field
 from enum import Enum
-import math
+from typing import Dict, List, Optional, Tuple
 
 try:
     import mgrs
@@ -20,7 +20,7 @@ except ImportError:
     mgrs = None
 
 try:
-    from pyproj import Transformer, CRS
+    from pyproj import CRS, Transformer
 
     PYPROJ_AVAILABLE = True
 except ImportError:

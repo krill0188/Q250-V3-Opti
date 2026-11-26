@@ -7,18 +7,15 @@ Natural Language Understanding Learning Pipeline
 - 활성 학습(Active Learning): 불확실한 샘플 우선 라벨링
 """
 
-import os
 import json
 import logging
 import uuid
-import asyncio
-from pathlib import Path
-from dataclasses import dataclass, field, asdict
-from typing import List, Dict, Optional, Tuple, Any
+from collections import defaultdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
-from collections import defaultdict
-import random
+from pathlib import Path
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -362,7 +359,7 @@ class FewShotPromptBuilder:
             prompt_parts.append(f"  출력: {json.dumps(gt, ensure_ascii=False)}")
             prompt_parts.append("")
 
-        prompt_parts.append(f"[실제 입력]")
+        prompt_parts.append("[실제 입력]")
         prompt_parts.append(f"기본 타겟: {active_target}")
         prompt_parts.append(f'명령: "{user_utterance}"')
         prompt_parts.append("\n출력:")

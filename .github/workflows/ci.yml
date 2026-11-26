@@ -35,11 +35,11 @@ jobs:
 
         pip install ruff mypy black isort'
     - name: Run ruff
-      run: ruff check . --output-format=github
+      run: ruff check --exclude='venv*/**' --exclude='generated/**' --exclude='build/**' --exclude='.git/**' --output-format=github .
     - name: Run black
-      run: black --check --diff .
+      run: black --check --diff --exclude='venv*/**|generated/**|build/**|\.git/**' .
     - name: Run isort
-      run: isort --check-only --diff .
+      run: isort --check-only --diff --skip venv --skip generated --skip build --skip .git .
     - name: Run mypy
       run: mypy bridge/ voice/ --ignore-missing-imports --no-error-summary
   test-unit:

@@ -4,15 +4,16 @@ PDF → 비디오 변환기 (gTTS + PDF 원본 비율 유지 + 중앙 배치)
 고품질 버전: 원본 PDF 페이지 비율 유지 + gTTS TTS + 검정 배경에 원본 크기 중앙 정렬
 """
 
+import os
+
 import fitz  # pymupdf
 from moviepy import (
-    ImageClip,
     AudioFileClip,
-    CompositeVideoClip,
     ColorClip,
+    CompositeVideoClip,
+    ImageClip,
     concatenate_videoclips,
 )
-import os
 
 # 설정
 PDF_PATH = "/tmp/drone_doc.pdf"
@@ -156,7 +157,7 @@ def main():
     size_mb = os.path.getsize(output_path) / (1024 * 1024)
     print(f"✅ 고품질 비디오 생성 완료: {output_path}")
     print(f"📊 파일 크기: {size_mb:.1f} MB")
-    print(f"📝 특징: PDF 원본 비율 유지 + 검정 배경 + 중앙 정렬 + gTTS 한국어 음성")
+    print("📝 특징: PDF 원본 비율 유지 + 검정 배경 + 중앙 정렬 + gTTS 한국어 음성")
 
 
 if __name__ == "__main__":

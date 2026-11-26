@@ -4,10 +4,12 @@ PyTorch Dataset 클래스들
 """
 
 from __future__ import annotations
-from typing import Dict, List, Optional, Tuple, Any, Union
+
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np
 
 # torch는 완전 지연 import (numpy 2.x 충돌 방지)
@@ -24,8 +26,8 @@ def _load_torch():
         return
     try:
         import torch as t
-        from torch.utils.data import DataLoader as DL
         import torch.nn.functional as F
+        from torch.utils.data import DataLoader as DL
 
         _torch = t
         _DataLoader = DL
@@ -51,8 +53,8 @@ class _LazyDatasetMeta(type):
 # 베이스 클래스로 object 사용 (나중에 메타클래스가 치환)
 _DatasetBase = object
 
-from ..core.base_loader import SensorData, MultiSensorData
 from ..config import DatasetConfig, DataSplit
+from ..core.base_loader import MultiSensorData, SensorData
 
 
 @dataclass
@@ -130,7 +132,7 @@ class BaseSequenceDataset(_DatasetBase, metaclass=_LazyDatasetMeta):
         self.sensor_data = {}
         for sensor_name, meta in self.metadata["sensors"].items():
             # 청크 파일들 찾기 (.chunk_*.npz)
-            chunk_files = sorted(self.split_dir.glob(f".chunk_*.npz"))
+            chunk_files = sorted(self.split_dir.glob(".chunk_*.npz"))
             if chunk_files:
                 # 청크 파일들에서 해당 센서 데이터 추출하여 결합
                 self._load_from_chunks(sensor_name, chunk_files)
@@ -292,7 +294,7 @@ class MultiSensorDataset(_DatasetBase, metaclass=_LazyDatasetMeta):
         self.sensor_data = {}
         for sensor_name, meta in self.metadata["sensors"].items():
             # 청크 파일들 찾기
-            chunk_files = sorted(self.split_dir.glob(f".chunk_*.npz"))
+            chunk_files = sorted(self.split_dir.glob(".chunk_*.npz"))
             if chunk_files:
                 self._load_sensor_from_chunks(sensor_name, chunk_files)
             else:

@@ -3,11 +3,11 @@ Keyword Specifications - Single Source of Truth for Voice Commands
 모든 음성 명령의 정의: 키워드, 자연어 문장, MAVLink 액션, 파라미터, 우선순위
 """
 
-from dataclasses import dataclass, field, asdict
-from typing import List, Dict, Optional
-from enum import IntEnum
 import json
+from dataclasses import asdict, dataclass, field
+from enum import IntEnum
 from pathlib import Path
+from typing import Dict, List, Optional
 
 
 class CommandPriority(IntEnum):
@@ -804,7 +804,7 @@ if __name__ == "__main__":
     export_for_training()
 
     # 통계 출력
-    print(f"\n=== 키워드 스펙 통계 ===")
+    print("\n=== 키워드 스펙 통계 ===")
     print(f"총 키워드: {len(KEYWORD_SPECS)}개")
 
     by_priority = {}
@@ -819,7 +819,7 @@ if __name__ == "__main__":
         by_target[s.target] += 1
     print(f"대상별: {by_target}")
 
-    print(f"\n키워드 리스트 (학습 순서):")
+    print("\n키워드 리스트 (학습 순서):")
     for i, kw in enumerate(get_keywords_list()):
         spec = next(s for s in KEYWORD_SPECS if s.keyword == kw)
         print(f"  [{i:2d}] {kw} ({spec.mavlink_action})")

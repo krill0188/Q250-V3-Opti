@@ -4,23 +4,15 @@ TFLite INT8 모델로 10ms 프레임 처리, <5ms 지연
 선택적 의존성(librosa, tflite_runtime, numpy) 지연 로딩
 """
 
-from pathlib import Path
-from typing import Optional, Dict, List, Tuple, TYPE_CHECKING
-from dataclasses import dataclass
 from collections import deque
+from dataclasses import dataclass
+from pathlib import Path
+from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
 if TYPE_CHECKING:
     import numpy as np
-    import librosa
-    import tflite_runtime.interpreter as tflite
 
-from voice.keyword_specs import (
-    get_keywords_list,
-    get_command_for_keyword,
-    get_phrases_for_keyword,
-    KEYWORD_SPECS,
-    CommandPriority,
-)
+from voice.keyword_specs import KEYWORD_SPECS
 
 
 @dataclass
@@ -258,7 +250,6 @@ class KWSRuntime:
         # 시간 평활화 버퍼
         self.smoothing_frames = smoothing_frames
         self._prob_buffer = None
-        from collections import deque
 
         self._prob_buffer = deque(maxlen=smoothing_frames)
 
@@ -274,7 +265,7 @@ class KWSRuntime:
             "avg_inference_ms": 0.0,
         }
 
-        print(f"KWS 런타임 초기화 완료:")
+        print("KWS 런타임 초기화 완료:")
         print(f"  모델: {model_path}")
         print(f"  클래스: {len(self.idx_to_label)}개")
         print(f"  평활화: {smoothing_frames}프레임")
@@ -282,9 +273,8 @@ class KWSRuntime:
     def _ensure_tflite(self):
         """TFLite 인터프리터와 numpy, librosa 지연 초기화"""
         if self._interpreter is None:
-            import tflite_runtime.interpreter as tflite
             import numpy as np
-            import librosa
+            import tflite_runtime.interpreter as tflite
 
             self._tflite = tflite
             self._np = np
@@ -500,7 +490,5 @@ def test_kws_runtime():
 
 
 if __name__ == "__main__":
-    import json
-    import time
 
     test_kws_runtime()

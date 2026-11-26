@@ -3,15 +3,14 @@ Voice Enrollment Module - Custom Command Mapping per User
 사용자별 커스텀 음성 명령어 매핑 등록/관리
 """
 
-import os
 import json
 import logging
 import uuid
-from pathlib import Path
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Callable
 from datetime import datetime
 from enum import Enum
+from pathlib import Path
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

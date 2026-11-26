@@ -5,13 +5,13 @@ STT 데이터 라벨링 도구 (CLI/Web)
 - 학습 데이터로 승인/거절
 """
 
-import os
 import json
 import logging
-from pathlib import Path
-from typing import List, Dict, Optional
+import os
 import subprocess
 import sys
+from pathlib import Path
+from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 

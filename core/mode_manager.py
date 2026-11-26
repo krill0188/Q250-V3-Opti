@@ -1,7 +1,5 @@
-from enum import Enum
 from dataclasses import dataclass
-from typing import Optional
-import asyncio
+from enum import Enum
 
 
 class HybridMode(Enum):
@@ -57,9 +55,6 @@ class HybridModeManager:
 
     def _check_conditions(self, target_mode: HybridMode) -> bool:
         """자동 전환 조건 체크"""
-        # 첫 번째 기체의 스펙 가져오기
-        spec = next(iter(self.specs.values()))
-
         if target_mode == HybridMode.DIVE_ATTACK:
             # 다이브 어택: 최소 고도 50m, 최소 속도 20m/s, 배터리 30% 이상 필요
             # 현재 상태는 시뮬레이션으로 기본값 사용 (실제로는 텔레메트리에서 가져옴)

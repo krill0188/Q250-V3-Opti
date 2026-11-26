@@ -7,21 +7,19 @@ of the mission planning pipeline.
 """
 
 import json
-import os
-from typing import Dict, List, Any
+from typing import Dict
 
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
+from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import String
 
 from .mission_planner_node import (
-    MissionValidator,
-    MissionPlan,
-    Waypoint,
     Constraints,
     Failsafe,
-    ActionType,
+    MissionPlan,
+    MissionValidator,
+    Waypoint,
 )
 
 
@@ -125,7 +123,7 @@ class MissionValidatorNode(Node):
 
     def _parse_mission(self, parsed: Dict) -> "MissionPlan":
         """Parse JSON to MissionPlan"""
-        from .mission_planner_node import MissionPlan, Waypoint, Constraints, Failsafe
+        from .mission_planner_node import MissionPlan
 
         waypoints = []
         for wp_data in parsed.get("waypoints", []):

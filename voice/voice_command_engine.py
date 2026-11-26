@@ -1,11 +1,11 @@
+import asyncio
+import logging
 import math
 import re
 import uuid
-import asyncio
-import logging
-from pathlib import Path
-from typing import Optional, Tuple, Callable, List, Dict, TYPE_CHECKING
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 from pydantic import BaseModel, Field
@@ -14,30 +14,11 @@ from core_arbitrator import CommandPriority, UnifiedCommand
 
 # TYPE_CHECKING으로 타입 힌트만 가져오고 런타임 import는 선택적으로 처리
 if TYPE_CHECKING:
-    from voice.speaker_adapter import (
-        SpeakerAdapter,
-        SpeakerProfile,
-        AdaptiveWhisperModel,
-    )
-    from voice.wake_word_detector import (
-        WakeWordDetector,
-        WakeWordConfig,
-        WakeWordEvent,
-        WakeWordState,
-        KoreanWakeWordDetector,
-    )
-    from voice.voice_enrollment import (
-        VoiceEnrollmentManager,
-        VoiceCommandMapping,
-        CommandCategory,
-        VoiceEnrollmentSession,
-    )
-    from voice.nlu_learning import NLUModelConfig, NLULearningPipeline
-    from voice.ambiguous_quantification import (
-        parse_korean_command,
-        quantify_korean_ambiguity,
-    )
+    from voice.nlu_learning import NLUModelConfig
+    from voice.speaker_adapter import AdaptiveWhisperModel, SpeakerAdapter
     from voice.tactical_normalizer import TacticalNormalizer
+    from voice.voice_enrollment import VoiceCommandMapping, VoiceEnrollmentManager
+    from voice.wake_word_detector import WakeWordEvent
 
 # 런타임 선택적 import (가용성 플래그만 설정)
 try:
@@ -78,9 +59,9 @@ def _check_speaker_adapter() -> bool:
     if not SPEAKER_ADAPTER_AVAILABLE:
         try:
             from voice.speaker_adapter import (
+                AdaptiveWhisperModel,
                 SpeakerAdapter,
                 SpeakerProfile,
-                AdaptiveWhisperModel,
             )
 
             SPEAKER_ADAPTER_AVAILABLE = True
@@ -843,9 +824,9 @@ class VoiceCommandPipeline:
         self.nlu_learning = None
         if self.config.enable_nlu_learning and _check_nlu_learning():
             from voice.nlu_learning import (
-                NLUModelConfig,
-                NLULearningPipeline,
                 LearningVoiceIntentParser,
+                NLULearningPipeline,
+                NLUModelConfig,
                 NLUModelType,
             )
 
@@ -877,8 +858,8 @@ class VoiceCommandPipeline:
         if self.config.enable_wake_word and _check_wake_word():
             from voice.wake_word_detector import (
                 KoreanWakeWordDetector,
-                WakeWordDetector,
                 WakeWordConfig,
+                WakeWordDetector,
             )
 
             if self.config.wake_word_keyword_paths:

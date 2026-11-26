@@ -4,16 +4,16 @@
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Any
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
+from ..config import DatasetConfig, NormalizationConfig, SplitConfig, SyncConfig
 from ..core.base_loader import BaseLoader, MultiSensorData, SensorData
-from ..core.synchronizer import TimeSynchronizer, SyncResult
 from ..core.normalizer import SensorNormalizer, create_normalizer
 from ..core.splitter import DataSplitter, create_splitter
+from ..core.synchronizer import SyncResult, TimeSynchronizer
 from ..core.validator import DataValidator, ValidationReport, create_validator
-from ..config import DatasetConfig, SplitConfig, SyncConfig, NormalizationConfig
 
 
 @dataclass
@@ -133,10 +133,10 @@ class IDF_DSPipeline:
         self._init_components()
 
     def _init_components(self):
-        from .validator import create_validator
         from .normalizer import create_normalizer
         from .splitter import create_splitter
         from .synchronizer import TimeSynchronizer
+        from .validator import create_validator
 
         self.validator = create_validator()
         self.normalizer = create_normalizer(
@@ -188,7 +188,6 @@ class FPVAnalogPipeline:
 
     def run(self):
         from preprocessing.loaders import get_loader
-        from pathlib import Path
 
         loader = get_loader("fpv_analog", self.config)
         loader.load_raw()

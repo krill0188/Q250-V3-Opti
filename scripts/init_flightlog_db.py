@@ -7,8 +7,8 @@ Based on references/flightlog-schema.sql
 """
 
 import sqlite3
-from pathlib import Path
 import sys
+from pathlib import Path
 
 
 def init_database(db_path: str) -> None:

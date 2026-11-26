@@ -5,23 +5,16 @@
 """
 
 import asyncio
-import time
 import logging
 import threading
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Callable, Any, Tuple
-from enum import Enum
+import time
 from collections import deque
-import numpy as np
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from swarm.iqp_optimizer import OptimizationResult, OptimizationStatus, create_optimizer
 from swarm.silvus_interface import SilvusInterface, create_silvus_interface
-from swarm.iqp_optimizer import (
-    IQPOptimizer,
-    OptimizationResult,
-    create_optimizer,
-    IncrementalOptimizer,
-    OptimizationStatus,
-)
 
 logger = logging.getLogger(__name__)
 

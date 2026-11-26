@@ -1,8 +1,6 @@
-import numpy as np
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Tuple
 from enum import Enum
+from typing import List, Tuple
 
 
 class TrajectoryMethod(Enum):

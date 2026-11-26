@@ -3,17 +3,17 @@ KWS Model Training - 키워드 스팟팅 모델 학습 및 TFLite 변환
 MFCC + DS-CNN 아키텍처, INT8 양자화로 임베디드 배포용
 """
 
-import os
 import json
 import time
-import numpy as np
-import librosa
-import tensorflow as tf
+import warnings
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import librosa
+import numpy as np
+import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
-from typing import Tuple, Dict, List, Optional
-import warnings
 
 warnings.filterwarnings("ignore")
 
@@ -321,11 +321,11 @@ def train_kws(
     plt.close()
 
     print(f"\n완료! 모델 저장: {output_path}")
-    print(f"  - best_kws.h5 (Keras)")
-    print(f"  - kws_model_int8.tflite (INT8 양자화)")
-    print(f"  - kws_model_fp16.tflite (FP16)")
-    print(f"  - labels.json")
-    print(f"  - training_curves.png")
+    print("  - best_kws.h5 (Keras)")
+    print("  - kws_model_int8.tflite (INT8 양자화)")
+    print("  - kws_model_fp16.tflite (FP16)")
+    print("  - labels.json")
+    print("  - training_curves.png")
 
 
 def evaluate_tflite(tflite_path: str, X_test: np.ndarray, y_test: np.ndarray) -> Dict:

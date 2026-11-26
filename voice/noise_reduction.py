@@ -7,11 +7,11 @@
 - ESC RPM 실시간 연동 노치 필터 업데이트
 """
 
+from dataclasses import dataclass
+from typing import List, Optional, Tuple
+
 import numpy as np
 import scipy.signal as signal
-from typing import Optional, Tuple, List
-from dataclasses import dataclass
-from collections import deque
 
 
 @dataclass

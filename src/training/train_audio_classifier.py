@@ -8,17 +8,16 @@ DroneAudioDataset 오디오 분류 모델 학습
 - Class imbalance handling: Class weights + Focal Loss
 """
 
-import os
-import json
+import argparse
+from pathlib import Path
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
-from sklearn.metrics import accuracy_score, f1_score, classification_report
+from sklearn.metrics import accuracy_score, classification_report, f1_score
 from sklearn.utils.class_weight import compute_class_weight
-import argparse
-from pathlib import Path
+from torch.utils.data import DataLoader, Dataset
 
 
 class AudioDataset(Dataset):
@@ -266,10 +265,10 @@ def main():
         print(f"Using Focal Loss (gamma={args.gamma}) with class weights")
     elif args.loss == "weighted_ce":
         criterion = nn.CrossEntropyLoss(weight=class_weights)
-        print(f"Using CrossEntropyLoss with class weights")
+        print("Using CrossEntropyLoss with class weights")
     else:
         criterion = nn.CrossEntropyLoss()
-        print(f"Using standard CrossEntropyLoss")
+        print("Using standard CrossEntropyLoss")
 
     optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)

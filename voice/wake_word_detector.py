@@ -3,16 +3,14 @@ Wake Word Detection Module using Porcupine (Picovoice)
 Always-on "Hey Drone" / "드론아" detection
 """
 
+import logging
 import os
 import struct
 import threading
 import time
-import logging
-from pathlib import Path
 from dataclasses import dataclass
-from typing import Callable, Optional, List, Dict
 from enum import Enum
-from collections import deque
+from typing import Callable, Dict, List, Optional
 
 import pvporcupine
 import pyaudio

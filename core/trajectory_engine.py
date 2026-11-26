@@ -1,23 +1,20 @@
-import numpy as np
 import math
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Tuple
 from enum import Enum
-import asyncio
+from pathlib import Path
+from typing import List, Tuple
 
 # GPU 가속 백엔드 임포트 시도
 try:
     import sys
 
     sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "cuda"))
-    from trajectory_bindings import get_trajectory_backend, TrajectoryEngineGPU
+    from trajectory_bindings import TrajectoryEngineGPU  # noqa: F401
+    from trajectory_bindings import get_trajectory_backend
 
     GPU_BACKEND_AVAILABLE = True
 except ImportError:
     GPU_BACKEND_AVAILABLE = False
-
-from pathlib import Path
 
 
 class TrajectoryMethod(Enum):
@@ -304,8 +301,8 @@ class TrajectoryEngine:
 
         current = list(start)
         for i in range(1, num_segments + 1):
-            # 랜덤 방향 변경
-            angle_change = random.uniform(-1.0, 1.0)  # rad
+            # 랜덤 방향 변경 (미사용 - 향후 경로 다양성 확장을 위해 보존)
+            _angle_change = random.uniform(-1.0, 1.0)  # rad
             speed = params.get("speed", 20.0)
 
             # 간단한 직선 세그먼트

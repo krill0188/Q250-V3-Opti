@@ -2,11 +2,10 @@
 Sequence Model Training for FAN-GHETS24, FANET
 """
 
-import json
 import time
 import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 import numpy as np
 import torch
@@ -383,7 +382,6 @@ class SequenceTrainer:
 
 def run_fanghets_training(config_path: str, data: Dict) -> SequenceTrainer:
     """FAN-GHETS24 훈련 실행 헬퍼"""
-    from data.sequence_dataset import FANGHETSDataset
 
     trainer = SequenceTrainer(config_path)
     dataset = data["dataset"]

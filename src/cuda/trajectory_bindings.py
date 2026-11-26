@@ -5,12 +5,9 @@ ctypes 기반 경량 래퍼 (pybind11 빌드 불필요)
 """
 
 import ctypes
-import numpy as np
-import os
-import sys
-from pathlib import Path
-from typing import Tuple, List, Optional
 import time
+from pathlib import Path
+from typing import List, Optional, Tuple
 
 # =============================================================================
 # Data Structures (CUDA 커널과 일치)
@@ -124,9 +121,9 @@ class TrajectoryCUDA:
 
         if lib_path is None or not Path(lib_path).exists():
             raise RuntimeError(
-                f"CUDA library not found. Build first:\n"
-                f"  mkdir -p build && cd build && cmake .. && make\n"
-                f"Or specify lib_path explicitly."
+                "CUDA library not found. Build first:\n"
+                "  mkdir -p build && cd build && cmake .. && make\n"
+                "Or specify lib_path explicitly."
             )
 
         self.lib = ctypes.CDLL(lib_path)
@@ -420,7 +417,7 @@ def get_trajectory_backend(force_python: bool = False):
         return backend, "cuda"
     except Exception as e:
         print(f"[Trajectory] CUDA backend unavailable: {e}")
-        print(f"[Trajectory] Falling back to Python implementation")
+        print("[Trajectory] Falling back to Python implementation")
         return TrajectoryPythonFallback(), "python_fallback"
 
 
@@ -447,8 +444,9 @@ class TrajectoryEngineGPU:
         max_speed: float,
         method: str = "MPC",
     ):
-        from core.trajectory_engine import DiveTrajectory, TrajectoryMethod
         import math
+
+        from core.trajectory_engine import DiveTrajectory, TrajectoryMethod
 
         if method == "LUT" or method == TrajectoryMethod.LUT:
             # LUT: 캐시된 궤적 재사용

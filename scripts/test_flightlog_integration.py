@@ -7,23 +7,14 @@ with full provenance tracking.
 """
 
 import sqlite3
-import hashlib
-from pathlib import Path
-from datetime import datetime
 import sys
+from datetime import datetime
+from pathlib import Path
 
 # Add integration to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from integration import (
-    FlightLogAdapter,
-    MAVLinkAdapter,
-    TimeAligner,
-    compute_sha256,
-    get_git_hash,
-    utc_now_iso,
-    FLIGHTLOG_SQL_SCHEMA,
-)
+from integration import get_git_hash, utc_now_iso
 
 DB_PATH = "/Users/amaster/projectm/Q250-V3-Opti/flight_logs/db/flightlog.db"
 

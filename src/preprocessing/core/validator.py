@@ -3,16 +3,13 @@
 데이터 무결성, 완전성, 일관성 검증
 """
 
-from typing import Dict, List, Optional, Tuple, Any, Set
 from dataclasses import dataclass, field
 from enum import Enum
-import numpy as np
-import pandas as pd
-from pathlib import Path
-from typing import Callable, Any
+from typing import Any, Dict, List, Optional
 
-from .base_loader import SensorData, MultiSensorData
-from ..config import DatasetConfig
+import numpy as np
+
+from .base_loader import MultiSensorData, SensorData
 
 
 class Severity(Enum):
@@ -93,7 +90,6 @@ class DataValidator:
         self, sensor_data: "SensorData", sensor_name: str
     ) -> "ValidationReport":
         """단일 센서 데이터 검증"""
-        from .base_loader import SensorData
 
         report = ValidationReport(
             sensor="", total_samples=0, duration_sec=0.0, frequency_hz=0.0

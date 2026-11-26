@@ -3,17 +3,16 @@ DroneAudioDataset Loader
 Binary and multiclass drone audio detection dataset.
 """
 
-import os
-import numpy as np
-import librosa
-from pathlib import Path
-from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
-from tqdm import tqdm
-import json
+from pathlib import Path
+from typing import Dict, List, Tuple
 
-from ..core.base_loader import BaseLoader, SensorData, MultiSensorData
+import librosa
+import numpy as np
+from tqdm import tqdm
+
 from ..config import DatasetConfig
+from ..core.base_loader import BaseLoader
 
 
 @dataclass
