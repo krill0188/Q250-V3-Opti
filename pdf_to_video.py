@@ -37,9 +37,7 @@ def generate_narration(text, lang="ko", output_path=None):
     return output_path
 
 
-def create_video_from_pages(
-    images, narrations=None, output_path="/tmp/drone_video.mp4", fps=24
-):
+def create_video_from_pages(images, narrations=None, output_path="/tmp/drone_video.mp4", fps=24):
     """이미지 + 오디오로 비디오 생성"""
     clips = []
 

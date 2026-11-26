@@ -84,9 +84,7 @@ class DatasetConfig:
 DATASET_CONFIGS = {
     "idf_ds": DatasetConfig(
         name="idf_ds",
-        raw_data_path=Path(
-            "~/data/drone_datasets/idf_ds/Speedybee DataSet"
-        ).expanduser(),
+        raw_data_path=Path("~/data/drone_datasets/idf_ds/Speedybee DataSet").expanduser(),
         processed_path=Path("~/data/drone_datasets/processed/idf_ds").expanduser(),
         coordinate_frame=CoordinateFrame.NED,
         native_freq_hz=100.0,
@@ -127,9 +125,7 @@ DATASET_CONFIGS = {
         raw_data_path=Path(
             "~/data/drone_datasets/fixed_wing_attitude/Fixed-Wing-UAV-Attitude-Dataset"
         ).expanduser(),
-        processed_path=Path(
-            "~/data/drone_datasets/processed/fixed_wing_attitude"
-        ).expanduser(),
+        processed_path=Path("~/data/drone_datasets/processed/fixed_wing_attitude").expanduser(),
         coordinate_frame=CoordinateFrame.NED,
         native_freq_hz=50.0,
         sensors=["attitude", "gps", "imu", "airspeed"],
@@ -146,9 +142,7 @@ DATASET_CONFIGS = {
     "ign_fixed_wing": DatasetConfig(
         name="ign_fixed_wing",
         raw_data_path=Path("~/data/drone_datasets/ign_fixed_wing").expanduser(),
-        processed_path=Path(
-            "~/data/drone_datasets/processed/ign_fixed_wing"
-        ).expanduser(),
+        processed_path=Path("~/data/drone_datasets/processed/ign_fixed_wing").expanduser(),
         coordinate_frame=CoordinateFrame.NED,
         native_freq_hz=100.0,
         sensors=["gps", "imu", "camera", "gnss"],

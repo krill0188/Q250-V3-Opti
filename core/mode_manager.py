@@ -26,9 +26,7 @@ class HybridModeManager:
         self.transition_history = []
         self.auto_transition_enabled = True
 
-    async def request_transition(
-        self, target_mode: HybridMode, trigger: str = "MANUAL"
-    ) -> bool:
+    async def request_transition(self, target_mode: HybridMode, trigger: str = "MANUAL") -> bool:
         """모드 전환 요청 (자동/수동)"""
         if not self._validate_transition(target_mode):
             return False
@@ -62,11 +60,7 @@ class HybridModeManager:
             current_speed = getattr(self, "_current_speed", 30.0)
             current_battery = getattr(self, "_current_battery", 50.0)
 
-            return (
-                current_alt >= 50.0
-                and current_speed >= 20.0
-                and current_battery >= 30.0
-            )
+            return current_alt >= 50.0 and current_speed >= 20.0 and current_battery >= 30.0
 
         elif target_mode == HybridMode.FPV_AGILE:
             # FPV 모드: 저고도에서 가능

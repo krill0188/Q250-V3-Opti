@@ -34,8 +34,6 @@ def get_loader(dataset_name: str, config: DatasetConfig):
     }
 
     if dataset_name not in loaders:
-        raise ValueError(
-            f"Unknown dataset: {dataset_name}. Available: {list(loaders.keys())}"
-        )
+        raise ValueError(f"Unknown dataset: {dataset_name}. Available: {list(loaders.keys())}")
 
     return loaders[dataset_name](config)

@@ -1,11 +1,11 @@
 import asyncio
+from dataclasses import dataclass, field
 import logging
 import math
-import re
-import uuid
-from dataclasses import dataclass, field
 from pathlib import Path
+import re
 from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple
+import uuid
 
 import numpy as np
 from pydantic import BaseModel, Field
@@ -131,9 +131,7 @@ class FastPathEmergencyMatcher:
         r"(비상\s*정지|긴급\s*정지|즉시\s*정지|올\s*스톱|all\s*stop|임무\s*중지)",
         re.IGNORECASE,
     )
-    RTL_PATTERN = re.compile(
-        r"(긴급\s*복귀|즉시\s*복귀|복귀\s*명령|RTL)", re.IGNORECASE
-    )
+    RTL_PATTERN = re.compile(r"(긴급\s*복귀|즉시\s*복귀|복귀\s*명령|RTL)", re.IGNORECASE)
     EMCON_PATTERN = re.compile(r"(전파\s*침묵|엠콘|EMCON|무전\s*침묵)", re.IGNORECASE)
     HOLD_PATTERN = re.compile(r"^(멈춰|정지|스톱|홀드|잠깐|대기)$", re.IGNORECASE)
     LAND_PATTERN = re.compile(r"(비상\s*착륙|즉시\s*착륙)", re.IGNORECASE)
@@ -378,9 +376,7 @@ class VoiceIntentParser:
             )
             if custom_mapping:
                 logger.info(f"[CUSTOM-MAPPING] '{text}' -> {custom_mapping.action}")
-                return self._mapping_to_command(
-                    custom_mapping, text, stt_confidence, active_target
-                )
+                return self._mapping_to_command(custom_mapping, text, stt_confidence, active_target)
 
         # 4) LLM 구조화 파싱
         clarification_needed = False
@@ -457,9 +453,7 @@ class VoiceIntentParser:
         if "vx_mps" in params:
             params["vx_mps"] = vals[0]
 
-    def _match_hybrid_commands(
-        self, text: str, default_target: str
-    ) -> Optional[UnifiedCommand]:
+    def _match_hybrid_commands(self, text: str, default_target: str) -> Optional[UnifiedCommand]:
         """하이브리드/다이브/기만 전용 Fast-Path 매칭"""
         clean_text = text.strip()
         target = default_target
@@ -570,11 +564,7 @@ class VoiceIntentParser:
         결정론적 폴백 파서
         Returns: (ParsedVoiceIntent, clarification_needed, reason)
         """
-        target = (
-            "drone_1"
-            if "드론" in text
-            else ("robot_1" if "로봇" in text else active_target)
-        )
+        target = "drone_1" if "드론" in text else ("robot_1" if "로봇" in text else active_target)
         if "하이브리드" in text:
             target = "hybrid_drone_1"
 
@@ -681,17 +671,13 @@ class VoiceIntentParser:
             )
         elif "좌회전" in text:
             return (
-                ParsedVoiceIntent(
-                    target_id=target, action="MOVE_VEL", yaw_rate_radps=0.5
-                ),
+                ParsedVoiceIntent(target_id=target, action="MOVE_VEL", yaw_rate_radps=0.5),
                 False,
                 "",
             )
         elif "우회전" in text:
             return (
-                ParsedVoiceIntent(
-                    target_id=target, action="MOVE_VEL", yaw_rate_radps=-0.5
-                ),
+                ParsedVoiceIntent(target_id=target, action="MOVE_VEL", yaw_rate_radps=-0.5),
                 False,
                 "",
             )
@@ -705,9 +691,7 @@ class VoiceIntentParser:
             )
         elif "좌표" in text or "이동" in text:
             return (
-                ParsedVoiceIntent(
-                    target_id=target, action="NAV_TO_POSE", x_m=val, y_m=0.0
-                ),
+                ParsedVoiceIntent(target_id=target, action="NAV_TO_POSE", x_m=val, y_m=0.0),
                 False,
                 "",
             )
@@ -718,9 +702,7 @@ class VoiceIntentParser:
             f"해석할 수 없는 음성 명령입니다: '{text}'",
         )
 
-    async def _call_structured_llm(
-        self, text: str, active_target: str
-    ) -> ParsedVoiceIntent:
+    async def _call_structured_llm(self, text: str, active_target: str) -> ParsedVoiceIntent:
         raw_json = await self.llm_client.generate_json(
             system_prompt=self.SYSTEM_PROMPT,
             user_prompt=f"기본 타겟: {active_target} / 명령: {text}",
@@ -1060,9 +1042,7 @@ class VoiceCommandPipeline:
         self.active_target = target_id
         logger.info(f"활성 타겟 변경: {target_id}")
 
-    def submit_nlu_feedback(
-        self, sample_id: str, is_correct: bool, correct_text: str = ""
-    ) -> bool:
+    def submit_nlu_feedback(self, sample_id: str, is_correct: bool, correct_text: str = "") -> bool:
         """NLU 파싱 결과에 대한 사용자 피드백 제출"""
         if self.nlu_learning and hasattr(self.parser, "submit_feedback"):
             return self.parser.submit_feedback(sample_id, is_correct, correct_text)

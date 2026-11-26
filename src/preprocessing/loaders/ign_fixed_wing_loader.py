@@ -61,9 +61,7 @@ class IGNFixedWingLoader(BaseLoader):
 
         return MultiSensorData(
             sensors=sensors,
-            reference_sensor=(
-                "camera" if "camera" in sensors else list(sensors.keys())[0]
-            ),
+            reference_sensor=("camera" if "camera" in sensors else list(sensors.keys())[0]),
             metadata={
                 "source": "IGN_Fixed_Wing",
                 "description": "High-precision GPS + Camera + GCP dataset for Non-GPS navigation validation",
@@ -169,9 +167,7 @@ class IGNFixedWingLoader(BaseLoader):
 
     def _load_gcp_image_coords(self) -> Optional[SensorData]:
         """GCP 이미지 좌표 로드"""
-        gcp_file = (
-            self.data_root / "Camera" / "Data" / "GCPs" / "GCPs_img_coordinates.txt"
-        )
+        gcp_file = self.data_root / "Camera" / "Data" / "GCPs" / "GCPs_img_coordinates.txt"
         if not gcp_file.exists():
             return None
 

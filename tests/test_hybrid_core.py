@@ -322,17 +322,13 @@ class TestDeceptionEngine:
         assert success1 is True
 
         # 두 번째 기만 시작 시도 (거부되어야 함)
-        success2 = await deception_engine.start_deception(
-            DeceptionPattern.SINE_DIVE, duration=5.0
-        )
+        success2 = await deception_engine.start_deception(DeceptionPattern.SINE_DIVE, duration=5.0)
         assert success2 is False  # 이미 활성화된 기만 모드 있음
 
         await deception_engine.stop_deception()
 
         # 중지 후 재시작 가능
-        success3 = await deception_engine.start_deception(
-            DeceptionPattern.SINE_DIVE, duration=1.0
-        )
+        success3 = await deception_engine.start_deception(DeceptionPattern.SINE_DIVE, duration=1.0)
         assert success3 is True
         await deception_engine.stop_deception()
 
@@ -358,15 +354,11 @@ class TestHybridBridgeIntegration:
         )
 
         trajectory_engine = TrajectoryEngine({"hybrid_drone_1": spec})
-        deception_engine = DeceptionEngine(
-            {"hybrid_drone_1": spec}, TrajectoryEngine({})
-        )
+        deception_engine = DeceptionEngine({"hybrid_drone_1": spec}, TrajectoryEngine({}))
 
         node = DroneHybridBridgeNode(spec, mavsdk_uri="udp://:14540")
         node.trajectory_engine = TrajectoryEngine({"hybrid_drone_1": spec})
-        node.deception_engine = DeceptionEngine(
-            {"hybrid_drone_1": spec}, TrajectoryEngine({})
-        )
+        node.deception_engine = DeceptionEngine({"hybrid_drone_1": spec}, TrajectoryEngine({}))
 
         # SET_MODE 명령 테스트 - mode 속성 확인
         cmd = UnifiedCommand(

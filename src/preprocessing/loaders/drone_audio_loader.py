@@ -40,9 +40,7 @@ class DroneAudioLoader(BaseLoader):
     def get_supported_sensors(self) -> List[str]:
         return ["audio_binary", "audio_multiclass"]
 
-    def _find_audio_files(
-        self, root_dir: Path, class_dirs: List[str]
-    ) -> Dict[str, List[Path]]:
+    def _find_audio_files(self, root_dir: Path, class_dirs: List[str]) -> Dict[str, List[Path]]:
         """Find all audio files organized by class"""
         files_by_class = {}
         for class_name in class_dirs:
@@ -57,14 +55,10 @@ class DroneAudioLoader(BaseLoader):
     def _load_audio_file(self, file_path: Path) -> Tuple[np.ndarray, int]:
         """Load audio file and resample if needed"""
         try:
-            audio, sr = librosa.load(
-                file_path, sr=self.audio_config.sample_rate, mono=True
-            )
+            audio, sr = librosa.load(file_path, sr=self.audio_config.sample_rate, mono=True)
 
             # Trim or pad to max_duration
-            max_samples = int(
-                self.audio_config.max_duration * self.audio_config.sample_rate
-            )
+            max_samples = int(self.audio_config.max_duration * self.audio_config.sample_rate)
             if len(audio) > max_samples:
                 audio = audio[:max_samples]
             elif len(audio) < max_samples:
@@ -156,9 +150,7 @@ class DroneAudioLoader(BaseLoader):
     def load_multiclass(self) -> Tuple[np.ndarray, np.ndarray]:
         """Load multiclass dataset (unknown, bebop_1, membo_1)"""
         multiclass_root = Path(self.raw_path) / "Multiclass_Drone_Audio"
-        files_by_class = self._find_audio_files(
-            multiclass_root, self.multiclass_classes
-        )
+        files_by_class = self._find_audio_files(multiclass_root, self.multiclass_classes)
         return self._process_class_files(files_by_class, self.multiclass_classes)
 
     def load_raw(self):
@@ -170,9 +162,7 @@ class DroneAudioLoader(BaseLoader):
         mc_features, mc_labels = self.load_multiclass()
 
         # Store feature dimensions for metadata
-        self._bin_feat_dim = (
-            bin_features.shape[1] * bin_features.shape[2]
-        )  # time * features
+        self._bin_feat_dim = bin_features.shape[1] * bin_features.shape[2]  # time * features
         self._mc_feat_dim = mc_features.shape[1] * mc_features.shape[2]
 
         # Create metadata for each

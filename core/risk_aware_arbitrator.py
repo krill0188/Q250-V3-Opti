@@ -35,9 +35,7 @@ class RiskAwareArbitrator(CommandArbitrator):
             try:
                 # 모든 기체 대상 위험 평가
                 for device_id in list(self.log_aggregator.buffers.keys()):
-                    risk = await self.risk_analyzer.analyze_window(
-                        self.log_aggregator, device_id
-                    )
+                    risk = await self.risk_analyzer.analyze_window(self.log_aggregator, device_id)
                     self.current_risk = risk
 
                     # CRITICAL 위험 시 즉시 개입
@@ -102,10 +100,7 @@ class RiskAwareArbitrator(CommandArbitrator):
 
     async def submit_command(self, raw_cmd, dispatch_callback):
         """위험 차단 확인 후 명령 제출"""
-        if (
-            self._block_lower_priority
-            and raw_cmd.priority > CommandPriority.FAILSAFE_ESTOP
-        ):
+        if self._block_lower_priority and raw_cmd.priority > CommandPriority.FAILSAFE_ESTOP:
             print(f"[BLOCKED] {raw_cmd.source} 명령 차단됨 (CRITICAL 위험 활성)")
             return False
         return await super().submit_command(raw_cmd, dispatch_callback)

@@ -139,9 +139,7 @@ class CommandArbitrator:
                 )
                 return False
             else:
-                print(
-                    f"[PREEMPT] {target}: {raw_cmd.source} 명령으로 기존 작업 즉시 중단"
-                )
+                print(f"[PREEMPT] {target}: {raw_cmd.source} 명령으로 기존 작업 즉시 중단")
                 self.active_tasks[target].cancel()
 
         # 안전 검증 및 속도 Clamping 수행

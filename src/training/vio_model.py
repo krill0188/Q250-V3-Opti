@@ -4,6 +4,8 @@ VIO (Visual-Inertial Odometry) Model for UZH-FPV Dataset
 CNN + LSTM / Transformer for IMU + Camera fusion
 """
 
+from typing import Optional, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -27,9 +29,7 @@ class IMUEncoder(nn.Module):
 
         # Downsample IMU from 1000Hz to ~100Hz using conv
         self.downsample = nn.Sequential(
-            nn.Conv1d(
-                input_dim, 64, kernel_size=10, stride=10, padding=0
-            ),  # 1000->100Hz
+            nn.Conv1d(input_dim, 64, kernel_size=10, stride=10, padding=0),  # 1000->100Hz
             nn.BatchNorm1d(64),
             nn.ReLU(),
             nn.Conv1d(64, 128, kernel_size=3, stride=1, padding=1),
@@ -251,9 +251,7 @@ class VIOModel(nn.Module):
         super().__init__()
 
         # Encoders
-        self.imu_encoder = IMUEncoder(
-            input_dim=imu_input_dim, hidden_dim=128, output_dim=256
-        )
+        self.imu_encoder = IMUEncoder(input_dim=imu_input_dim, hidden_dim=128, output_dim=256)
 
         self.visual_encoder = VisualEncoder(
             input_channels=visual_channels, output_dim=256, backbone=visual_backbone
@@ -363,9 +361,7 @@ if __name__ == "__main__":
     # Test model
     device = torch.device("cpu")
 
-    model = VIOModel(imu_input_dim=6, visual_channels=1, fusion_type="attention").to(
-        device
-    )
+    model = VIOModel(imu_input_dim=6, visual_channels=1, fusion_type="attention").to(device)
 
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 

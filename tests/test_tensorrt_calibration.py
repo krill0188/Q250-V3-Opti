@@ -21,8 +21,8 @@ Designed for Jetson Orin (sm_87) target validation.
 import hashlib
 import json
 import os
-import tempfile
 from pathlib import Path
+import tempfile
 from unittest.mock import patch
 
 import numpy as np
@@ -158,9 +158,7 @@ class TestEntropyCalibrator:
             os.unlink(cache_path)
 
     @pytest.mark.requires_cuda
-    def test_entropy_calibrator_cache_roundtrip(
-        self, calibration_samples_1000, tmp_path
-    ):
+    def test_entropy_calibrator_cache_roundtrip(self, calibration_samples_1000, tmp_path):
         """Calibration cache is written and can be re-read."""
         _skip_if_no_calibrator()
 
@@ -214,9 +212,7 @@ class TestPercentileCalibrator:
         assert calib.percentile == 99.9
 
     @pytest.mark.requires_cuda
-    def test_percentile_vs_entropy_different_scales(
-        self, calibration_samples_1000, tmp_path
-    ):
+    def test_percentile_vs_entropy_different_scales(self, calibration_samples_1000, tmp_path):
         """Percentile and entropy calibrators produce different scale factors."""
         _skip_if_no_calibrator()
         if not _PERCENTILE_AVAILABLE:
@@ -295,23 +291,15 @@ class TestCalibrationCacheVersioning:
     def test_cache_version_changes_with_batch_size(self, dummy_model_bytes):
         """Different batch sizes produce different cache versions."""
         network_hash = _compute_network_hash(dummy_model_bytes)
-        v32 = _compute_cache_version(
-            "entropy", 32, CALIBRATION_SAMPLES_MIN, network_hash
-        )
-        v64 = _compute_cache_version(
-            "entropy", 64, CALIBRATION_SAMPLES_MIN, network_hash
-        )
+        v32 = _compute_cache_version("entropy", 32, CALIBRATION_SAMPLES_MIN, network_hash)
+        v64 = _compute_cache_version("entropy", 64, CALIBRATION_SAMPLES_MIN, network_hash)
         assert v32 != v64
 
     def test_cache_version_changes_with_sample_count(self, dummy_model_bytes):
         """Different sample counts produce different cache versions."""
         network_hash = _compute_network_hash(dummy_model_bytes)
-        v1000 = _compute_cache_version(
-            "entropy", CALIBRATION_BATCH_SIZE, 1000, network_hash
-        )
-        v500 = _compute_cache_version(
-            "entropy", CALIBRATION_BATCH_SIZE, 500, network_hash
-        )
+        v1000 = _compute_cache_version("entropy", CALIBRATION_BATCH_SIZE, 1000, network_hash)
+        v500 = _compute_cache_version("entropy", CALIBRATION_BATCH_SIZE, 500, network_hash)
         assert v1000 != v500
 
     def test_cache_version_changes_with_network_hash(self):

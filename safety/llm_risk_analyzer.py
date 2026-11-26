@@ -1,7 +1,7 @@
 import asyncio
+from dataclasses import dataclass
 import json
 import time
-from dataclasses import dataclass
 from typing import Dict, List
 
 from llama_cpp import Llama

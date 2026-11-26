@@ -3,10 +3,10 @@ KWS Data Augmentation - 학습 데이터 증강
 원본 오디오 → 다양한 변형으로 데이터 N배 확대
 """
 
-import json
-import random
 from dataclasses import dataclass
+import json
 from pathlib import Path
+import random
 from typing import List, Optional, Tuple
 
 import librosa
@@ -94,9 +94,7 @@ class AudioAugmenter:
         self._noise_cache[cache_key] = noise
         return noise
 
-    def add_noise(
-        self, audio: np.ndarray, snr_db: float, noise_type: str = "white"
-    ) -> np.ndarray:
+    def add_noise(self, audio: np.ndarray, snr_db: float, noise_type: str = "white") -> np.ndarray:
         """SNR 기준으로 노이즈 추가"""
         noise = self._generate_noise(noise_type, len(audio))
 
@@ -127,9 +125,7 @@ class AudioAugmenter:
         shift_samples = int(shift_sec * self.sr)
         return np.roll(audio, shift_samples)
 
-    def add_reverb(
-        self, audio: np.ndarray, room_size: float, damping: float
-    ) -> np.ndarray:
+    def add_reverb(self, audio: np.ndarray, room_size: float, damping: float) -> np.ndarray:
         """간단한 리버브 (지연선 기반)"""
         delay_samples = int(0.05 * self.sr * room_size)  # 50ms * room_size
         decay = 1.0 - damping
@@ -203,9 +199,7 @@ class AudioAugmenter:
 
         return results
 
-    def process_file(
-        self, input_path: str, output_dir: str, n_augment: int = None
-    ) -> List[str]:
+    def process_file(self, input_path: str, output_dir: str, n_augment: int = None) -> List[str]:
         """단일 파일 증강 → 저장"""
         audio, _ = librosa.load(input_path, sr=self.sr)
         augmented = self.augment(audio, n_augment)
@@ -300,9 +294,7 @@ def create_augmenter(
     return AudioAugmenter(config)
 
 
-def quick_augment(
-    input_dir: str, output_dir: str, n_augment: int = 10, metadata_file: str = None
-):
+def quick_augment(input_dir: str, output_dir: str, n_augment: int = 10, metadata_file: str = None):
     """빠른 증강 실행"""
     augmenter = create_augmenter(n_augment=n_augment)
     augmenter.process_directory(input_dir, output_dir, metadata_file, n_augment)

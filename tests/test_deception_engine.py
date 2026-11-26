@@ -51,9 +51,7 @@ class TestDeceptionEnginePatterns:
     @pytest.mark.asyncio
     async def test_spiral_dive_execution(self, deception_engine):
         """나선형 다이브 실행 테스트"""
-        success = await deception_engine.start_deception(
-            DeceptionPattern.SPIRAL_DIVE, duration=0.5
-        )
+        success = await deception_engine.start_deception(DeceptionPattern.SPIRAL_DIVE, duration=0.5)
         assert success is True
         assert deception_engine.is_active()
         assert deception_engine.get_active_pattern() == DeceptionPattern.SPIRAL_DIVE
@@ -65,9 +63,7 @@ class TestDeceptionEnginePatterns:
     @pytest.mark.asyncio
     async def test_sine_dive_execution(self, deception_engine):
         """사인파 다이브 실행 테스트"""
-        success = await deception_engine.start_deception(
-            DeceptionPattern.SINE_DIVE, duration=0.5
-        )
+        success = await deception_engine.start_deception(DeceptionPattern.SINE_DIVE, duration=0.5)
         assert success is True
         assert deception_engine.get_active_pattern() == DeceptionPattern.SINE_DIVE
         await deception_engine.stop_deception()
@@ -75,9 +71,7 @@ class TestDeceptionEnginePatterns:
     @pytest.mark.asyncio
     async def test_random_jink_execution(self, deception_engine):
         """랜덤 진크 실행 테스트"""
-        success = await deception_engine.start_deception(
-            DeceptionPattern.RANDOM_JINK, duration=0.5
-        )
+        success = await deception_engine.start_deception(DeceptionPattern.RANDOM_JINK, duration=0.5)
         assert success is True
         assert deception_engine.get_active_pattern() == DeceptionPattern.RANDOM_JINK
         await deception_engine.stop_deception()
@@ -85,9 +79,7 @@ class TestDeceptionEnginePatterns:
     @pytest.mark.asyncio
     async def test_fake_crash_execution(self, deception_engine):
         """추락 위장 실행 테스트"""
-        success = await deception_engine.start_deception(
-            DeceptionPattern.FAKE_CRASH, duration=0.5
-        )
+        success = await deception_engine.start_deception(DeceptionPattern.FAKE_CRASH, duration=0.5)
         assert success is True
         assert deception_engine.get_active_pattern() == DeceptionPattern.FAKE_CRASH
         await deception_engine.stop_deception()
@@ -95,9 +87,7 @@ class TestDeceptionEnginePatterns:
     @pytest.mark.asyncio
     async def test_multi_pulse_execution(self, deception_engine):
         """다중 펄스 실행 테스트"""
-        success = await deception_engine.start_deception(
-            DeceptionPattern.MULTI_PULSE, duration=0.5
-        )
+        success = await deception_engine.start_deception(DeceptionPattern.MULTI_PULSE, duration=0.5)
         assert success is True
         assert deception_engine.get_active_pattern() == DeceptionPattern.MULTI_PULSE
         await deception_engine.stop_deception()
@@ -118,27 +108,21 @@ class TestDeceptionEngineAutoSelect:
     @pytest.mark.asyncio
     async def test_radar_threat_selects_sine(self, deception_engine):
         """레이더 위협 -> SINE_DIVE 선택"""
-        threat = ThreatProfile(
-            threat_type="RADAR", confidence=0.8, bearing=180.0, distance=5000.0
-        )
+        threat = ThreatProfile(threat_type="RADAR", confidence=0.8, bearing=180.0, distance=5000.0)
         pattern = deception_engine._auto_select_pattern(threat)
         assert pattern == DeceptionPattern.SINE_DIVE
 
     @pytest.mark.asyncio
     async def test_optical_threat_selects_fake_crash(self, deception_engine):
         """광학 위협 -> FAKE_CRASH 선택"""
-        threat = ThreatProfile(
-            threat_type="OPTICAL", confidence=0.95, bearing=0.0, distance=1000.0
-        )
+        threat = ThreatProfile(threat_type="OPTICAL", confidence=0.95, bearing=0.0, distance=1000.0)
         pattern = deception_engine._auto_select_pattern(threat)
         assert pattern == DeceptionPattern.FAKE_CRASH
 
     @pytest.mark.asyncio
     async def test_multi_sensor_threat_selects_multi_pulse(self, deception_engine):
         """멀티 센서 위협 -> MULTI_PULSE 선택"""
-        threat = ThreatProfile(
-            threat_type="MULTI", confidence=0.85, bearing=90.0, distance=3000.0
-        )
+        threat = ThreatProfile(threat_type="MULTI", confidence=0.85, bearing=90.0, distance=3000.0)
         pattern = deception_engine._auto_select_pattern(threat)
         assert pattern == DeceptionPattern.MULTI_PULSE
 
@@ -185,23 +169,17 @@ class TestDeceptionEngineConcurrency:
         assert success1 is True
 
         # 두 번째 기만 시작 시도 (거부되어야 함)
-        success2 = await deception_engine.start_deception(
-            DeceptionPattern.SINE_DIVE, duration=1.0
-        )
+        success2 = await deception_engine.start_deception(DeceptionPattern.SINE_DIVE, duration=1.0)
         assert success2 is False  # 이미 활성화된 기만 모드 있음
 
     @pytest.mark.asyncio
     async def test_stop_then_restart(self, deception_engine):
         """중지 후 재시작 가능 테스트"""
-        await deception_engine.start_deception(
-            DeceptionPattern.SPIRAL_DIVE, duration=1.0
-        )
+        await deception_engine.start_deception(DeceptionPattern.SPIRAL_DIVE, duration=1.0)
         await deception_engine.stop_deception()
 
         # 중지 후 재시작 가능
-        success = await deception_engine.start_deception(
-            DeceptionPattern.SINE_DIVE, duration=0.5
-        )
+        success = await deception_engine.start_deception(DeceptionPattern.SINE_DIVE, duration=0.5)
         assert success is True
         await deception_engine.stop_deception()
 
@@ -243,9 +221,7 @@ class TestDeceptionEngineEdgeCases:
     @pytest.mark.asyncio
     async def test_multiple_stop_calls(self, deception_engine):
         """연속 stop 호출 안전성"""
-        await deception_engine.start_deception(
-            DeceptionPattern.SPIRAL_DIVE, duration=1.0
-        )
+        await deception_engine.start_deception(DeceptionPattern.SPIRAL_DIVE, duration=1.0)
         await deception_engine.stop_deception()
         await deception_engine.stop_deception()  # 두 번 호출
         await deception_engine.stop_deception()  # 세 번 호출

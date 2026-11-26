@@ -1,15 +1,15 @@
 import asyncio
-import threading
-import time
-import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
+import threading
+import time
 from typing import Dict, List, Literal
+import uuid
 
-import yaml
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
+import yaml
 
 from bridge.hardware_bridges import (
     ROS2_AVAILABLE,
@@ -160,18 +160,12 @@ async def dispatch_to_hardware(cmd: UnifiedCommand) -> None:
             await ctx.drone_node.execute_command(cmd)
         elif cmd.target_id == "robot_1" and ctx.robot_node:
             await ctx.robot_node.execute_command(cmd)
-        elif (
-            cmd.target_id == "hybrid_drone_1"
-            and hasattr(ctx, "hybrid_node")
-            and ctx.hybrid_node
-        ):
+        elif cmd.target_id == "hybrid_drone_1" and hasattr(ctx, "hybrid_node") and ctx.hybrid_node:
             await ctx.hybrid_node.execute_command(cmd)
         ctx.last_actions[cmd.target_id] = "IDLE (Completed)"
     except asyncio.CancelledError:
         ctx.last_actions[cmd.target_id] = "PREEMPTED (중단됨)"
-        ctx.log(
-            f"[PREEMPTED] {cmd.target_id} 기존 작업이 상위 명령에 의해 즉시 취소되었습니다."
-        )
+        ctx.log(f"[PREEMPTED] {cmd.target_id} 기존 작업이 상위 명령에 의해 즉시 취소되었습니다.")
         raise
     except Exception as e:
         ctx.last_actions[cmd.target_id] = f"ERROR: {e}"
@@ -184,9 +178,7 @@ async def telemetry_and_watchdog_loop() -> None:
         now = time.monotonic()
 
         # 드론 하트비트 체크
-        drone_hb_age = (
-            now - ctx.drone_node.last_heartbeat_time if ctx.drone_node else 999.0
-        )
+        drone_hb_age = now - ctx.drone_node.last_heartbeat_time if ctx.drone_node else 999.0
         drone_online = bool(
             ctx.drone_node and ctx.drone_node.is_connected and (drone_hb_age <= 5.0)
         )
@@ -196,9 +188,7 @@ async def telemetry_and_watchdog_loop() -> None:
         hybrid_online = False
         if hasattr(ctx, "hybrid_node") and ctx.hybrid_node:
             hybrid_hb_age = now - ctx.hybrid_node.last_heartbeat_time
-            hybrid_online = bool(
-                ctx.hybrid_node.is_connected and (hybrid_hb_age <= 5.0)
-            )
+            hybrid_online = bool(ctx.hybrid_node.is_connected and (hybrid_hb_age <= 5.0))
 
         # 위험도 정보
         current_risk = None
@@ -227,9 +217,7 @@ async def telemetry_and_watchdog_loop() -> None:
                 "drone_1": {
                     "environment": ctx.specs["drone_1"].environment,
                     "connected": drone_online,
-                    "heartbeat_ms": (
-                        round(drone_hb_age * 1000, 1) if drone_hb_age < 100 else -1
-                    ),
+                    "heartbeat_ms": (round(drone_hb_age * 1000, 1) if drone_hb_age < 100 else -1),
                     "active_priority": ctx.arbitrator.active_priorities.get(
                         "drone_1", CommandPriority.VOICE_NLU
                     ).name,
@@ -261,9 +249,7 @@ async def telemetry_and_watchdog_loop() -> None:
             telemetry_payload["devices"]["hybrid_drone_1"] = {
                 "environment": hybrid_spec.environment if hybrid_spec else "sitl",
                 "connected": hybrid_online,
-                "heartbeat_ms": (
-                    round(hybrid_hb_age * 1000, 1) if hybrid_hb_age < 100 else -1
-                ),
+                "heartbeat_ms": (round(hybrid_hb_age * 1000, 1) if hybrid_hb_age < 100 else -1),
                 "active_priority": ctx.arbitrator.active_priorities.get(
                     "hybrid_drone_1", CommandPriority.VOICE_NLU
                 ).name,
@@ -272,15 +258,9 @@ async def telemetry_and_watchdog_loop() -> None:
                 "limits": (
                     {
                         "max_alt": hybrid_spec.max_altitude_m if hybrid_spec else 500.0,
-                        "max_vel": (
-                            hybrid_spec.max_linear_vel_mps if hybrid_spec else 80.0
-                        ),
-                        "max_dive_speed": (
-                            hybrid_spec.max_dive_speed_mps if hybrid_spec else 80.0
-                        ),
-                        "max_dive_angle": (
-                            hybrid_spec.max_dive_angle_deg if hybrid_spec else 80.0
-                        ),
+                        "max_vel": (hybrid_spec.max_linear_vel_mps if hybrid_spec else 80.0),
+                        "max_dive_speed": (hybrid_spec.max_dive_speed_mps if hybrid_spec else 80.0),
+                        "max_dive_angle": (hybrid_spec.max_dive_angle_deg if hybrid_spec else 80.0),
                     }
                     if hybrid_spec
                     else {}
@@ -321,9 +301,7 @@ async def lifespan(app: FastAPI):
     # LLM 위험 분석기 (모델 경로 확인)
     model_path = "~/models/llama-3.1-8b-q4_k_m.gguf"
     ctx.risk_analyzer = LocalLLMRiskAnalyzer(model_path=model_path)
-    ctx.risk_arbitrator = RiskAwareArbitrator(
-        ctx.validator, ctx.log_aggregator, ctx.risk_analyzer
-    )
+    ctx.risk_arbitrator = RiskAwareArbitrator(ctx.validator, ctx.log_aggregator, ctx.risk_analyzer)
     ctx.arbitrator = ctx.risk_arbitrator  # 호환성
 
     ctx.voice_parser = VoiceIntentParser()
@@ -338,9 +316,7 @@ async def lifespan(app: FastAPI):
         mavsdk_uri="udp://:14540",
         log_aggregator=ctx.log_aggregator,
     )
-    ctx.robot_node = RobotRos2BridgeNode(
-        ctx.specs["robot_1"], log_aggregator=ctx.log_aggregator
-    )
+    ctx.robot_node = RobotRos2BridgeNode(ctx.specs["robot_1"], log_aggregator=ctx.log_aggregator)
 
     # 하이브리드 드론 노드 (새로 추가)
     ctx.hybrid_node = DroneHybridBridgeNode(

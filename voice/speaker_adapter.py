@@ -3,16 +3,16 @@ Speaker Adaptation Module for Whisper Fine-tuning
 Uses faster-whisper with LoRA adapters for personalization
 """
 
-import json
-import logging
 from dataclasses import dataclass, field
 from datetime import datetime
+import json
+import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from faster_whisper import WhisperModel
 import torch
 import torchaudio
-from faster_whisper import WhisperModel
 
 logger = logging.getLogger(__name__)
 
@@ -77,15 +77,11 @@ class SpeakerAdapter:
                     data = json.load(f)
                     profile = SpeakerProfile.from_dict(data)
                     self.profiles[profile.speaker_id] = profile
-                    logger.info(
-                        f"화자 프로필 로드: {profile.name} ({profile.speaker_id})"
-                    )
+                    logger.info(f"화자 프로필 로드: {profile.name} ({profile.speaker_id})")
             except Exception as e:
                 logger.error(f"프로필 로드 실패 {profile_file}: {e}")
 
-    def create_profile(
-        self, speaker_id: str, name: str, language: str = "ko"
-    ) -> SpeakerProfile:
+    def create_profile(self, speaker_id: str, name: str, language: str = "ko") -> SpeakerProfile:
         """새 화자 프로필 생성"""
         if speaker_id in self.profiles:
             raise ValueError(f"이미 존재하는 speaker_id: {speaker_id}")
@@ -127,9 +123,7 @@ class SpeakerAdapter:
         profile.custom_commands[phrase] = target
         self._save_profile(profile)
 
-    def enroll_audio_sample(
-        self, speaker_id: str, audio_path: str, transcript: str = ""
-    ) -> bool:
+    def enroll_audio_sample(self, speaker_id: str, audio_path: str, transcript: str = "") -> bool:
         """음성 샘플 등록 (파인튜닝용 데이터셋 구성)"""
         profile = self.get_profile(speaker_id)
         if not profile:
@@ -191,9 +185,7 @@ class LoRAFineTuner:
     def __init__(self, base_model: str = "large-v3", device: str = "auto"):
         self.base_model = base_model
         self.device = (
-            device
-            if device != "auto"
-            else ("cuda" if torch.cuda.is_available() else "cpu")
+            device if device != "auto" else ("cuda" if torch.cuda.is_available() else "cpu")
         )
         logger.info(f"LoRA 파인튜너 초기화: {base_model} on {self.device}")
 
@@ -282,16 +274,12 @@ class AdaptiveWhisperModel:
         self.model_size = model_size
         self.adapter_path = adapter_path
         self.device = (
-            device
-            if device != "auto"
-            else ("cuda" if torch.cuda.is_available() else "cpu")
+            device if device != "auto" else ("cuda" if torch.cuda.is_available() else "cpu")
         )
         self.compute_type = compute_type
 
         # 기본 모델 로드
-        self.model = WhisperModel(
-            model_size, device=self.device, compute_type=compute_type
-        )
+        self.model = WhisperModel(model_size, device=self.device, compute_type=compute_type)
         logger.info(f"Whisper 모델 로드: {model_size} ({self.device}, {compute_type})")
 
         # 어댑터가 있으면 로드 시도 (CT2 변환된 모델 필요)

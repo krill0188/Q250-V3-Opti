@@ -118,9 +118,7 @@ class TestCUDAPerformance:
 
         # All kernels should be well under 1ms
         for kernel_name, latency_ms in results.items():
-            assert (
-                latency_ms < 1.0
-            ), f"{kernel_name} latency {latency_ms:.4f}ms exceeds 1ms"
+            assert latency_ms < 1.0, f"{kernel_name} latency {latency_ms:.4f}ms exceeds 1ms"
 
 
 class TestPythonFallbackPerformance:
@@ -233,6 +231,4 @@ class TestRegressionBaselines:
             python_ms = self.BASELINES[f"{op}_python_ms"]
             speedup = python_ms / cuda_ms
             assert speedup > 10.0, f"{op}: speedup {speedup:.1f}x below 10x target"
-            print(
-                f"  {op}: {speedup:.1f}x speedup (CUDA {cuda_ms}ms vs Python {python_ms}ms)"
-            )
+            print(f"  {op}: {speedup:.1f}x speedup (CUDA {cuda_ms}ms vs Python {python_ms}ms)")

@@ -3,9 +3,9 @@
 모든 데이터셋 로더의 공통 인터페이스 정의
 """
 
-import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+import json
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -51,26 +51,16 @@ class SensorData:
             return self
 
         duration = self.get_duration_sec()
-        new_timestamps = np.arange(
-            self.timestamp[0], self.timestamp[-1], 1.0 / target_freq_hz
-        )
+        new_timestamps = np.arange(self.timestamp[0], self.timestamp[-1], 1.0 / target_freq_hz)
 
         if method == "linear":
-            interp_data = np.zeros(
-                (len(new_timestamps), self.data.shape[1]), dtype=self.data.dtype
-            )
+            interp_data = np.zeros((len(new_timestamps), self.data.shape[1]), dtype=self.data.dtype)
             for i in range(self.data.shape[1]):
-                interp_data[:, i] = np.interp(
-                    new_timestamps, self.timestamp, self.data[:, i]
-                )
+                interp_data[:, i] = np.interp(new_timestamps, self.timestamp, self.data[:, i])
         elif method == "nearest":
-            interp_data = np.zeros(
-                (len(new_timestamps), self.data.shape[1]), dtype=self.data.dtype
-            )
+            interp_data = np.zeros((len(new_timestamps), self.data.shape[1]), dtype=self.data.dtype)
             for i in range(self.data.shape[1]):
-                interp_data[:, i] = np.interp(
-                    new_timestamps, self.timestamp, self.data[:, i]
-                )
+                interp_data[:, i] = np.interp(new_timestamps, self.timestamp, self.data[:, i])
         else:
             raise ValueError(f"Unsupported interpolation method: {method}")
 

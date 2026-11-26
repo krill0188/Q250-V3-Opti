@@ -130,9 +130,7 @@ class UZHFPVLoader(BaseLoader):
         print(f"Loaded sensors: {list(sensors.keys())}")
         for name, s in sensors.items():
             if hasattr(s, "data"):
-                print(
-                    f"  {name}: {len(s)} samples @ {s.frequency_hz:.1f}Hz, shape={s.data.shape}"
-                )
+                print(f"  {name}: {len(s)} samples @ {s.frequency_hz:.1f}Hz, shape={s.data.shape}")
 
         return MultiSensorData(
             sensors=sensors,

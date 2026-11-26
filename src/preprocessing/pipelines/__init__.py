@@ -112,11 +112,7 @@ class BasePipeline(ABC):
         """검증 결과 요약 출력"""
         reports = self.validator.validate_multi_sensor(self.current_raw_data)
         for name, report in reports.items():
-            status = (
-                "FAIL"
-                if report.has_errors
-                else ("WARN" if report.has_warnings else "OK")
-            )
+            status = "FAIL" if report.has_errors else ("WARN" if report.has_warnings else "OK")
             print(f"  {name}: {status} - {report.summary()}")
 
 

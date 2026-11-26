@@ -163,9 +163,7 @@ class TestTrajectoryEngineDeception:
         duration = 30.0
         params = {"radius": 50.0, "turns": 3, "descent_rate": 10.0}
 
-        traj = await engine.generate_deception_trajectory(
-            "SPIRAL_DIVE", start, duration, params
-        )
+        traj = await engine.generate_deception_trajectory("SPIRAL_DIVE", start, duration, params)
 
         assert isinstance(traj, DiveTrajectory)
         assert traj.method == TrajectoryMethod.LUT
@@ -186,9 +184,7 @@ class TestTrajectoryEngineDeception:
         duration = 30.0
         params = {"amplitude": 20.0, "frequency": 0.5, "descent_rate": 15.0}
 
-        traj = await engine.generate_deception_trajectory(
-            "SINE_DIVE", start, duration, params
-        )
+        traj = await engine.generate_deception_trajectory("SINE_DIVE", start, duration, params)
 
         assert len(traj.waypoints) == 51
         # x 좌표가 사인파 형태
@@ -204,26 +200,20 @@ class TestTrajectoryEngineDeception:
         duration = 30.0
         params = {"speed": 20.0, "descent_rate": 10.0}
 
-        traj = await engine.generate_deception_trajectory(
-            "RANDOM_JINK", start, duration, params
-        )
+        traj = await engine.generate_deception_trajectory("RANDOM_JINK", start, duration, params)
 
         assert len(traj.waypoints) == 21  # 0~20
         assert traj.waypoints[0] == (0.0, 0.0, 300.0)
         # 강하 확인
         assert traj.waypoints[-1][2] < 100.0
         # 재현성 확인 (시드 고정)
-        traj2 = await engine.generate_deception_trajectory(
-            "RANDOM_JINK", start, duration, params
-        )
+        traj2 = await engine.generate_deception_trajectory("RANDOM_JINK", start, duration, params)
         assert traj.waypoints == traj2.waypoints
 
     @pytest.mark.asyncio
     async def test_unknown_pattern_fallback(self, engine):
         """알 수 없는 패턴 -> 기하학적 폴백"""
-        traj = await engine.generate_deception_trajectory(
-            "UNKNOWN_PATTERN", (0, 0, 100), 10.0, {}
-        )
+        traj = await engine.generate_deception_trajectory("UNKNOWN_PATTERN", (0, 0, 100), 10.0, {})
         assert traj.method == TrajectoryMethod.GEOMETRIC
 
 

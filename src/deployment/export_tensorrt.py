@@ -99,9 +99,7 @@ def build_tensorrt_engine(
 
         TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
         builder = trt.Builder(TRT_LOGGER)
-        network = builder.create_network(
-            1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
-        )
+        network = builder.create_network(1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))
         parser = trt.OnnxParser(network, TRT_LOGGER)
 
         # Parse ONNX
@@ -132,9 +130,7 @@ def build_tensorrt_engine(
                     cache_file=calibration_cache or f"{engine_path}.calib",
                 )
                 config.int8_calibrator = calibrator
-                print(
-                    f"INT8 calibrator set (cache: {calibration_cache or engine_path + '.calib'})"
-                )
+                print(f"INT8 calibrator set (cache: {calibration_cache or engine_path + '.calib'})")
             else:
                 print("WARNING: INT8 mode requested but no calibration data provided")
 
@@ -308,9 +304,7 @@ def verify_tensorrt_engine(
 
         # Compare
         diff = np.abs(output - ort_outputs).max()
-        rel_diff = np.abs(output - ort_outputs).max() / (
-            np.abs(ort_outputs).max() + 1e-8
-        )
+        rel_diff = np.abs(output - ort_outputs).max() / (np.abs(ort_outputs).max() + 1e-8)
 
         print(f"Max absolute difference: {diff:.6f}")
         print(f"Max relative difference: {rel_diff:.6f}")
@@ -478,12 +472,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_dir", type=str, default="./tensorrt_models", help="Output directory"
     )
-    parser.add_argument(
-        "--model_name", type=str, default="audio_classifier", help="Model name"
-    )
-    parser.add_argument(
-        "--task", type=str, choices=["binary", "multiclass"], default="multiclass"
-    )
+    parser.add_argument("--model_name", type=str, default="audio_classifier", help="Model name")
+    parser.add_argument("--task", type=str, choices=["binary", "multiclass"], default="multiclass")
     parser.add_argument("--fp16", action="store_true", default=True, help="Enable FP16")
     parser.add_argument(
         "--int8",
@@ -496,12 +486,8 @@ if __name__ == "__main__":
         type=str,
         help="Path to calibration dataset directory (for INT8)",
     )
-    parser.add_argument(
-        "--no_simplify", action="store_true", help="Skip ONNX simplification"
-    )
-    parser.add_argument(
-        "--benchmark", action="store_true", help="Run benchmark after export"
-    )
+    parser.add_argument("--no_simplify", action="store_true", help="Skip ONNX simplification")
+    parser.add_argument("--benchmark", action="store_true", help="Run benchmark after export")
 
     args = parser.parse_args()
 
@@ -531,15 +517,11 @@ if __name__ == "__main__":
         from preprocessing.datasets.drone_audio_dataset import DroneAudioDataset
 
         calib_dataset = DroneAudioDataset(args.calib_data, split="train", augment=False)
-        calibration_dataset = DataLoader(
-            calib_dataset, batch_size=8, shuffle=False, num_workers=4
-        )
+        calibration_dataset = DataLoader(calib_dataset, batch_size=8, shuffle=False, num_workers=4)
         print(f"Loaded calibration dataset: {len(calib_dataset.dataset)} samples")
 
     # Export
-    print(
-        f"Exporting {args.model_path} -> TensorRT (FP16={args.fp16}, INT8={args.int8})"
-    )
+    print(f"Exporting {args.model_path} -> TensorRT (FP16={args.fp16}, INT8={args.int8})")
     onnx_path, engine_path = export_pytorch_to_tensorrt(
         model,
         dummy_input,

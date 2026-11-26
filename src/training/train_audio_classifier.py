@@ -12,11 +12,11 @@ import argparse
 from pathlib import Path
 
 import numpy as np
+from sklearn.metrics import accuracy_score, classification_report, f1_score
+from sklearn.utils.class_weight import compute_class_weight
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from sklearn.metrics import accuracy_score, classification_report, f1_score
-from sklearn.utils.class_weight import compute_class_weight
 from torch.utils.data import DataLoader, Dataset
 
 
@@ -113,9 +113,7 @@ class FocalLoss(nn.Module):
         self.reduction = reduction
 
     def forward(self, inputs, targets):
-        ce_loss = nn.functional.cross_entropy(
-            inputs, targets, weight=self.alpha, reduction="none"
-        )
+        ce_loss = nn.functional.cross_entropy(inputs, targets, weight=self.alpha, reduction="none")
         pt = torch.exp(-ce_loss)
         focal_loss = (1 - pt) ** self.gamma * ce_loss
 
@@ -243,12 +241,8 @@ def main():
     train_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0
     )
-    val_loader = DataLoader(
-        val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0
-    )
-    test_loader = DataLoader(
-        test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0
-    )
+    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0)
 
     # 모델 생성
     model = AudioCNNLSTM(num_classes=num_classes).to(device)
@@ -335,9 +329,7 @@ def main():
     else:
         target_names = ["unknown", "bebop_1", "membo_1"]
     print(
-        classification_report(
-            test_labels, test_preds, target_names=target_names, zero_division=0
-        )
+        classification_report(test_labels, test_preds, target_names=target_names, zero_division=0)
     )
 
     # ONNX 내보내기 (배포용)

@@ -5,11 +5,11 @@ llama.cpp Function Calling을 사용한 실시간 위험 분석
 Silvus 링크 품질 데이터 통합
 """
 
-import logging
-import time
 from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
+import logging
+import time
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -150,15 +150,10 @@ class SilvusRiskAnalyzer:
 
             # 오래된 데이터 정리
             cutoff = current_time - 30.0  # 30초 윈도우
-            while (
-                self.link_history[mac]
-                and self.link_history[mac][0]["timestamp"] < cutoff
-            ):
+            while self.link_history[mac] and self.link_history[mac][0]["timestamp"] < cutoff:
                 self.link_history[mac].popleft()
 
-    def analyze_link_quality(
-        self, metrics: List[SilvusLinkMetrics]
-    ) -> List[RiskAssessment]:
+    def analyze_link_quality(self, metrics: List[SilvusLinkMetrics]) -> List[RiskAssessment]:
         """링크 품질 기반 위험 평가"""
         risks = []
 
@@ -338,10 +333,7 @@ class SilvusRiskAnalyzer:
         recent = list(history)[-3:]
         current_time = time.time()
 
-        if (
-            current_time - recent[-1]["timestamp"]
-            > self.thresholds["link_loss_timeout"]
-        ):
+        if current_time - recent[-1]["timestamp"] > self.thresholds["link_loss_timeout"]:
             return RiskAssessment(
                 risk_level=RiskLevel.CRITICAL,
                 category=RiskCategory.COMMUNICATION,
@@ -357,9 +349,7 @@ class SilvusRiskAnalyzer:
             )
         return None
 
-    def analyze_battery(
-        self, battery_percent: float, uav_id: int
-    ) -> Optional[RiskAssessment]:
+    def analyze_battery(self, battery_percent: float, uav_id: int) -> Optional[RiskAssessment]:
         """배터리 위험 분석"""
         if battery_percent <= self.battery_thresholds["critical"]:
             return RiskAssessment(
@@ -422,9 +412,7 @@ class SilvusRiskAnalyzer:
             ActionType.WARNING: 1,
             ActionType.CONTINUE: 0,
         }
-        max_action = max(
-            risks, key=lambda r: action_priority.get(r.recommended_action, 0)
-        )
+        max_action = max(risks, key=lambda r: action_priority.get(r.recommended_action, 0))
 
         return RiskAssessment(
             risk_level=max_risk.risk_level,
@@ -486,9 +474,7 @@ class RiskAnalyzer:
         # 5. LLM 상세 분석 (활성화된 경우)
         if self.llm_enabled and not self.fallback_mode:
             try:
-                llm_result = self._call_llm_analysis(
-                    uav_states, silvus_metrics, battery_levels
-                )
+                llm_result = self._call_llm_analysis(uav_states, silvus_metrics, battery_levels)
                 # LLM 결과와 폴백 결과 결합
                 if llm_result.risk_level.value > aggregated.risk_level.value:
                     aggregated = llm_result
@@ -497,9 +483,7 @@ class RiskAnalyzer:
 
         return aggregated
 
-    def _call_llm_analysis(
-        self, uav_states, silvus_metrics, battery_levels
-    ) -> RiskAssessment:
+    def _call_llm_analysis(self, uav_states, silvus_metrics, battery_levels) -> RiskAssessment:
         """LLM Function Calling을 통한 상세 분석"""
         # 실제 구현에서는 llama.cpp Function Calling 사용
         # 여기서는 시뮬레이션
@@ -540,9 +524,7 @@ class RiskAwareArbitrator:
         """위험 평가 및 중재"""
 
         # 위험 평가
-        assessment = self.risk_analyzer.analyze(
-            uav_states, silvus_metrics, battery_levels
-        )
+        assessment = self.risk_analyzer.analyze(uav_states, silvus_metrics, battery_levels)
         self.last_assessment = assessment
 
         # 중재 결정
@@ -593,9 +575,7 @@ class RiskAwareArbitrator:
 
     def get_status(self) -> Dict:
         return {
-            "last_assessment": (
-                self.last_assessment.__dict__ if self.last_assessment else None
-            ),
+            "last_assessment": (self.last_assessment.__dict__ if self.last_assessment else None),
             "action_history_len": len(self.action_history),
         }
 
@@ -666,25 +646,19 @@ if __name__ == "__main__":
 
     aggregated = silvus_analyzer.get_aggregated_risk(all_risks)
     print(f"Overall: [{aggregated.risk_level.value}] {aggregated.description}")
-    print(
-        f"Action: {aggregated.recommended_action.value} (auto={aggregated.auto_execute})"
-    )
+    print(f"Action: {aggregated.recommended_action.value} (auto={aggregated.auto_execute})")
 
     # 전체 위험 분석기 테스트
     print("\n=== Full Risk Analyzer ===")
     analyzer = RiskAnalyzer({"silvus": {"per_critical": 0.15}, "llm_enabled": False})
     assessment = analyzer.analyze([], metrics, battery_levels)
-    print(
-        f"Overall Assessment: [{assessment.risk_level.value}] {assessment.description}"
-    )
+    print(f"Overall Assessment: [{assessment.risk_level.value}] {assessment.description}")
     print(f"Action: {assessment.recommended_action.value}")
 
     # 중재자 테스트
     print("\n=== Risk Arbitrator ===")
     arbitrator = RiskAwareArbitrator(analyzer)
     decision = arbitrator.assess_and_arbitrate([], metrics, battery_levels, [])
-    print(
-        f"Decision: allow={decision['allow_commands']}, forced={decision['forced_actions']}"
-    )
+    print(f"Decision: allow={decision['allow_commands']}, forced={decision['forced_actions']}")
 
     print("\n=== Test Complete ===")

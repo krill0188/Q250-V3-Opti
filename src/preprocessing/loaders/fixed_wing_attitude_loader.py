@@ -201,9 +201,7 @@ class FixedWingAttitudeLoader(BaseLoader):
                 data=data,
                 columns=available,
                 frequency_hz=freq,
-                coordinate_frame=(
-                    "NED" if sensor_name in ["gps", "ekf", "wind"] else "BODY"
-                ),
+                coordinate_frame=("NED" if sensor_name in ["gps", "ekf", "wind"] else "BODY"),
                 metadata={"source": "FixedWingAttitude", "num_files": len(files)},
             )
 
@@ -229,9 +227,7 @@ class FixedWingAttitudeLoader(BaseLoader):
 
         print(f"Loaded sensors: {list(sensors.keys())}")
         for name, s in sensors.items():
-            print(
-                f"  {name}: {len(s)} samples @ {s.frequency_hz:.1f}Hz, cols={len(s.columns)}"
-            )
+            print(f"  {name}: {len(s)} samples @ {s.frequency_hz:.1f}Hz, cols={len(s.columns)}")
 
         return MultiSensorData(
             sensors=sensors,

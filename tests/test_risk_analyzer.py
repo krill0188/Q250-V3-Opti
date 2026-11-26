@@ -162,9 +162,7 @@ class TestLLMRiskAnalyzer:
     """LocalLLMRiskAnalyzer 단위 테스트"""
 
     @pytest.mark.asyncio
-    async def test_analyze_window_critical_risk(
-        self, mock_llm_critical, log_aggregator_with_data
-    ):
+    async def test_analyze_window_critical_risk(self, mock_llm_critical, log_aggregator_with_data):
         """CRITICAL 위험 상황 감지 테스트 (mock_llm_critical 사용)"""
         analyzer = LocalLLMRiskAnalyzer(
             model_path="~/models/llama-3.1-8b-q4_k_m.gguf",
@@ -192,10 +190,7 @@ class TestLLMRiskAnalyzer:
         risk = await analyzer.analyze_window(log_aggregator_with_data, "drone_1")
 
         assert risk.risk_level == "HIGH"  # Mock이 HIGH 반환
-        assert (
-            "BATTERY_LOW" in risk.risk_categories
-            or "MOTOR_OVERHEAT" in risk.risk_categories
-        )
+        assert "BATTERY_LOW" in risk.risk_categories or "MOTOR_OVERHEAT" in risk.risk_categories
         assert risk.confidence >= 0.7
         # HIGH 레벨에서는 auto_execute가 비워짐 (검증 로직)
         assert risk.inference_ms > 0
@@ -228,9 +223,7 @@ class TestLLMRiskAnalyzer:
     @pytest.mark.asyncio
     async def test_analyze_window_no_data(self, mock_llm):
         """데이터 없을 때 기본 LOW 반환"""
-        analyzer = LocalLLMRiskAnalyzer(
-            model_path="~/models/test.gguf", llm_instance=mock_llm
-        )
+        analyzer = LocalLLMRiskAnalyzer(model_path="~/models/test.gguf", llm_instance=mock_llm)
         empty_aggregator = LogAggregator()
 
         risk = await analyzer.analyze_window(empty_aggregator, "drone_1")
@@ -244,9 +237,7 @@ class TestRiskAwareArbitrator:
     """RiskAwareArbitrator 통합 테스트"""
 
     @pytest.mark.asyncio
-    async def test_critical_risk_blocks_voice_commands(
-        self, sample_specs, mock_llm_critical
-    ):
+    async def test_critical_risk_blocks_voice_commands(self, sample_specs, mock_llm_critical):
         """CRITICAL 위험 시 음성 명령 차단 테스트"""
         validator = DynamicSafetyValidator(sample_specs)
         log_aggregator = LogAggregator()
@@ -350,9 +341,7 @@ class TestRiskAwareArbitrator:
 
         # RTL 명령이 자동 실행되었는지 확인
         assert any(cmd.action == "RTL" for cmd in executed_commands)
-        assert any(
-            cmd.priority == CommandPriority.FAILSAFE_ESTOP for cmd in executed_commands
-        )
+        assert any(cmd.priority == CommandPriority.FAILSAFE_ESTOP for cmd in executed_commands)
 
 
 class TestVoiceIntentParserRisk:

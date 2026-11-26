@@ -115,9 +115,7 @@ class ONNXDenoiser(BaseDenoiser):
         self._init_session()
 
         # 스트리밍용 상태
-        self._overlap_buffer = np.zeros(
-            config.n_fft - config.hop_size, dtype=np.float32
-        )
+        self._overlap_buffer = np.zeros(config.n_fft - config.hop_size, dtype=np.float32)
         self._window = np.hanning(config.n_fft).astype(np.float32)
 
     def _init_session(self):
@@ -125,9 +123,7 @@ class ONNXDenoiser(BaseDenoiser):
         sess_options = ort.SessionOptions()
         sess_options.intra_op_num_threads = self.config.intra_op_threads
         sess_options.inter_op_num_threads = self.config.inter_op_threads
-        sess_options.graph_optimization_level = (
-            ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-        )
+        sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
 
         self.session = ort.InferenceSession(
             self.config.model_path,
@@ -198,9 +194,7 @@ class ONNXDenoiser(BaseDenoiser):
         # 프레임 크기 검증
         if len(audio_frame) != self.config.frame_size:
             if len(audio_frame) < self.config.frame_size:
-                audio_frame = np.pad(
-                    audio_frame, (0, self.config.frame_size - len(audio_frame))
-                )
+                audio_frame = np.pad(audio_frame, (0, self.config.frame_size - len(audio_frame)))
             else:
                 audio_frame = audio_frame[: self.config.frame_size]
 
@@ -209,9 +203,7 @@ class ONNXDenoiser(BaseDenoiser):
 
         # 모델 입력 준비 (magnitude만 입력으로 사용하거나 complex 스펙트럼 사용)
         # 모델 입력 형태: (1, F, T) 또는 (1, 2, F, T) - magnitude/phase 또는 real/imag
-        input_data = magnitude.astype(np.float32)[
-            np.newaxis, np.newaxis, :
-        ]  # (1, 1, F)
+        input_data = magnitude.astype(np.float32)[np.newaxis, np.newaxis, :]  # (1, 1, F)
 
         # ONNX 추론
         output = self.session.run([self.output_name], {self.input_name: input_data})[
@@ -332,9 +324,7 @@ class DeepFilterNet3Denoiser(BaseDenoiser):
         sess_options = ort.SessionOptions()
         sess_options.intra_op_num_threads = self.config.intra_op_threads
         sess_options.inter_op_num_threads = self.config.inter_op_threads
-        sess_options.graph_optimization_level = (
-            ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-        )
+        sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
 
         self.session = ort.InferenceSession(
             self.config.model_path,
@@ -409,9 +399,7 @@ class DeepFilterNet3Denoiser(BaseDenoiser):
             self._noise_est = features.copy()
 
         # 노이즈 추정 업데이트
-        self._noise_est = (
-            self._noise_alpha * self._noise_est + (1 - self._noise_alpha) * features
-        )
+        self._noise_est = self._noise_alpha * self._noise_est + (1 - self._noise_alpha) * features
 
         # 정규화: 특징 / (노이즈 추정 + tau)
         normalized = features / (self._noise_est + self.norm_tau)
@@ -437,9 +425,7 @@ class DeepFilterNet3Denoiser(BaseDenoiser):
 
         # 입력 형태: (batch=1, channels, frames=1, features)
         inputs = {
-            "feat_erb": norm_erb[
-                np.newaxis, np.newaxis, np.newaxis, :
-            ],  # (1, 1, 1, 32)
+            "feat_erb": norm_erb[np.newaxis, np.newaxis, np.newaxis, :],  # (1, 1, 1, 32)
             "feat_spec": np.stack([spec_real, spec_imag], axis=0)[
                 np.newaxis, :, np.newaxis, :
             ],  # (1, 2, 1, 96)
@@ -503,9 +489,7 @@ class DeepFilterNet3Denoiser(BaseDenoiser):
         if self.input_sample_rate != self.sample_rate:
             from scipy.signal import resample
 
-            audio = resample(
-                audio, int(len(audio) * self.sample_rate / self.input_sample_rate)
-            )
+            audio = resample(audio, int(len(audio) * self.sample_rate / self.input_sample_rate))
 
         # 프레임 단위 처리
         n_frames = (len(audio) - self.fft_size) // self.hop_size + 1
@@ -523,9 +507,7 @@ class DeepFilterNet3Denoiser(BaseDenoiser):
         if self.input_sample_rate != self.sample_rate:
             from scipy.signal import resample
 
-            output = resample(
-                output, int(len(output) * self.input_sample_rate / self.sample_rate)
-            )
+            output = resample(output, int(len(output) * self.input_sample_rate / self.sample_rate))
 
         return output
 
@@ -546,9 +528,7 @@ class DeepFilterNet3Denoiser(BaseDenoiser):
 
         # ONNX 추론
         outputs = self.session.run(None, inputs)
-        output_dict = {
-            name: out for name, out in zip(self.output_names.keys(), outputs)
-        }
+        output_dict = {name: out for name, out in zip(self.output_names.keys(), outputs)}
 
         # 출력 파싱
         clean_stft = self._parse_model_output(output_dict, magnitude, phase)
@@ -562,9 +542,7 @@ class DeepFilterNet3Denoiser(BaseDenoiser):
         output_frame[self.hop_size :] += clean_frame[self.hop_size :]
         self._overlap_buffer = clean_frame[: self.fft_size - self.hop_size].copy()
 
-        return output_frame[
-            self.hop_size : self.hop_size + self.hop_size
-        ]  # 홉 크기만큼 반환
+        return output_frame[self.hop_size : self.hop_size + self.hop_size]  # 홉 크기만큼 반환
 
     def reset_state(self):
         """내부 상태 초기화"""
@@ -780,9 +758,7 @@ if __name__ == "__main__":
     )
     print("\n추천 사전학습 모델:")
     for name, info in PRETRAINED_MODELS.items():
-        print(
-            f"  {name}: {info['description']} ({info['model_type']}, {info['sample_rate']}Hz)"
-        )
+        print(f"  {name}: {info['description']} ({info['model_type']}, {info['sample_rate']}Hz)")
 
     # DeepFilterNet3 테스트 (모델이 있는 경우)
     import os

@@ -6,7 +6,6 @@ from typing import Any, Dict, Tuple
 
 import numpy as np
 import pandas as pd
-import yaml
 from sklearn.feature_selection import SelectKBest, f_classif, mutual_info_classif
 from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
@@ -16,6 +15,7 @@ from sklearn.preprocessing import (
     RobustScaler,
     StandardScaler,
 )
+import yaml
 
 
 class TabularDataset:
@@ -47,9 +47,7 @@ class TabularDataset:
         # 드롭 컬럼 처리
         drop_cols = self.data_cfg.get("drop_cols", [])
         if drop_cols:
-            X = X.drop(
-                columns=[c for c in drop_cols if c in X.columns], errors="ignore"
-            )
+            X = X.drop(columns=[c for c in drop_cols if c in X.columns], errors="ignore")
 
         return X, y
 
@@ -100,9 +98,7 @@ class TabularDataset:
                 self.imputer.fit_transform(X), columns=X.columns, index=X.index
             )
         else:
-            X_imputed = pd.DataFrame(
-                self.imputer.transform(X), columns=X.columns, index=X.index
-            )
+            X_imputed = pd.DataFrame(self.imputer.transform(X), columns=X.columns, index=X.index)
         return X_imputed
 
     def _encode_categorical(self, X: pd.DataFrame, fit: bool) -> pd.DataFrame:
@@ -119,17 +115,11 @@ class TabularDataset:
                 le = self.label_encoders[col]
                 # unseen label 처리
                 known = set(le.classes_)
-                X[col] = (
-                    X[col]
-                    .astype(str)
-                    .apply(lambda x: x if x in known else le.classes_[0])
-                )
+                X[col] = X[col].astype(str).apply(lambda x: x if x in known else le.classes_[0])
                 X[col] = le.transform(X[col])
         return X
 
-    def _select_features(
-        self, X: pd.DataFrame, y: pd.Series, fit: bool
-    ) -> pd.DataFrame:
+    def _select_features(self, X: pd.DataFrame, y: pd.Series, fit: bool) -> pd.DataFrame:
         method = self.preproc_cfg.get("feature_selection", {}).get("method", "none")
         if method == "none":
             return X
@@ -146,9 +136,7 @@ class TabularDataset:
                 return X
 
             X_selected = self.feature_selector.fit_transform(X, y)
-            self.selected_features = X.columns[
-                self.feature_selector.get_support()
-            ].tolist()
+            self.selected_features = X.columns[self.feature_selector.get_support()].tolist()
         else:
             if self.feature_selector is None:
                 return X
@@ -169,15 +157,11 @@ class TabularDataset:
 
         if fit:
             self.scaler = scalers.get(scaler_type, StandardScaler())
-            X_scaled = pd.DataFrame(
-                self.scaler.fit_transform(X), columns=X.columns, index=X.index
-            )
+            X_scaled = pd.DataFrame(self.scaler.fit_transform(X), columns=X.columns, index=X.index)
         else:
             if self.scaler is None:
                 return X
-            X_scaled = pd.DataFrame(
-                self.scaler.transform(X), columns=X.columns, index=X.index
-            )
+            X_scaled = pd.DataFrame(self.scaler.transform(X), columns=X.columns, index=X.index)
         return X_scaled
 
     def _encode_labels(self, y: pd.Series, fit: bool) -> np.ndarray:
@@ -189,9 +173,7 @@ class TabularDataset:
                 return y.values
             return self.label_encoder.transform(y)
 
-    def get_splits(
-        self, X: np.ndarray, y: np.ndarray
-    ) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
+    def get_splits(self, X: np.ndarray, y: np.ndarray) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
         """Train/Val/Test 분할"""
         test_size = self.data_cfg.get("test_size", 0.15)
         val_size = self.data_cfg.get("val_size", 0.15)
@@ -241,9 +223,7 @@ def load_falcon_data(config_path: str) -> Dict[str, Any]:
         "dataset": dataset,
         "splits": splits,
         "feature_names": dataset.selected_features or list(X.columns),
-        "class_names": (
-            dataset.label_encoder.classes_ if dataset.label_encoder else None
-        ),
+        "class_names": (dataset.label_encoder.classes_ if dataset.label_encoder else None),
         "input_dim": X_proc.shape[1],
         "num_classes": len(np.unique(y_proc)),
     }

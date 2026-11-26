@@ -144,9 +144,7 @@ class TimeSynchronizer:
         mask_sensor = (sensor_sync.timestamp >= common_start) & (
             sensor_sync.timestamp <= common_end
         )
-        mask_ref = (ref_sync.timestamp >= common_start) & (
-            ref_sync.timestamp <= common_end
-        )
+        mask_ref = (ref_sync.timestamp >= common_start) & (ref_sync.timestamp <= common_end)
 
         if not np.any(mask_sensor) or not np.any(mask_ref):
             return 0.0, 0.0

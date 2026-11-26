@@ -3,9 +3,9 @@ Keyword Specifications - Single Source of Truth for Voice Commands
 모든 음성 명령의 정의: 키워드, 자연어 문장, MAVLink 액션, 파라미터, 우선순위
 """
 
-import json
 from dataclasses import asdict, dataclass, field
 from enum import IntEnum
+import json
 from pathlib import Path
 from typing import Dict, List, Optional
 

@@ -61,9 +61,7 @@ class DeceptionEngine:
             pattern = self._auto_select_pattern(threat_profile)
 
         self.active_pattern = pattern
-        self.pattern_task = asyncio.create_task(
-            self._execute_pattern(pattern, duration)
-        )
+        self.pattern_task = asyncio.create_task(self._execute_pattern(pattern, duration))
         return True
 
     def _auto_select_pattern(self, threat: ThreatProfile) -> DeceptionPattern:
@@ -130,6 +128,4 @@ class ThreatAssessor:
 
     async def assess(self, sensor_data: dict) -> ThreatProfile:
         # 센서 데이터 기반 위협 평가 (향후 구현)
-        return ThreatProfile(
-            threat_type="UNKNOWN", confidence=0.0, bearing=0.0, distance=0.0
-        )
+        return ThreatProfile(threat_type="UNKNOWN", confidence=0.0, bearing=0.0, distance=0.0)

@@ -3,8 +3,8 @@
 전처리 파이프라인 테스트 스크립트
 """
 
-import sys
 from pathlib import Path
+import sys
 
 # 프로젝트 루트 추가
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -141,9 +141,7 @@ def test_normalizer():
     data = create_test_data()
 
     normalizer = SensorNormalizer(method="standard", per_sensor=True)
-    normalizer.fit(
-        {k: v.data for k, v in data.items()}, {k: v.columns for k, v in data.items()}
-    )
+    normalizer.fit({k: v.data for k, v in data.items()}, {k: v.columns for k, v in data.items()})
 
     # 변환 테스트
     normalized = normalizer.transform({k: v.data for k, v in data.items()})

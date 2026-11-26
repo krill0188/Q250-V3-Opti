@@ -5,12 +5,12 @@ T-04 SpecKit 작업
 """
 
 import asyncio
+from dataclasses import dataclass
+from enum import Enum
 import os
 import sys
 import threading
 import time
-from dataclasses import dataclass
-from enum import Enum
 from typing import Callable, Optional
 
 import rclpy
@@ -44,9 +44,7 @@ except ImportError:
     print("Warning: mavros_msgs not available. Install ros-humble-mavros-msgs")
 
 # 우리 커스텀 메시지
-sys.path.insert(
-    0, os.path.join(os.path.dirname(__file__), "..", "generated", "mavlink")
-)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "generated", "mavlink"))
 try:
     import python as mavlink_custom
 
@@ -157,31 +155,23 @@ def merge_state(mavsdk_state: DroneState, mavros2_state: DroneState) -> DroneSta
 
     # 무장/비행: MAVSDK 우선 (고수준 상태)
     merged.armed = mavsdk_state.armed if mavsdk_state.connected else mavros2_state.armed
-    merged.in_air = (
-        mavsdk_state.in_air if mavsdk_state.connected else mavros2_state.in_air
-    )
+    merged.in_air = mavsdk_state.in_air if mavsdk_state.connected else mavros2_state.in_air
 
     # 모드: MAVSDK 우선, 없으면 MAVROS2
-    merged.mode = (
-        mavsdk_state.mode if mavsdk_state.mode != "UNKNOWN" else mavros2_state.mode
-    )
+    merged.mode = mavsdk_state.mode if mavsdk_state.mode != "UNKNOWN" else mavros2_state.mode
 
     # 위치: MAVSDK (글로벌) 우선
     merged.latitude = (
         mavsdk_state.latitude if mavsdk_state.latitude != 0 else mavros2_state.latitude
     )
     merged.longitude = (
-        mavsdk_state.longitude
-        if mavsdk_state.longitude != 0
-        else mavros2_state.longitude
+        mavsdk_state.longitude if mavsdk_state.longitude != 0 else mavros2_state.longitude
     )
     merged.altitude_amsl = mavsdk_state.altitude_amsl or mavros2_state.altitude_amsl
     merged.altitude_rel = mavsdk_state.altitude_rel or mavros2_state.altitude_rel
 
     # 배터리/GPS: MAVROS2 (전용 토픽) 우선
-    merged.battery_percent = (
-        mavros2_state.battery_percent or mavsdk_state.battery_percent
-    )
+    merged.battery_percent = mavros2_state.battery_percent or mavsdk_state.battery_percent
     merged.gps_fix_type = mavros2_state.gps_fix_type or mavsdk_state.gps_fix_type
     merged.satellites = mavros2_state.satellites or mavsdk_state.satellites
 
@@ -370,14 +360,10 @@ class MAVSDKBridge:
             return False
 
     # --- 오프보드 ---
-    async def set_offboard_velocity(
-        self, vx: float, vy: float, vz: float, yaw_rate: float
-    ):
+    async def set_offboard_velocity(self, vx: float, vy: float, vz: float, yaw_rate: float):
         """Body 프레임 속도 명령"""
         try:
-            await self.drone.offboard.set_velocity_body(
-                VelocityBodyYawspeed(vx, vy, vz, yaw_rate)
-            )
+            await self.drone.offboard.set_velocity_body(VelocityBodyYawspeed(vx, vy, vz, yaw_rate))
         except OffboardError as e:
             print(f"Offboard velocity failed: {e}")
 
@@ -424,9 +410,7 @@ class MAVROS2Bridge(Node):
         )
 
         # 구독자
-        self.state_sub = self.create_subscription(
-            State, f"{namespace}/state", self._state_cb, qos
-        )
+        self.state_sub = self.create_subscription(State, f"{namespace}/state", self._state_cb, qos)
         self.pose_sub = self.create_subscription(
             PoseStamped, f"{namespace}/local_position/pose", self._pose_cb, qos
         )
@@ -557,9 +541,7 @@ class MAVROS2Bridge(Node):
         msg.pose.orientation.w = q[3]
         self.setpoint_pub.publish(msg)
 
-    def publish_velocity_setpoint(
-        self, vx: float, vy: float, vz: float, yaw_rate: float = 0.0
-    ):
+    def publish_velocity_setpoint(self, vx: float, vy: float, vz: float, yaw_rate: float = 0.0):
         msg = TwistStamped()
         msg.header = Header()
         msg.header.stamp = self.get_clock().now().to_msg()
@@ -606,9 +588,7 @@ class MAVROS2Bridge(Node):
 class DualBridge:
     """MAVSDK + MAVROS2 통합 브릿지"""
 
-    def __init__(
-        self, mavsdk_address: str = "udp://:14540", mavros_namespace: str = "/mavros"
-    ):
+    def __init__(self, mavsdk_address: str = "udp://:14540", mavros_namespace: str = "/mavros"):
         self.mavsdk = MAVSDKBridge(mavsdk_address)
         self.mavros2 = None  # ROS2 컨텍스트에서 생성
         self.mavros_namespace = mavros_namespace
@@ -722,9 +702,7 @@ class DualBridge:
     async def start_offboard(self) -> bool:
         return await self.mavsdk.start_offboard()
 
-    async def set_offboard_velocity(
-        self, vx: float, vy: float, vz: float, yaw_rate: float
-    ):
+    async def set_offboard_velocity(self, vx: float, vy: float, vz: float, yaw_rate: float):
         await self.mavsdk.set_offboard_velocity(vx, vy, vz, yaw_rate)
 
     async def upload_mission(self, items: list) -> bool:

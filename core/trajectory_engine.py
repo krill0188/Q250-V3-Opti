@@ -1,6 +1,6 @@
-import math
 from dataclasses import dataclass
 from enum import Enum
+import math
 from pathlib import Path
 from typing import List, Tuple
 
@@ -61,15 +61,11 @@ class TrajectoryEngine:
         """다이브 궤적 생성 (다중 방법 지원)"""
 
         if method == TrajectoryMethod.MPC:
-            return await self._mpc_optimize(
-                start_pos, target_alt, dive_angle, max_speed
-            )
+            return await self._mpc_optimize(start_pos, target_alt, dive_angle, max_speed)
         elif method == TrajectoryMethod.LUT:
             return self._lut_lookup(start_pos, target_alt, dive_angle, max_speed)
         else:  # GEOMETRIC
-            return self._geometric_fallback(
-                start_pos, target_alt, dive_angle, max_speed
-            )
+            return self._geometric_fallback(start_pos, target_alt, dive_angle, max_speed)
 
     def _lut_lookup(self, start, target_alt, angle, max_speed) -> DiveTrajectory:
         """사전 계산된 궤적 룩업 (최속)"""
@@ -89,9 +85,7 @@ class TrajectoryEngine:
         self.lut_cache[key] = lut_traj
         return lut_traj
 
-    async def _mpc_optimize(
-        self, start, target_alt, angle, max_speed
-    ) -> DiveTrajectory:
+    async def _mpc_optimize(self, start, target_alt, angle, max_speed) -> DiveTrajectory:
         """MPC 실시간 최적화 (제약 조건 고려) - GPU 가속"""
 
         # GPU 백엔드 사용 시 기하 계산 가속
@@ -106,9 +100,7 @@ class TrajectoryEngine:
         traj.constraints_satisfied = True
         return traj
 
-    def _geometric_fallback(
-        self, start, target_alt, angle, max_speed
-    ) -> DiveTrajectory:
+    def _geometric_fallback(self, start, target_alt, angle, max_speed) -> DiveTrajectory:
         """기하학적 계산으로 다이브 궤적 생성 (CPU 폴백)"""
 
         # 스펙에서 제약 조건 가져오기 (첫 번째 기체 기준)
@@ -167,9 +159,7 @@ class TrajectoryEngine:
         """기만 패턴별 궤적 생성 - GPU 가속"""
 
         # GPU 백엔드 사용 시 나선/사인/진크 가속
-        if self.gpu_engine and hasattr(
-            self.gpu_engine.backend, pattern.lower() + "_dive"
-        ):
+        if self.gpu_engine and hasattr(self.gpu_engine.backend, pattern.lower() + "_dive"):
             if "SPIRAL" in pattern:
                 return await self.gpu_engine.generate_dive_trajectory(
                     start_pos,

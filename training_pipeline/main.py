@@ -3,8 +3,8 @@ Main entry point for training pipelines
 """
 
 import argparse
-import sys
 from pathlib import Path
+import sys
 
 # Add pipeline to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -51,9 +51,7 @@ PIPELINES = {
 
 def main():
     parser = argparse.ArgumentParser(description="Training Pipeline Runner")
-    parser.add_argument(
-        "pipeline", choices=list(PIPELINES.keys()), help="Pipeline to run"
-    )
+    parser.add_argument("pipeline", choices=list(PIPELINES.keys()), help="Pipeline to run")
     parser.add_argument("--config", type=str, help="Config file path")
 
     args = parser.parse_args()

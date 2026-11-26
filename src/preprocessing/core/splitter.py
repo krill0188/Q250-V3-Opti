@@ -54,9 +54,7 @@ class TemporalSplitter(SplitStrategy):
             sensors = {}
             for name, sensor in multi_sensor.sensors.items():
                 # 시간 마스크
-                mask = (sensor.timestamp >= split_start) & (
-                    sensor.timestamp < split_end
-                )
+                mask = (sensor.timestamp >= split_start) & (sensor.timestamp < split_end)
                 if not np.any(mask):
                     # 빈 분할인 경우 빈 센서 데이터 생성
                     sensors[name] = SensorData(
@@ -162,18 +160,14 @@ class StratifiedSplitter(SplitStrategy):
     ) -> Dict[DataSplit, MultiSensorData]:
         """라벨 기반 계층화 분할"""
         # 라벨 센서가 필요함
-        if self.label_column not in [
-            c for s in multi_sensor.sensors.values() for c in s.columns
-        ]:
+        if self.label_column not in [c for s in multi_sensor.sensors.values() for c in s.columns]:
             raise ValueError(f"Label column '{self.label_column}' not found")
 
         from sklearn.model_selection import StratifiedShuffleSplit
 
         # 라벨 추출 (정수로 변환)
         label_sensor = multi_sensor.sensors[multi_sensor.reference_sensor]
-        labels = label_sensor.data[
-            :, label_sensor.columns.index(self.label_column)
-        ].astype(int)
+        labels = label_sensor.data[:, label_sensor.columns.index(self.label_column)].astype(int)
 
         sss = StratifiedShuffleSplit(
             n_splits=1,

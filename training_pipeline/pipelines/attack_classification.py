@@ -10,14 +10,13 @@ import json
 from pathlib import Path
 
 from data.sequence_dataset import load_fanghets_data
+import yaml
 
 from training.sequence_trainer import run_fanghets_training
 
 
 def main():
-    config_path = (
-        "/Users/amaster/data/additional_datasets/training_pipeline/config/fanghets.yaml"
-    )
+    config_path = "/Users/amaster/data/additional_datasets/training_pipeline/config/fanghets.yaml"
 
     print("=" * 60)
     print("FAN-GHETS24 ATTACK CLASSIFICATION PIPELINE")
@@ -34,9 +33,7 @@ def main():
     # 3. 결과 저장
     print("\n[3/4] Saving results...")
     results = {
-        "best_val_f1": (
-            max(trainer.history["val_f1"]) if trainer.history["val_f1"] else 0
-        ),
+        "best_val_f1": (max(trainer.history["val_f1"]) if trainer.history["val_f1"] else 0),
         "history": trainer.history,
         "class_names": (
             trainer.class_names.tolist()
@@ -48,9 +45,7 @@ def main():
         "num_classes": data["num_classes"],
     }
 
-    output_dir = Path(
-        "/Users/amaster/data/additional_datasets/training_pipeline/outputs/fanghets"
-    )
+    output_dir = Path("/Users/amaster/data/additional_datasets/training_pipeline/outputs/fanghets")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     with open(output_dir / "results.json", "w") as f:

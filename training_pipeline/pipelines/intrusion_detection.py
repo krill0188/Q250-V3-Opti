@@ -9,14 +9,13 @@ sys.path.append("/Users/amaster/data/additional_datasets/training_pipeline")
 from pathlib import Path
 
 from data.tabular_dataset import load_falcon_data
+import yaml
 
 from training.tabular_trainer import run_falcon_training
 
 
 def main():
-    config_path = (
-        "/Users/amaster/data/additional_datasets/training_pipeline/config/falcon.yaml"
-    )
+    config_path = "/Users/amaster/data/additional_datasets/training_pipeline/config/falcon.yaml"
 
     print("=" * 60)
     print("FALCON INTRUSION DETECTION PIPELINE")
@@ -44,9 +43,7 @@ def main():
     import json
 
     results = {
-        "cv_scores": {
-            k: [float(v) for v in vals] for k, vals in trainer.cv_scores.items()
-        },
+        "cv_scores": {k: [float(v) for v in vals] for k, vals in trainer.cv_scores.items()},
         "feature_importances": (
             trainer.feature_importances.tolist()
             if trainer.feature_importances is not None
@@ -61,9 +58,7 @@ def main():
         "model_type": trainer.model_cfg["type"],
     }
 
-    output_dir = Path(
-        "/Users/amaster/data/additional_datasets/training_pipeline/outputs/falcon"
-    )
+    output_dir = Path("/Users/amaster/data/additional_datasets/training_pipeline/outputs/falcon")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     with open(output_dir / "results.json", "w") as f:
@@ -78,9 +73,9 @@ def main():
         fi_importance = trainer.feature_importances
 
         if len(fi_features) == len(fi_importance):
-            fi_df = pd.DataFrame(
-                {"feature": fi_features, "importance": fi_importance}
-            ).sort_values("importance", ascending=False)
+            fi_df = pd.DataFrame({"feature": fi_features, "importance": fi_importance}).sort_values(
+                "importance", ascending=False
+            )
             fi_df.to_csv(output_dir / "feature_importance.csv", index=False)
             print("\nTop 20 Features:")
             print(fi_df.head(20).to_string(index=False))
@@ -122,12 +117,8 @@ def export_onnx(trainer, data, output_dir):
         import onnxmltools
         from onnxmltools.convert.lightgbm import convert as convert_lgbm
 
-        model_path = trainer.export_cfg.get(
-            "model_path", "models/falcon_intrusion_detection.txt"
-        )
-        onnx_path = trainer.export_cfg.get(
-            "onnx_path", "models/falcon_intrusion_detection.onnx"
-        )
+        model_path = trainer.export_cfg.get("model_path", "models/falcon_intrusion_detection.txt")
+        onnx_path = trainer.export_cfg.get("onnx_path", "models/falcon_intrusion_detection.onnx")
 
         # Booster 로드
         import lightgbm as lgb

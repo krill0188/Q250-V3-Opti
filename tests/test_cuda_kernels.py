@@ -20,9 +20,9 @@ Designed for Jetson Orin target validation.
 """
 
 import math
+from pathlib import Path
 import sys
 import time
-from pathlib import Path
 from unittest.mock import patch
 
 import numpy as np
@@ -270,9 +270,7 @@ class TestSpiralDive:
         """Basic spiral dive: circular motion with descent."""
         b, _ = backend
         start = (0.0, 0.0, 300.0)
-        points = b.spiral_dive(
-            start, radius=50.0, turns=3.0, descent_rate=10.0, duration=30.0
-        )
+        points = b.spiral_dive(start, radius=50.0, turns=3.0, descent_rate=10.0, duration=30.0)
 
         assert len(points) == 51
         x0, y0, z0 = _point_to_tuple(points[0])[:3]
@@ -294,12 +292,8 @@ class TestSpiralDive:
     def test_spiral_turns(self, backend):
         """More turns produces more angular change at intermediate points."""
         b, _ = backend
-        p1 = b.spiral_dive(
-            (0, 0, 300), radius=50, turns=1, descent_rate=10, duration=10
-        )
-        p2 = b.spiral_dive(
-            (0, 0, 300), radius=50, turns=5, descent_rate=10, duration=10
-        )
+        p1 = b.spiral_dive((0, 0, 300), radius=50, turns=1, descent_rate=10, duration=10)
+        p2 = b.spiral_dive((0, 0, 300), radius=50, turns=5, descent_rate=10, duration=10)
         # Compare at early point (t=0.1) where 1-turn and 5-turn clearly differ
         # 1 turn at t=0.1: angle = 0.2*pi; 5 turns at t=0.1: angle = pi
         x1, y1 = _point_to_tuple(p1[5])[:2]
@@ -316,9 +310,7 @@ class TestSineDive:
         """Basic sine dive: sinusoidal lateral motion with descent."""
         b, _ = backend
         start = (0.0, 0.0, 300.0)
-        points = b.sine_dive(
-            start, amplitude=20.0, frequency=0.5, descent_rate=15.0, duration=10.0
-        )
+        points = b.sine_dive(start, amplitude=20.0, frequency=0.5, descent_rate=15.0, duration=10.0)
 
         assert len(points) == 51
         x0, y0, z0 = _point_to_tuple(points[0])[:3]
@@ -389,9 +381,7 @@ class TestJinkTrajectory:
         p2 = b.jink_trajectory(start, seed=222)
 
         # At least some points should differ
-        diffs = sum(
-            1 for a, b_ in zip(p1, p2) if _point_to_tuple(a) != _point_to_tuple(b_)
-        )
+        diffs = sum(1 for a, b_ in zip(p1, p2) if _point_to_tuple(a) != _point_to_tuple(b_))
         assert diffs > 0
 
 

@@ -89,28 +89,16 @@ def test_custom_mavlink_messages():
     try:
         import sys
 
-        sys.path.insert(
-            0, os.path.join(os.path.dirname(__file__), "..", "generated", "mavlink")
-        )
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "generated", "mavlink"))
         import python as mavlink_custom
 
         # 메시지 ID 확인
         msg_ids = {
-            "VOICE_COMMAND": getattr(
-                mavlink_custom, "MAVLINK_MSG_ID_VOICE_COMMAND", None
-            ),
-            "VOICE_STATUS": getattr(
-                mavlink_custom, "MAVLINK_MSG_ID_VOICE_STATUS", None
-            ),
-            "VOICE_FEEDBACK": getattr(
-                mavlink_custom, "MAVLINK_MSG_ID_VOICE_FEEDBACK", None
-            ),
-            "VOICE_WAYPOINT": getattr(
-                mavlink_custom, "MAVLINK_MSG_ID_VOICE_WAYPOINT", None
-            ),
-            "VOICE_EMERGENCY": getattr(
-                mavlink_custom, "MAVLINK_MSG_ID_VOICE_EMERGENCY", None
-            ),
+            "VOICE_COMMAND": getattr(mavlink_custom, "MAVLINK_MSG_ID_VOICE_COMMAND", None),
+            "VOICE_STATUS": getattr(mavlink_custom, "MAVLINK_MSG_ID_VOICE_STATUS", None),
+            "VOICE_FEEDBACK": getattr(mavlink_custom, "MAVLINK_MSG_ID_VOICE_FEEDBACK", None),
+            "VOICE_WAYPOINT": getattr(mavlink_custom, "MAVLINK_MSG_ID_VOICE_WAYPOINT", None),
+            "VOICE_EMERGENCY": getattr(mavlink_custom, "MAVLINK_MSG_ID_VOICE_EMERGENCY", None),
         }
 
         print(f"✅ Message IDs: {msg_ids}")

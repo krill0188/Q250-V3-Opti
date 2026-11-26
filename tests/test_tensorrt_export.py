@@ -15,14 +15,14 @@ Designed for Jetson Orin (sm_87) target validation.
 """
 
 import json
-import struct
 from pathlib import Path
+import struct
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import onnx
-import pytest
 from onnx import TensorProto, helper
+import pytest
 
 # ---------------------------------------------------------------------------
 # Try importing export_tensorrt — may fail on hosts without torch/tensorrt
@@ -66,9 +66,7 @@ def _make_minimal_onnx(tmp_path, num_classes=3):
     node_pool = helper.make_node("GlobalAveragePool", ["input"], ["pooled"])
     node_flat = helper.make_node("Flatten", ["pooled"], ["flattened"], axis=1)
 
-    W_vals = (
-        np.random.randn(157 * 40, num_classes).astype(np.float32).flatten().tolist()
-    )
+    W_vals = np.random.randn(157 * 40, num_classes).astype(np.float32).flatten().tolist()
     B_vals = np.zeros(num_classes, dtype=np.float32).tolist()
     W = helper.make_tensor("W", TensorProto.FLOAT, [157 * 40, num_classes], W_vals)
     B = helper.make_tensor("B", TensorProto.FLOAT, [num_classes], B_vals)
@@ -204,16 +202,15 @@ class TestTensorRTVerification:
 
         test_input = np.random.randn(1, 1, 157, 40).astype(np.float32)
 
-        with patch("src.deployment.export_tensorrt.pycuda", MagicMock()), patch(
-            "src.deployment.export_tensorrt.ort"
-        ) as mock_ort:
+        with (
+            patch("src.deployment.export_tensorrt.pycuda", MagicMock()),
+            patch("src.deployment.export_tensorrt.ort") as mock_ort,
+        ):
             mock_session = MagicMock()
             mock_session.run.return_value = [np.random.randn(1, 3).astype(np.float32)]
             mock_ort.InferenceSession.return_value = mock_session
 
-            result = verify_tensorrt_engine(
-                str(engine_path), str(onnx_path), test_input=test_input
-            )
+            result = verify_tensorrt_engine(str(engine_path), str(onnx_path), test_input=test_input)
             assert isinstance(result, bool)
 
 
@@ -277,9 +274,10 @@ class TestBenchmark:
         engine_path = tmp_path / "model.engine"
         _serialize_mock_engine(engine_path)
 
-        with patch("src.deployment.export_tensorrt.pycuda", MagicMock()), patch(
-            "src.deployment.export_tensorrt.time"
-        ) as mock_time:
+        with (
+            patch("src.deployment.export_tensorrt.pycuda", MagicMock()),
+            patch("src.deployment.export_tensorrt.time") as mock_time,
+        ):
             mock_time.perf_counter.side_effect = [0.0, 0.001, 0.002, 0.003]
 
             result = benchmark_tensorrt_engine(str(engine_path), num_iter=10)

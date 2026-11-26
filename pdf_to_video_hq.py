@@ -84,9 +84,7 @@ def create_video_from_pages(images, narrations, output_path, fps=24):
         clip = ImageClip(img_path).with_duration(duration).with_fps(fps)
 
         # 검정 배경 생성 (타겟 해상도)
-        bg = ColorClip(
-            size=(TARGET_WIDTH, TARGET_HEIGHT), color=(0, 0, 0), duration=duration
-        )
+        bg = ColorClip(size=(TARGET_WIDTH, TARGET_HEIGHT), color=(0, 0, 0), duration=duration)
 
         # 이미지를 중앙에 배치 (원본 크기 유지)
         clip_final = clip.with_position("center")

@@ -3,13 +3,13 @@ Wake Word Detection Module using Porcupine (Picovoice)
 Always-on "Hey Drone" / "드론아" detection
 """
 
+from dataclasses import dataclass
+from enum import Enum
 import logging
 import os
 import struct
 import threading
 import time
-from dataclasses import dataclass
-from enum import Enum
 from typing import Callable, Dict, List, Optional
 
 import pvporcupine
@@ -102,9 +102,7 @@ class WakeWordDetector:
             # 액세스 키 필요 (Picovoice Console에서 무료 발급)
             access_key = os.getenv("PICOVOICE_ACCESS_KEY")
             if not access_key:
-                logger.warning(
-                    "PICOVOICE_ACCESS_KEY 환경변수 미설정 - 웨이크 워드 비활성화"
-                )
+                logger.warning("PICOVOICE_ACCESS_KEY 환경변수 미설정 - 웨이크 워드 비활성화")
                 return
 
             keyword_paths = self.config.keyword_paths or []
@@ -118,9 +116,7 @@ class WakeWordDetector:
                 library_path=self.config.library_path,
                 model_path=self.config.model_path,
             )
-            logger.info(
-                f"Porcupine 초기화 완료: {len(self._porcupine.keywords)} 키워드"
-            )
+            logger.info(f"Porcupine 초기화 완료: {len(self._porcupine.keywords)} 키워드")
             self._state = WakeWordState.LISTENING
 
         except pvporcupine.PorcupineInvalidArgumentError as e:
@@ -182,9 +178,7 @@ class WakeWordDetector:
         while self._running:
             try:
                 # 오디오 프레임 읽기
-                pcm_data = self._audio_stream.read(
-                    self.frame_length, exception_on_overflow=False
-                )
+                pcm_data = self._audio_stream.read(self.frame_length, exception_on_overflow=False)
                 pcm = struct.unpack_from("h" * self.frame_length, pcm_data)
 
                 # Porcupine 처리

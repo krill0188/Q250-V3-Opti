@@ -1,0 +1,122 @@
+[project]
+name = "q250-v3-opti"
+version = "0.5.0"
+description = "Q250-V3 Opti Autonomous Drone Project"
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.svn
+  | \.tox
+  | venv
+  | venv_py39
+  | \.venv
+  | build
+  | dist
+  | generated
+  | \.github
+  | docs
+  | scripts
+  | integration
+  | launch
+  | ros2_ws
+  | node_modules
+  | \.specs
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["core", "voice", "bridge", "src", "training_pipeline", "preprocessing"]
+force_sort_within_sections = true
+skip = [
+    "venv_py39",
+    "generated",
+    "build",
+    "dist",
+    ".git",
+    ".github",
+    "docs",
+    "scripts",
+    "integration",
+    "launch",
+    "ros2_ws",
+    "node_modules",
+    ".specs",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [
+    "venv_py39",
+    "generated",
+    "build",
+    "dist",
+    ".git",
+    ".github",
+    "docs",
+    "scripts",
+    "integration",
+    "launch",
+    "ros2_ws",
+    "node_modules",
+    ".specs",
+    "scripts/silvus_monitor.launch.py",
+    "launch/q250_v3_opti_sitl.launch.py",
+    "ros2_ws/src/llm_mission_planner/launch/mission_planner.launch.py",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+]
+ignore = [
+    "E501",
+    "F401",
+    "F841",
+    "E722",
+    "E741",
+    "F541",
+    "F811",
+    "E402",
+    "F821",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"generated/*" = ["E501", "F401", "F841", "E741", "F541"]
+"voice/*" = ["F541", "F841", "F401"]
+"training_pipeline/*" = ["F541", "F841", "F401"]
+"scripts/*" = ["F401", "F841"]
+"integration/*" = ["F401", "F841", "F541"]
+"launch/*" = ["F401", "F841", "F541"]
+"core/*" = ["F401", "F841"]
+"deception/*" = ["F401", "F841"]
+"dive/*" = ["F401", "F841"]
+"safety/*" = ["F401", "F841"]
+"swarm/*" = ["F401", "F841"]
+"nongps/*" = ["F401", "F841"]
+"bridge/*" = ["F401", "F841"]
+"src/*" = ["F401", "F841"]
+"tests/*" = ["F401", "F841"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+no_error_summary = true
+follow_imports = "silent"
+exclude = [
+    'venv_py39',
+    'generated',
+    'build',
+    'dist',
+    '.git',
+    'ros2_ws',
+]

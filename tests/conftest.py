@@ -14,8 +14,8 @@ with graceful degradation to mock-based testing on CI machines without GPU.
 import hashlib
 import json
 import os
-import tempfile
 from pathlib import Path
+import tempfile
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -140,9 +140,7 @@ def calibration_samples_1000() -> np.ndarray:
     Deterministic via fixed seed for reproducibility.
     """
     rng = np.random.RandomState(42)
-    samples = rng.randn(CALIBRATION_SAMPLES_MIN, *CALIBRATION_INPUT_SHAPE).astype(
-        np.float32
-    )
+    samples = rng.randn(CALIBRATION_SAMPLES_MIN, *CALIBRATION_INPUT_SHAPE).astype(np.float32)
     # Normalize to [-1, 1] range typical of log-mel features
     samples = np.clip(samples, -1.0, 1.0)
     return samples
@@ -159,9 +157,7 @@ def calibration_samples_500() -> np.ndarray:
 def calibration_batch() -> np.ndarray:
     """Single calibration batch of size CALIBRATION_BATCH_SIZE."""
     rng = np.random.RandomState(7)
-    return rng.randn(CALIBRATION_BATCH_SIZE, *CALIBRATION_INPUT_SHAPE).astype(
-        np.float32
-    )
+    return rng.randn(CALIBRATION_BATCH_SIZE, *CALIBRATION_INPUT_SHAPE).astype(np.float32)
 
 
 # ---------------------------------------------------------------------------
@@ -185,21 +181,14 @@ def dummy_onnx_model(tmp_path) -> Path:
     Y = helper.make_tensor_value_info("output", TensorProto.FLOAT, [1, num_classes])
 
     # Simple gemm-like node (flatten + linear) — minimal valid ONNX
-    node_def = helper.make_node(
-        "GlobalAveragePool", inputs=["input"], outputs=["pooled"]
-    )
-    node_flatten = helper.make_node(
-        "Flatten", inputs=["pooled"], outputs=["flattened"], axis=1
-    )
+    node_def = helper.make_node("GlobalAveragePool", inputs=["input"], outputs=["pooled"])
+    node_flatten = helper.make_node("Flatten", inputs=["pooled"], outputs=["flattened"], axis=1)
     # MatMul + Add for classification head
     W = helper.make_tensor(
         "W",
         TensorProto.FLOAT,
         [157 * 40, num_classes],
-        vals=np.random.randn(157 * 40, num_classes)
-        .astype(np.float32)
-        .flatten()
-        .tolist(),
+        vals=np.random.randn(157 * 40, num_classes).astype(np.float32).flatten().tolist(),
     )
     B = helper.make_tensor(
         "B",

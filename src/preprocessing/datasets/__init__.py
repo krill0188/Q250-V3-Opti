@@ -44,8 +44,7 @@ class _LazyDatasetMeta(type):
     def __new__(mcs, name, bases, namespace):
         # object를 Dataset으로 치환
         new_bases = tuple(
-            _torch.utils.data.Dataset if b is object and _torch is not None else b
-            for b in bases
+            _torch.utils.data.Dataset if b is object and _torch is not None else b for b in bases
         )
         return super().__new__(mcs, name, new_bases, namespace)
 
@@ -201,9 +200,7 @@ class BaseSequenceDataset(_DatasetBase, metaclass=_LazyDatasetMeta):
                 continue
 
             # 슬라이딩 윈도우
-            for i in range(
-                0, n_samples - self.seq_len - self.target_len + 1, self.stride
-            ):
+            for i in range(0, n_samples - self.seq_len - self.target_len + 1, self.stride):
                 seq_start = i
                 seq_end = i + self.seq_len
                 target_end = i + self.seq_len + self.target_len
@@ -414,9 +411,7 @@ class MultiSensorDataset(_DatasetBase, metaclass=_LazyDatasetMeta):
         # 멀티센서 입력 생성
         inputs = {}
         for name, data_dict in self.synced_data.items():
-            inputs[name] = torch.from_numpy(
-                data_dict["data"][start:end].astype(np.float32)
-            )
+            inputs[name] = torch.from_numpy(data_dict["data"][start:end].astype(np.float32))
 
         # 타겟 (기본: reference sensor의 다음 스텝)
         target_data = self.synced_data[self.reference_sensor]["data"]
@@ -463,9 +458,7 @@ class MultimodalDataset(_DatasetBase, metaclass=_LazyDatasetMeta):
                     self.data_dir / split / "images", seq_len
                 )
             elif mod == "imu":
-                self.modality_datasets[mod] = IMUDataset(
-                    self.data_dir / split / "imu", seq_len
-                )
+                self.modality_datasets[mod] = IMUDataset(self.data_dir / split / "imu", seq_len)
             # ... 기타 모달리티
 
         # 공통 길이 계산
@@ -490,9 +483,7 @@ class ImageSequenceDataset(_DatasetBase, metaclass=_LazyDatasetMeta):
             raise ImportError("PyTorch is required for ImageSequenceDataset")
         self.data_dir = Path(data_dir)
         self.seq_len = seq_len
-        self.image_paths = sorted(self.data_dir.glob("*.jpg")) + sorted(
-            self.data_dir.glob("*.png")
-        )
+        self.image_paths = sorted(self.data_dir.glob("*.jpg")) + sorted(self.data_dir.glob("*.png"))
 
         if len(self.image_paths) < seq_len:
             raise ValueError(f"Not enough images: {len(self.image_paths)} < {seq_len}")

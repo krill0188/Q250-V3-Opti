@@ -59,10 +59,9 @@ add_custom_target(install_python_bindings
     COMMENT "Installing Python bindings"
 )
 
-# 테스트 실행 파일 (선택사항)
-if(BUILD_TESTING)
+# 테스트 실행 파일 (선택사항 - 테스트 소스가 있을 때만)
+if(BUILD_TESTING AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/cuda/test_trajectory_kernels.cu")
     enable_testing()
-    
     add_executable(test_trajectory_kernels
         src/cuda/test_trajectory_kernels.cu
     )

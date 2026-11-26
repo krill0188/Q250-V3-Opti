@@ -85,9 +85,7 @@ def process_drone_audio():
 
     # Create normalized features for binary
     print("\n=== Normalizing Binary Features ===")
-    bin_normalizer = SensorNormalizer(
-        method="standard", feature_range=(0.0, 1.0), per_sensor=True
-    )
+    bin_normalizer = SensorNormalizer(method="standard", feature_range=(0.0, 1.0), per_sensor=True)
     bin_features_flat = bin_features.reshape(bin_features.shape[0], -1)
     bin_normalizer.fit(
         {0: bin_features_flat},
@@ -98,9 +96,7 @@ def process_drone_audio():
 
     # Create normalized multiclass features
     print("\n=== Normalizing Multiclass Features ===")
-    mc_normalizer = SensorNormalizer(
-        method="standard", feature_range=(0.0, 1.0), per_sensor=True
-    )
+    mc_normalizer = SensorNormalizer(method="standard", feature_range=(0.0, 1.0), per_sensor=True)
     mc_features_flat = mc_features.reshape(mc_features.shape[0], -1)
     mc_normalizer.fit(
         {0: mc_features_flat},
@@ -120,9 +116,7 @@ def process_drone_audio():
         data=np.column_stack(
             [bin_features.reshape(len(bin_features), -1), bin_labels.reshape(-1, 1)]
         ),
-        columns=[
-            f"feat_{i}" for i in range(bin_features.shape[1] * bin_features.shape[2])
-        ]
+        columns=[f"feat_{i}" for i in range(bin_features.shape[1] * bin_features.shape[2])]
         + ["label"],
         frequency_hz=16000.0,
         coordinate_frame="AUDIO",
@@ -132,12 +126,8 @@ def process_drone_audio():
     mc_sensor_labeled = SensorData(
         name="audio_multiclass",
         timestamp=np.arange(len(mc_labels)),
-        data=np.column_stack(
-            [mc_features.reshape(len(mc_features), -1), mc_labels.reshape(-1, 1)]
-        ),
-        columns=[
-            f"feat_{i}" for i in range(mc_features.shape[1] * mc_features.shape[2])
-        ]
+        data=np.column_stack([mc_features.reshape(len(mc_features), -1), mc_labels.reshape(-1, 1)]),
+        columns=[f"feat_{i}" for i in range(mc_features.shape[1] * mc_features.shape[2])]
         + ["label"],
         frequency_hz=16000.0,
         coordinate_frame="AUDIO",
@@ -162,29 +152,21 @@ def process_drone_audio():
     print("\n=== Splitting Binary Dataset ===")
     bin_splits = splitter.split(
         bin_multi,
-        config=SplitConfig(
-            train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, temporal_split=False
-        ),
+        config=SplitConfig(train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, temporal_split=False),
     )
 
     print("Binary splits:")
     for split_enum, split_data in bin_splits.items():
-        print(
-            f"  {split_enum.value}: {len(list(split_data.sensors.values())[0])} samples"
-        )
+        print(f"  {split_enum.value}: {len(list(split_data.sensors.values())[0])} samples")
 
     print("\n=== Splitting Multiclass Dataset ===")
     mc_splits = splitter.split(
         mc_multi,
-        config=SplitConfig(
-            train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, temporal_split=False
-        ),
+        config=SplitConfig(train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, temporal_split=False),
     )
     print("Multiclass splits:")
     for split_enum, split_data in mc_splits.items():
-        print(
-            f"  {split_enum.value}: {len(list(split_data.sensors.values())[0])} samples"
-        )
+        print(f"  {split_enum.value}: {len(list(split_data.sensors.values())[0])} samples")
 
     # Save results
     output_dir = Path("~/data/drone_datasets/processed/drone_audio").expanduser()
@@ -194,9 +176,7 @@ def process_drone_audio():
     for split_enum, split_data in bin_splits.items():
         split_name = split_enum.value
         split_dir = (
-            Path("~/data/drone_datasets/processed/drone_audio").expanduser()
-            / "binary"
-            / split_name
+            Path("~/data/drone_datasets/processed/drone_audio").expanduser() / "binary" / split_name
         )
         split_dir.mkdir(parents=True, exist_ok=True)
 
