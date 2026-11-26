@@ -3,15 +3,15 @@ Voice Enrollment Module - Custom Command Mapping per User
 사용자별 커스텀 음성 명령어 매핑 등록/관리
 """
 
-import os
-import json
-import logging
-import uuid
-from pathlib import Path
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Callable
 from datetime import datetime
 from enum import Enum
+import json
+import logging
+import os
+from pathlib import Path
+from typing import Callable, Dict, List, Optional
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -308,9 +308,7 @@ class VoiceEnrollmentManager:
             self.speaker_mappings.setdefault(speaker_id, []).append(key)
 
         self._save_mappings()
-        logger.info(
-            f"명령어 매핑 추가: {phrase} -> {action} ({speaker_id or 'global'})"
-        )
+        logger.info(f"명령어 매핑 추가: {phrase} -> {action} ({speaker_id or 'global'})")
         return mapping
 
     def remove_mapping(self, phrase: str, speaker_id: Optional[str] = None) -> bool:
@@ -341,9 +339,7 @@ class VoiceEnrollmentManager:
         key = self._make_key(phrase, None)
         return self.mappings.get(key)
 
-    def get_all_mappings(
-        self, speaker_id: Optional[str] = None
-    ) -> List[VoiceCommandMapping]:
+    def get_all_mappings(self, speaker_id: Optional[str] = None) -> List[VoiceCommandMapping]:
         """모든 매핑 조회 (화자별 + 글로벌)"""
         result = []
 
@@ -367,9 +363,7 @@ class VoiceEnrollmentManager:
         all_mappings = self.get_all_mappings(speaker_id)
         return [m for m in all_mappings if m.category == category]
 
-    def enable_mapping(
-        self, phrase: str, speaker_id: Optional[str] = None, enabled: bool = True
-    ):
+    def enable_mapping(self, phrase: str, speaker_id: Optional[str] = None, enabled: bool = True):
         """매핑 활성화/비활성화"""
         mapping = self.get_mapping(phrase, speaker_id)
         if mapping:

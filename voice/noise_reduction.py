@@ -7,11 +7,12 @@
 - ESC RPM 실시간 연동 노치 필터 업데이트
 """
 
+from collections import deque
+from dataclasses import dataclass
+from typing import List, Optional, Tuple
+
 import numpy as np
 import scipy.signal as signal
-from typing import Optional, Tuple, List
-from dataclasses import dataclass
-from collections import deque
 
 
 @dataclass
@@ -140,9 +141,7 @@ class SpectralSubtraction:
         if self.noise_psd is not None:
             # 과감제 + 스펙트럴 플로어
             clean_psd = magnitude**2 - self.config.over_subtraction * self.noise_psd
-            clean_psd = np.maximum(
-                clean_psd, self.config.spectral_floor * self.noise_psd
-            )
+            clean_psd = np.maximum(clean_psd, self.config.spectral_floor * self.noise_psd)
             clean_magnitude = np.sqrt(clean_psd)
         else:
             clean_magnitude = magnitude
@@ -188,9 +187,7 @@ class AdaptiveLMSFilter:
             error[i] = primary[i] - y
 
             # LMS 가중치 업데이트
-            self.weights = (
-                self.leakage * self.weights + self.mu * error[i] * self.buffer
-            )
+            self.weights = self.leakage * self.weights + self.mu * error[i] * self.buffer
 
         return error
 
@@ -286,9 +283,7 @@ class Beamformer:
             ]
         )
 
-    def _steering_vector(
-        self, freq: float, azimuth: float, elevation: float = 0
-    ) -> np.ndarray:
+    def _steering_vector(self, freq: float, azimuth: float, elevation: float = 0) -> np.ndarray:
         """지향 벡터 계산"""
         k = 2 * np.pi * freq / self.config.sound_speed
         dir_vec = np.array(
@@ -317,9 +312,7 @@ class Beamformer:
 
         return output / n_channels
 
-    def mvdr(
-        self, audio_4ch: np.ndarray, azimuth: float = 0, elevation: float = 0
-    ) -> np.ndarray:
+    def mvdr(self, audio_4ch: np.ndarray, azimuth: float = 0, elevation: float = 0) -> np.ndarray:
         """
         MVDR (Minimum Variance Distortionless Response) 빔포밍
         주파수 도메인에서 공분산 행렬 기반 가중치 계산
@@ -392,8 +385,7 @@ class PropellerNoiseReducer:
         self.notch_filter = NotchFilterBank(self.config)
         self.spectral_sub = SpectralSubtraction(self.config)
         self.lms_filters = [
-            AdaptiveLMSFilter(self.config, ref_ch)
-            for ref_ch in range(self.config.n_channels)
+            AdaptiveLMSFilter(self.config, ref_ch) for ref_ch in range(self.config.n_channels)
         ]
         self.beamformer = Beamformer(self.config)
 
@@ -446,9 +438,7 @@ class PropellerNoiseReducer:
         if reference_rpm is not None:
             lms_clean = np.zeros_like(spectral_clean)
             for ch in range(self.config.n_channels):
-                lms_clean[ch] = self.lms_filters[ch].process(
-                    spectral_clean[ch], reference_rpm
-                )
+                lms_clean[ch] = self.lms_filters[ch].process(spectral_clean[ch], reference_rpm)
             self.stats["lms_updates"] += 1
             enhanced = lms_clean
         else:

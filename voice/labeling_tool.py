@@ -5,13 +5,13 @@ STT 데이터 라벨링 도구 (CLI/Web)
 - 학습 데이터로 승인/거절
 """
 
-import os
 import json
 import logging
+import os
 from pathlib import Path
-from typing import List, Dict, Optional
 import subprocess
 import sys
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -160,9 +160,7 @@ class STTLabelingTool:
             confidences = [d.get("confidence", 0) for d in data if "confidence" in d]
             if confidences:
                 print(f"평균 신뢰도: {sum(confidences)/len(confidences):.2f}")
-                print(
-                    f"최소/최대 신뢰도: {min(confidences):.2f} / {max(confidences):.2f}"
-                )
+                print(f"최소/최대 신뢰도: {min(confidences):.2f} / {max(confidences):.2f}")
 
             # 텍스트 길이 통계
             lengths = [len(d.get("ground_truth", "")) for d in data]
@@ -174,17 +172,13 @@ def main():
 
     logging.basicConfig(level=logging.INFO)
 
-    parser = argparse.ArgumentParser(
-        description="STT Labeling Tool for Whisper Fine-tuning"
-    )
+    parser = argparse.ArgumentParser(description="STT Labeling Tool for Whisper Fine-tuning")
     parser.add_argument("--log-dir", default="~/models/stt_logs", help="Log directory")
     parser.add_argument("--list", action="store_true", help="List pending items")
     parser.add_argument("--review", type=int, help="Review specific index")
     parser.add_argument("--review-all", action="store_true", help="Review all pending")
     parser.add_argument("--export", help="Export training data to path")
-    parser.add_argument(
-        "--min-conf", type=float, default=0.7, help="Min confidence for export"
-    )
+    parser.add_argument("--min-conf", type=float, default=0.7, help="Min confidence for export")
     parser.add_argument("--stats", action="store_true", help="Show statistics")
 
     args = parser.parse_args()

@@ -5,13 +5,14 @@ T-11 SpecKit 작업 구현
 """
 
 import asyncio
+from collections import deque
+from dataclasses import dataclass
+import logging
+import time
+from typing import AsyncGenerator, Callable, Optional
+
 import numpy as np
 import torch
-import logging
-from typing import Optional, Callable, AsyncGenerator
-from dataclasses import dataclass
-from collections import deque
-import time
 
 logger = logging.getLogger(__name__)
 
@@ -123,9 +124,7 @@ class FasterWhisperASR:
             else:
                 raise RuntimeError("All compute types failed")
         except ImportError:
-            logger.error(
-                "faster-whisper not installed. Run: pip install faster-whisper"
-            )
+            logger.error("faster-whisper not installed. Run: pip install faster-whisper")
             self.model = None
         except Exception as e:
             logger.error(f"Failed to load faster-whisper: {e}")
@@ -212,9 +211,7 @@ class StreamingASRPipeline:
 
             # 무음 지속 시간 체크
             silence_duration = len(self.silence_buffer) / 16000
-            if self.is_speaking and silence_duration >= (
-                self.config.min_silence_ms / 1000
-            ):
+            if self.is_speaking and silence_duration >= (self.config.min_silence_ms / 1000):
                 # 발화 종료 - 버퍼 전체 전사
                 audio_data = np.array(self.audio_buffer)
                 if len(audio_data) > 1600:

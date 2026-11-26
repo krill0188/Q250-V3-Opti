@@ -56,23 +56,28 @@ cmake .. \
 
 # 빌드
 echo "Building..."
-cmake --build . --config "${BUILD_TYPE}" -j$(nproc)
+cmake --build . -j$(nproc)
+
+# Python 바인딩 복사
+echo "Installing Python bindings..."
+cmake --build . --target install_python_bindings -j$(nproc)
 
 # 빌드 결과 확인
 LIB_PATH="${BUILD_DIR}/libtrajectory_kernels.so"
+BINDINGS_PATH="${BUILD_DIR}/trajectory_bindings.py"
 if [[ -f "${LIB_PATH}" ]]; then
     echo ""
-    echo "============================================================"
+    echo "============================================================="
     echo "Build SUCCESS!"
     echo "Library: ${LIB_PATH}"
     echo "Size: $(du -h ${LIB_PATH} | cut -f1)"
     echo ""
-    echo "Python bindings installed to: ${BUILD_DIR}/trajectory_bindings.py"
+    echo "Python bindings: ${BINDINGS_PATH}"
     echo ""
     echo "Test run:"
     echo "  cd ${BUILD_DIR}"
     echo "  python3 ../src/cuda/trajectory_bindings.py"
-    echo "============================================================"
+    echo "============================================================="
 else
     echo "ERROR: Library not found at ${LIB_PATH}"
     exit 1

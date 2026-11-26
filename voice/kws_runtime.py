@@ -4,10 +4,10 @@ TFLite INT8 모델로 10ms 프레임 처리, <5ms 지연
 선택적 의존성(librosa, tflite_runtime, numpy) 지연 로딩
 """
 
-from pathlib import Path
-from typing import Optional, Dict, List, Tuple, TYPE_CHECKING
-from dataclasses import dataclass
 from collections import deque
+from dataclasses import dataclass
+from pathlib import Path
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 if TYPE_CHECKING:
     import numpy as np
@@ -15,11 +15,11 @@ if TYPE_CHECKING:
     import tflite_runtime.interpreter as tflite
 
 from voice.keyword_specs import (
-    get_keywords_list,
-    get_command_for_keyword,
-    get_phrases_for_keyword,
     KEYWORD_SPECS,
     CommandPriority,
+    get_command_for_keyword,
+    get_keywords_list,
+    get_phrases_for_keyword,
 )
 
 
@@ -93,9 +93,7 @@ class MFCCExtractor:
             self._buffer_pos = 0
 
             # MFCC 프레임 버퍼 (슬라이딩 윈도우)
-            self._mfcc_buffer = self._np.zeros(
-                (self.n_frames, self.n_mfcc), dtype=np.float32
-            )
+            self._mfcc_buffer = self._np.zeros((self.n_frames, self.n_mfcc), dtype=np.float32)
             self._mfcc_count = 0
 
     def _create_dct_matrix(self, n_mfcc: int, n_mels: int):
@@ -282,9 +280,9 @@ class KWSRuntime:
     def _ensure_tflite(self):
         """TFLite 인터프리터와 numpy, librosa 지연 초기화"""
         if self._interpreter is None:
-            import tflite_runtime.interpreter as tflite
-            import numpy as np
             import librosa
+            import numpy as np
+            import tflite_runtime.interpreter as tflite
 
             self._tflite = tflite
             self._np = np
@@ -309,9 +307,7 @@ class KWSRuntime:
 
             print(f"  TFLite 모델 로드: {self._model_path}")
             print(f"  입력 양자화: {self._input_details[0].get('quantization', 'N/A')}")
-            print(
-                f"  출력 양자화: {self._output_details[0].get('quantization', 'N/A')}"
-            )
+            print(f"  출력 양자화: {self._output_details[0].get('quantization', 'N/A')}")
 
     def _get_quant_params(self, quant) -> Tuple[float, int]:
         """양자화 파라미터 안전하게 추출"""
@@ -378,9 +374,7 @@ class KWSRuntime:
 
         # 쿨다운 체크
         current_time = time.time()
-        in_cooldown = (
-            current_time - self.last_detection_time
-        ) < self.detection_cooldown
+        in_cooldown = (current_time - self.last_detection_time) < self.detection_cooldown
 
         result = None
         if confidence >= threshold and not in_cooldown:
@@ -406,16 +400,13 @@ class KWSRuntime:
                 # 상태 업데이트
                 self.last_detection_time = current_time
                 self.stats["detections"] += 1
-                self.stats["by_keyword"][keyword] = (
-                    self.stats["by_keyword"].get(keyword, 0) + 1
-                )
+                self.stats["by_keyword"][keyword] = self.stats["by_keyword"].get(keyword, 0) + 1
 
         # 통계
         inference_ms = (time.perf_counter() - start_time) * 1000
         self.stats["total_inferences"] += 1
         self.stats["avg_inference_ms"] = (
-            self.stats["avg_inference_ms"] * (self.stats["total_inferences"] - 1)
-            + inference_ms
+            self.stats["avg_inference_ms"] * (self.stats["total_inferences"] - 1) + inference_ms
         ) / self.stats["total_inferences"]
 
         return result
@@ -426,9 +417,7 @@ class KWSRuntime:
             return quant
         return 1.0, 0
 
-    def process_audio_stream(
-        self, audio_generator, callback: Optional[callable] = None
-    ):
+    def process_audio_stream(self, audio_generator, callback: Optional[callable] = None):
         """
         오디오 스트림 연속 처리 (제너레이터 기반)
         """

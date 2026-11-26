@@ -4,15 +4,16 @@
 """
 
 from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import Dict, List, Optional, Iterator, Any, Tuple
 from dataclasses import dataclass
+from datetime import datetime
 import json
+from pathlib import Path
+from typing import Any, Dict, Iterator, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
-from datetime import datetime
 
-from ..config import DatasetConfig, CoordinateFrame, DataSplit
+from ..config import CoordinateFrame, DatasetConfig, DataSplit
 
 
 @dataclass
@@ -51,26 +52,16 @@ class SensorData:
             return self
 
         duration = self.get_duration_sec()
-        new_timestamps = np.arange(
-            self.timestamp[0], self.timestamp[-1], 1.0 / target_freq_hz
-        )
+        new_timestamps = np.arange(self.timestamp[0], self.timestamp[-1], 1.0 / target_freq_hz)
 
         if method == "linear":
-            interp_data = np.zeros(
-                (len(new_timestamps), self.data.shape[1]), dtype=self.data.dtype
-            )
+            interp_data = np.zeros((len(new_timestamps), self.data.shape[1]), dtype=self.data.dtype)
             for i in range(self.data.shape[1]):
-                interp_data[:, i] = np.interp(
-                    new_timestamps, self.timestamp, self.data[:, i]
-                )
+                interp_data[:, i] = np.interp(new_timestamps, self.timestamp, self.data[:, i])
         elif method == "nearest":
-            interp_data = np.zeros(
-                (len(new_timestamps), self.data.shape[1]), dtype=self.data.dtype
-            )
+            interp_data = np.zeros((len(new_timestamps), self.data.shape[1]), dtype=self.data.dtype)
             for i in range(self.data.shape[1]):
-                interp_data[:, i] = np.interp(
-                    new_timestamps, self.timestamp, self.data[:, i]
-                )
+                interp_data[:, i] = np.interp(new_timestamps, self.timestamp, self.data[:, i])
         else:
             raise ValueError(f"Unsupported interpolation method: {method}")
 

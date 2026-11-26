@@ -1,8 +1,16 @@
 import asyncio
 import json
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from bridge.hardware_bridges import DroneHybridBridgeNode
+from core.deception_engine import DeceptionEngine, DeceptionPattern, ThreatProfile
+from core.llm_risk_analyzer import LocalLLMRiskAnalyzer
+from core.log_aggregator import LogAggregator, LogSample
+from core.mode_manager import HybridMode, HybridModeManager
+from core.risk_aware_arbitrator import RiskAwareArbitrator
+from core.trajectory_engine import DiveTrajectory, TrajectoryEngine, TrajectoryMethod
 from core_arbitrator import (
     CommandArbitrator,
     CommandPriority,
@@ -10,13 +18,6 @@ from core_arbitrator import (
     HardwareSpec,
     UnifiedCommand,
 )
-from core.mode_manager import HybridModeManager, HybridMode
-from core.trajectory_engine import TrajectoryEngine, TrajectoryMethod, DiveTrajectory
-from core.deception_engine import DeceptionEngine, DeceptionPattern, ThreatProfile
-from core.log_aggregator import LogAggregator, LogSample
-from core.llm_risk_analyzer import LocalLLMRiskAnalyzer
-from core.risk_aware_arbitrator import RiskAwareArbitrator
-from bridge.hardware_bridges import DroneHybridBridgeNode
 
 
 @pytest.fixture
@@ -321,17 +322,13 @@ class TestDeceptionEngine:
         assert success1 is True
 
         # 두 번째 기만 시작 시도 (거부되어야 함)
-        success2 = await deception_engine.start_deception(
-            DeceptionPattern.SINE_DIVE, duration=5.0
-        )
+        success2 = await deception_engine.start_deception(DeceptionPattern.SINE_DIVE, duration=5.0)
         assert success2 is False  # 이미 활성화된 기만 모드 있음
 
         await deception_engine.stop_deception()
 
         # 중지 후 재시작 가능
-        success3 = await deception_engine.start_deception(
-            DeceptionPattern.SINE_DIVE, duration=1.0
-        )
+        success3 = await deception_engine.start_deception(DeceptionPattern.SINE_DIVE, duration=1.0)
         assert success3 is True
         await deception_engine.stop_deception()
 
@@ -342,9 +339,9 @@ class TestHybridBridgeIntegration:
     @pytest.mark.asyncio
     async def test_hybrid_bridge_command_execution(self):
         """하이브리드 브릿지 명령 실행 테스트"""
-        from core_arbitrator import HardwareSpec
-        from core.trajectory_engine import TrajectoryEngine
         from core.deception_engine import DeceptionEngine
+        from core.trajectory_engine import TrajectoryEngine
+        from core_arbitrator import HardwareSpec
 
         spec = HardwareSpec(
             device_id="hybrid_drone_1",
@@ -357,15 +354,11 @@ class TestHybridBridgeIntegration:
         )
 
         trajectory_engine = TrajectoryEngine({"hybrid_drone_1": spec})
-        deception_engine = DeceptionEngine(
-            {"hybrid_drone_1": spec}, TrajectoryEngine({})
-        )
+        deception_engine = DeceptionEngine({"hybrid_drone_1": spec}, TrajectoryEngine({}))
 
         node = DroneHybridBridgeNode(spec, mavsdk_uri="udp://:14540")
         node.trajectory_engine = TrajectoryEngine({"hybrid_drone_1": spec})
-        node.deception_engine = DeceptionEngine(
-            {"hybrid_drone_1": spec}, TrajectoryEngine({})
-        )
+        node.deception_engine = DeceptionEngine({"hybrid_drone_1": spec}, TrajectoryEngine({}))
 
         # SET_MODE 명령 테스트 - mode 속성 확인
         cmd = UnifiedCommand(
@@ -469,8 +462,9 @@ class TestSafetyIntegration:
         log_aggregator = LogAggregator()
 
         # 로그 데이터 추가 (CRITICAL 위험 유도)
-        from core.log_aggregator import LogSample
         import time
+
+        from core.log_aggregator import LogSample
 
         samples = [
             LogSample(
@@ -534,8 +528,9 @@ class TestSafetyIntegration:
         log_aggregator = LogAggregator()
 
         # 로그 데이터 추가 (CRITICAL 위험 유도)
-        from core.log_aggregator import LogSample
         import time
+
+        from core.log_aggregator import LogSample
 
         samples = [
             LogSample(

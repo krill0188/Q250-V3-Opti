@@ -3,21 +3,20 @@ FPV Analog 오디오 데이터셋 로더 - 전체 디코딩 후 분할 저장
 대용량 오디오 데이터를 순차 디코딩 후 메모리 효율적으로 분할 저장
 """
 
+import io
 from pathlib import Path
 from typing import Dict, List, Optional
+
 import numpy as np
 import pandas as pd
-import io
 import soundfile as sf
 
-from ..core.base_loader import BaseLoader, SensorData, MultiSensorData
 from ..config import DatasetConfig
+from ..core.base_loader import BaseLoader, MultiSensorData, SensorData
 
 
 # 모듈 레벨 함수 (multiprocessing pickle용 - macOS spawn 호환)
-def _decode_wav_bytes_sf(
-    wav_bytes: bytes, target_sr: int = 16000, max_duration: float = 10.0
-):
+def _decode_wav_bytes_sf(wav_bytes: bytes, target_sr: int = 16000, max_duration: float = 10.0):
     """단일 WAV 바이트 디코딩 (soundfile 사용 - 고속)"""
     try:
         audio_data, sr = sf.read(io.BytesIO(wav_bytes), dtype="float32")
@@ -111,9 +110,7 @@ class FPVAnalogLoader(BaseLoader):
             },
         )
 
-    def process_and_save(
-        self, output_dir: Path, split_ratios: tuple = (0.7, 0.15, 0.15)
-    ) -> Dict:
+    def process_and_save(self, output_dir: Path, split_ratios: tuple = (0.7, 0.15, 0.15)) -> Dict:
         """전체 파일 순차 디코딩 후 메모리 효율적으로 분할 저장"""
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -242,9 +239,7 @@ class FPVAnalogLoader(BaseLoader):
                 os.fsync(f.fileno())
             temp_path.replace(meta_path)
 
-            print(
-                f"  {split_name}: {split_counts[split_name]} samples, metadata.json written"
-            )
+            print(f"  {split_name}: {split_counts[split_name]} samples, metadata.json written")
 
         return {
             "train": split_counts["train"],
@@ -252,9 +247,7 @@ class FPVAnalogLoader(BaseLoader):
             "test": split_counts["test"],
         }
 
-    def _save_split_incremental(
-        self, split_name, split_dir, audio_list, label_list, split_counts
-    ):
+    def _save_split_incremental(self, split_name, split_dir, audio_list, label_list, split_counts):
         """분할 데이터를 청크 파일로 증분 저장"""
         print(f"      _save_split_incremental: stacking {len(audio_list)} arrays...")
         chunk_audio = np.stack(audio_list)

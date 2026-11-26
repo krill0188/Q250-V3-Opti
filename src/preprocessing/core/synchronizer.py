@@ -3,14 +3,15 @@
 GPS, IMU, 카메라, 오디오 등 다중 센서 데이터의 시간 동기화
 """
 
-from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
-from scipy import signal, interpolate
+from scipy import interpolate, signal
 
-from .base_loader import SensorData, MultiSensorData
-from ..config import SyncConfig, CoordinateFrame
+from ..config import CoordinateFrame, SyncConfig
+from .base_loader import MultiSensorData, SensorData
 
 
 @dataclass
@@ -144,9 +145,7 @@ class TimeSynchronizer:
         mask_sensor = (sensor_sync.timestamp >= common_start) & (
             sensor_sync.timestamp <= common_end
         )
-        mask_ref = (ref_sync.timestamp >= common_start) & (
-            ref_sync.timestamp <= common_end
-        )
+        mask_ref = (ref_sync.timestamp >= common_start) & (ref_sync.timestamp <= common_end)
 
         if not np.any(mask_sensor) or not np.any(mask_ref):
             return 0.0, 0.0

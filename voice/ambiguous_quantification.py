@@ -3,8 +3,8 @@
 LLM/파서가 한국어의 모호한 부사와 방향 표현을 정량화된 수치로 변환하는 기준
 """
 
-from typing import Dict, Optional
 from dataclasses import dataclass
+from typing import Dict, Optional
 
 
 @dataclass
@@ -19,9 +19,7 @@ class QuantificationRule:
 
 # === 거리/이동 모호 표현 ===
 DISTANCE_AMBIGUOUS = {
-    "조금": QuantificationRule(
-        ["조금", "살짝", "약간", "미세하게", "미세"], 1.0, "m", "미세 이동"
-    ),
+    "조금": QuantificationRule(["조금", "살짝", "약간", "미세하게", "미세"], 1.0, "m", "미세 이동"),
     "적당히": QuantificationRule(["적당히", "적당량"], 2.0, "m", "적당 이동"),
     "많이": QuantificationRule(["많이", "크게", "크게 많이"], 5.0, "m", "대폭 이동"),
     "최대로": QuantificationRule(["최대로", "맥시멈", "맥스"], 20.0, "m", "최대 이동"),
@@ -45,9 +43,7 @@ ROTATION_AMBIGUOUS = {
     "180도_회전": QuantificationRule(
         ["뒤로 돌아", "반대 방향", "반바퀴"], 180.0, "deg", "180도 회전"
     ),
-    "기본_회전": QuantificationRule(
-        ["돌아", "회전해", "방향 바꿔"], 45.0, "deg", "기본 회전"
-    ),
+    "기본_회전": QuantificationRule(["돌아", "회전해", "방향 바꿔"], 45.0, "deg", "기본 회전"),
 }
 
 # === 속도 모호 표현 ===
@@ -68,12 +64,8 @@ ALTITUDE_AMBIGUOUS = {
     "많이_올려": QuantificationRule(
         ["많이 올려", "크게 높여", "높게", "많이 높여"], -5.0, "m", "대폭 상승"
     ),
-    "조금_내려": QuantificationRule(
-        ["조금만 내려", "살짝 내려"], 1.0, "m", "미세 하강"
-    ),
-    "많이_내려": QuantificationRule(
-        ["많이 내려", "확 내려", "바닥까지"], 10.0, "m", "대폭 하강"
-    ),
+    "조금_내려": QuantificationRule(["조금만 내려", "살짝 내려"], 1.0, "m", "미세 하강"),
+    "많이_내려": QuantificationRule(["많이 내려", "확 내려", "바닥까지"], 10.0, "m", "대폭 하강"),
     "기본_고도": QuantificationRule(
         ["고도 맞춰", "고도 유지", "이 높이"], 0.0, "m", "현재 고도 유지"
     ),
@@ -278,11 +270,7 @@ def parse_korean_command(text: str) -> Dict:
     else:
         # 숫자가 있으면 첫 번째 숫자를 기본 거리로 사용
         # 방향이 이미 정해져 있으면 숫자 적용
-        if (
-            result["forward_m"] != 0.0
-            or result["right_m"] != 0.0
-            or result["down_m"] != 0.0
-        ):
+        if result["forward_m"] != 0.0 or result["right_m"] != 0.0 or result["down_m"] != 0.0:
             # 방향이 정해져 있으면 해당 축에 숫자 적용
             val = numbers[0]
             if result["forward_m"] != 0.0:

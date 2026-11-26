@@ -5,23 +5,24 @@
 """
 
 import asyncio
-import time
+from collections import deque
+from dataclasses import dataclass, field
+from enum import Enum
 import logging
 import threading
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Callable, Any, Tuple
-from enum import Enum
-from collections import deque
+import time
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
 import numpy as np
 
-from swarm.silvus_interface import SilvusInterface, create_silvus_interface
 from swarm.iqp_optimizer import (
+    IncrementalOptimizer,
     IQPOptimizer,
     OptimizationResult,
-    create_optimizer,
-    IncrementalOptimizer,
     OptimizationStatus,
+    create_optimizer,
 )
+from swarm.silvus_interface import SilvusInterface, create_silvus_interface
 
 logger = logging.getLogger(__name__)
 
@@ -57,9 +58,7 @@ class ReoptCycle:
     status: str = "RUNNING"
     previous_obj: float = 0.0
     new_obj: float = 0.0
-    freq_changes: Dict[int, Tuple[int, int]] = field(
-        default_factory=dict
-    )  # uav_id -> (old, new)
+    freq_changes: Dict[int, Tuple[int, int]] = field(default_factory=dict)  # uav_id -> (old, new)
     error: Optional[str] = None
 
 
@@ -218,9 +217,7 @@ class ReoptimizationPipeline:
         self.min_cycle_interval = config.get("min_cycle_interval", 2.0)
         self.max_solve_time = config.get("max_solve_time", 5.0)
         self.rollback_on_degradation = config.get("rollback_on_degradation", True)
-        self.degradation_threshold = config.get(
-            "degradation_threshold", 0.1
-        )  # 10% 악화 시 롤백
+        self.degradation_threshold = config.get("degradation_threshold", 0.1)  # 10% 악화 시 롤백
 
         # 이전 주파수 계획 (롤백용)
         self.last_freq_plan: Dict[str, int] = {}
@@ -259,8 +256,7 @@ class ReoptimizationPipeline:
                     # 최소 간격 체크
                     if (
                         self.last_cycle
-                        and time.time() - self.last_cycle.start_time
-                        < self.min_cycle_interval
+                        and time.time() - self.last_cycle.start_time < self.min_cycle_interval
                     ):
                         logger.debug(
                             f"Skipping trigger {event.trigger_type.value}: min interval not elapsed"
@@ -278,9 +274,7 @@ class ReoptimizationPipeline:
     async def _execute_reopt_cycle(self, trigger: TriggerEvent):
         """재최적화 사이클 실행"""
         self.cycle_count += 1
-        cycle = ReoptCycle(
-            cycle_id=self.cycle_count, trigger=trigger, start_time=time.time()
-        )
+        cycle = ReoptCycle(cycle_id=self.cycle_count, trigger=trigger, start_time=time.time())
         self.last_cycle = cycle
 
         if self.on_cycle_start:
@@ -296,9 +290,7 @@ class ReoptimizationPipeline:
 
             # 2. IQP 재최적화 실행 (비동기)
             loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(
-                None, lambda: self.optimizer.solve(self.silvus)
-            )
+            result = await loop.run_in_executor(None, lambda: self.optimizer.solve(self.silvus))
 
             cycle.end_time = time.time()
             cycle.previous_obj = self.last_cycle.new_obj if self.last_cycle else 0
@@ -324,14 +316,10 @@ class ReoptimizationPipeline:
                     if self.rollback_on_degradation:
                         self._rollback()
                         cycle.status = "ROLLED_BACK"
-                        logger.warning(
-                            f"Cycle {cycle.cycle_id} ROLLED BACK: quality degradation"
-                        )
+                        logger.warning(f"Cycle {cycle.cycle_id} ROLLED BACK: quality degradation")
                     else:
                         cycle.status = "DEGRADED"
-                        logger.warning(
-                            f"Cycle {cycle.cycle_id} DEGRADED but rollback disabled"
-                        )
+                        logger.warning(f"Cycle {cycle.cycle_id} DEGRADED but rollback disabled")
             else:
                 cycle.status = f"FAILED: {result.status.value}"
                 cycle.error = f"Optimization failed with status {result.status.value}"
@@ -356,9 +344,7 @@ class ReoptimizationPipeline:
             # 실제로는 Silvus에서 현재 채널 조회
             self.last_freq_plan[link.neighbor_mac] = link.channel_mhz
 
-    def _compute_freq_changes(
-        self, result: OptimizationResult
-    ) -> Dict[int, Tuple[int, int]]:
+    def _compute_freq_changes(self, result: OptimizationResult) -> Dict[int, Tuple[int, int]]:
         """주파수 변경 사항 계산"""
         changes = {}
         for uav_id, freq in result.frequencies.items():
@@ -374,8 +360,7 @@ class ReoptimizationPipeline:
 
         # 목적함수 향상 또는 유지 확인
         improvement = (
-            (result.objective_value - self.last_cycle.new_obj)
-            / abs(self.last_cycle.new_obj)
+            (result.objective_value - self.last_cycle.new_obj) / abs(self.last_cycle.new_obj)
             if self.last_cycle.new_obj != 0
             else 0
         )
@@ -388,9 +373,7 @@ class ReoptimizationPipeline:
 
         # 연결성 확인
         if result.connectivity_score > 5.0:  # ETX 임계값
-            logger.warning(
-                f"Connectivity degraded: ETX={result.connectivity_score:.2f}"
-            )
+            logger.warning(f"Connectivity degraded: ETX={result.connectivity_score:.2f}")
             return False
 
         return True
@@ -435,9 +418,7 @@ class ReoptimizationPipeline:
                 "id": self.last_cycle.cycle_id if self.last_cycle else None,
                 "status": self.last_cycle.status if self.last_cycle else None,
                 "trigger": (
-                    self.last_cycle.trigger.trigger_type.value
-                    if self.last_cycle
-                    else None
+                    self.last_cycle.trigger.trigger_type.value if self.last_cycle else None
                 ),
                 "duration_sec": (
                     (self.last_cycle.end_time - self.last_cycle.start_time)

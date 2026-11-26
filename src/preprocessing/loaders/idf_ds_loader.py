@@ -5,12 +5,13 @@ Non-GPS 네비게이션용 고정익 비행 데이터
 
 from pathlib import Path
 from typing import Dict, List, Optional
+
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from ..core.base_loader import BaseLoader, SensorData, MultiSensorData
 from ..config import DatasetConfig
+from ..core.base_loader import BaseLoader, MultiSensorData, SensorData
 
 
 class IDF_DSLoader(BaseLoader):
@@ -122,12 +123,8 @@ class IDF_DSLoader(BaseLoader):
             all_tlm.append(tlm_df)
 
         # 병합
-        gps_merged = (
-            pd.concat(all_gps, ignore_index=True) if all_gps else pd.DataFrame()
-        )
-        tlm_merged = (
-            pd.concat(all_tlm, ignore_index=True) if all_tlm else pd.DataFrame()
-        )
+        gps_merged = pd.concat(all_gps, ignore_index=True) if all_gps else pd.DataFrame()
+        tlm_merged = pd.concat(all_tlm, ignore_index=True) if all_tlm else pd.DataFrame()
 
         # 시간 정렬 (마이크로초 → 초)
         if not gps_merged.empty:
@@ -248,9 +245,7 @@ class IDF_DSLoader(BaseLoader):
             sensors["baro"] = SensorData(
                 name="baro",
                 timestamp=df["timestamp"].values.astype(np.float64),
-                data=(df["baro_alt_cm"].values / 100.0)
-                .reshape(-1, 1)
-                .astype(np.float64),  # cm → m
+                data=(df["baro_alt_cm"].values / 100.0).reshape(-1, 1).astype(np.float64),  # cm → m
                 columns=["alt"],
                 frequency_hz=freq,
                 coordinate_frame="NED",

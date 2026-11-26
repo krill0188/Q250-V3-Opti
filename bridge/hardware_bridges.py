@@ -1,16 +1,17 @@
 import asyncio
 import time
-from core_arbitrator import HardwareSpec, UnifiedCommand
+
 from core.log_aggregator import LogSample
+from core_arbitrator import HardwareSpec, UnifiedCommand
 
 try:
-    import rclpy
-    from rclpy.node import Node
-    from rclpy.action import ActionClient
-    from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
     from geometry_msgs.msg import Twist, TwistStamped
-    from nav2_msgs.action import NavigateToPose
     from mavros_msgs.msg import State as MavrosState
+    from nav2_msgs.action import NavigateToPose
+    import rclpy
+    from rclpy.action import ActionClient
+    from rclpy.node import Node
+    from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
 
     ROS2_AVAILABLE = True
 except ImportError:
@@ -34,22 +35,16 @@ class DroneHybridBridgeNode(Node):
     - 로그 스트리밍: MAVLink/ROS2 → LogAggregator (10Hz)
     """
 
-    def __init__(
-        self, spec: HardwareSpec, mavsdk_uri: str = "udp://:14540", log_aggregator=None
-    ):
+    def __init__(self, spec: HardwareSpec, mavsdk_uri: str = "udp://:14540", log_aggregator=None):
         self.spec = spec
         self.mavsdk_uri = mavsdk_uri
         self.log_aggregator = log_aggregator
         self.drone = MavsdkSystem() if MAVSDK_AVAILABLE else None
-        self.is_connected = (
-            not MAVSDK_AVAILABLE
-        )  # Mock 모드일 때는 기본 연결 상태로 간주
+        self.is_connected = not MAVSDK_AVAILABLE  # Mock 모드일 때는 기본 연결 상태로 간주
         self.last_heartbeat_time = time.monotonic()
 
         if ROS2_AVAILABLE:
-            super().__init__(
-                f"{spec.device_id}_bridge_node", namespace=f"/{spec.device_id}"
-            )
+            super().__init__(f"{spec.device_id}_bridge_node", namespace=f"/{spec.device_id}")
             qos_ctrl = QoSProfile(
                 reliability=ReliabilityPolicy.RELIABLE,
                 history=HistoryPolicy.KEEP_LAST,
@@ -92,9 +87,7 @@ class DroneHybridBridgeNode(Node):
             self.is_connected = True
             return
 
-        self._log_info(
-            f"[{self.spec.device_id}] MAVSDK 연결 대기 중: {self.mavsdk_uri}"
-        )
+        self._log_info(f"[{self.spec.device_id}] MAVSDK 연결 대기 중: {self.mavsdk_uri}")
         await self.drone.connect(system_address=self.mavsdk_uri)
         async for state in self.drone.core.connection_state():
             if state.is_connected:
@@ -103,9 +96,7 @@ class DroneHybridBridgeNode(Node):
                 self._log_info(f"[{self.spec.device_id}] MAVSDK 연결 완료!")
                 break
 
-    def publish_velocity(
-        self, vx: float, vy: float, vz: float, yaw_rate: float
-    ) -> None:
+    def publish_velocity(self, vx: float, vy: float, vz: float, yaw_rate: float) -> None:
         self.last_heartbeat_time = time.monotonic()
         if ROS2_AVAILABLE:
             msg = TwistStamped()
@@ -119,9 +110,7 @@ class DroneHybridBridgeNode(Node):
 
     async def execute_command(self, cmd: UnifiedCommand) -> None:
         self.last_heartbeat_time = time.monotonic()
-        self._log_info(
-            f"[{self.spec.device_id}] 드론 명령 실행: {cmd.action} (출처: {cmd.source})"
-        )
+        self._log_info(f"[{self.spec.device_id}] 드론 명령 실행: {cmd.action} (출처: {cmd.source})")
 
         try:
             if cmd.action == "ESTOP":
@@ -163,9 +152,7 @@ class DroneHybridBridgeNode(Node):
 
             elif cmd.action == "MOVE_VEL":
                 for _ in range(100):  # 20Hz 주기로 5초간 속도 유지
-                    self.publish_velocity(
-                        cmd.vx_mps, cmd.vy_mps, cmd.vz_mps, cmd.yaw_rate_radps
-                    )
+                    self.publish_velocity(cmd.vx_mps, cmd.vy_mps, cmd.vz_mps, cmd.yaw_rate_radps)
                     await asyncio.sleep(0.05)
                 self.publish_velocity(0.0, 0.0, 0.0, 0.0)
 
@@ -203,9 +190,7 @@ class DroneHybridBridgeNode(Node):
                     from core.deception_engine import DeceptionPattern
 
                     pattern_enum = DeceptionPattern(pattern)
-                    await self.deception_engine.start_deception(
-                        pattern_enum, duration=duration
-                    )
+                    await self.deception_engine.start_deception(pattern_enum, duration=duration)
 
             elif cmd.action == "DECEPTION_STOP":
                 self._log_info(f"[{self.spec.device_id}] 기만 모드 중지")
@@ -214,9 +199,7 @@ class DroneHybridBridgeNode(Node):
 
             elif cmd.action == "MOVE_VEL":
                 for _ in range(100):  # 20Hz 주기로 5초간 속도 유지
-                    self.publish_velocity(
-                        cmd.vx_mps, cmd.vy_mps, cmd.vz_mps, cmd.yaw_rate_radps
-                    )
+                    self.publish_velocity(cmd.vx_mps, cmd.vy_mps, cmd.vz_mps, cmd.yaw_rate_radps)
                     await asyncio.sleep(0.05)
                 self.publish_velocity(0.0, 0.0, 0.0, 0.0)
 
@@ -233,9 +216,7 @@ class DroneHybridBridgeNode(Node):
     async def start_log_streaming(self):
         """텔레메트리 → 로그 어그리게이터 스트리밍 시작 (10Hz)"""
         if self.log_aggregator is None:
-            self._log_warn(
-                f"[{self.spec.device_id}] LogAggregator 없음 - 로그 스트리밍 비활성화"
-            )
+            self._log_warn(f"[{self.spec.device_id}] LogAggregator 없음 - 로그 스트리밍 비활성화")
             return
 
         self._log_task = asyncio.create_task(self._log_stream_loop())
@@ -314,11 +295,7 @@ class DroneHybridBridgeNode(Node):
                             data={
                                 "fix_type": self.last_gps.fix_type,
                                 "satellites": self.last_gps.satellites_visible,
-                                "hdop": (
-                                    self.last_gps.eph / 100.0
-                                    if self.last_gps.eph
-                                    else 99.0
-                                ),
+                                "hdop": (self.last_gps.eph / 100.0 if self.last_gps.eph else 99.0),
                             },
                         )
                     )
@@ -350,12 +327,8 @@ class RobotRos2BridgeNode(Node):
         self._log_task = None
 
         if ROS2_AVAILABLE:
-            super().__init__(
-                f"{spec.device_id}_bridge_node", namespace=f"/{spec.device_id}"
-            )
-            self.cmd_vel_pub = self.create_publisher(
-                Twist, f"/{spec.device_id}/cmd_vel", 10
-            )
+            super().__init__(f"{spec.device_id}_bridge_node", namespace=f"/{spec.device_id}")
+            self.cmd_vel_pub = self.create_publisher(Twist, f"/{spec.device_id}/cmd_vel", 10)
             self.nav_client = ActionClient(
                 self, NavigateToPose, f"/{spec.device_id}/navigate_to_pose"
             )
@@ -377,16 +350,12 @@ class RobotRos2BridgeNode(Node):
             stop_msg = Twist()
             self.cmd_vel_pub.publish(stop_msg)
         if self._current_goal_handle is not None:
-            self._log_warn(
-                f"[{self.spec.device_id}] 진행 중인 Nav2 자율주행 목표 취소 요청"
-            )
+            self._log_warn(f"[{self.spec.device_id}] 진행 중인 Nav2 자율주행 목표 취소 요청")
             self._current_goal_handle.cancel_goal_async()
             self._current_goal_handle = None
 
     async def execute_command(self, cmd: UnifiedCommand) -> None:
-        self._log_info(
-            f"[{self.spec.device_id}] 로봇 명령 실행: {cmd.action} (출처: {cmd.source})"
-        )
+        self._log_info(f"[{self.spec.device_id}] 로봇 명령 실행: {cmd.action} (출처: {cmd.source})")
 
         try:
             if cmd.action in ("ESTOP", "HOLD"):
@@ -426,9 +395,7 @@ class RobotRos2BridgeNode(Node):
 
                 goal_handle = send_goal_future.result()
                 if not goal_handle.accepted:
-                    raise RuntimeError(
-                        f"[{self.spec.device_id}] Nav2 목표 지점이 거부되었습니다."
-                    )
+                    raise RuntimeError(f"[{self.spec.device_id}] Nav2 목표 지점이 거부되었습니다.")
 
                 self._current_goal_handle = goal_handle
                 result_future = goal_handle.get_result_async()
@@ -439,9 +406,7 @@ class RobotRos2BridgeNode(Node):
                 self._log_info(f"[{self.spec.device_id}] Nav2 목적지 도착 완료")
 
         except asyncio.CancelledError:
-            self._log_warn(
-                f"[{self.spec.device_id}] 로봇 작업 선점 취소됨 -> 비상 정지 수행"
-            )
+            self._log_warn(f"[{self.spec.device_id}] 로봇 작업 선점 취소됨 -> 비상 정지 수행")
             self.stop_immediately()
             raise
 

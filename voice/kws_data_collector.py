@@ -3,17 +3,18 @@ KWS Data Collector - 음성 명령 학습 데이터 수집
 각 키워드별 자연어 문장을 실제 음성으로 녹음하여 학습 데이터셋 구성
 """
 
-import pyaudio
-import wave
-import json
-import uuid
-import time
-import os
-import shutil
-from pathlib import Path
-from dataclasses import dataclass, asdict
-from typing import List, Optional
+from dataclasses import asdict, dataclass
 from datetime import datetime
+import json
+import os
+from pathlib import Path
+import shutil
+import time
+from typing import List, Optional
+import uuid
+import wave
+
+import pyaudio
 
 from voice.keyword_specs import KEYWORD_SPECS, get_phrases_for_keyword
 
@@ -131,21 +132,15 @@ class KWSDataCollector:
             # 프리롤: 0.5초 대기 (첫 음절 놓치지 않게)
             preroll_frames = int(self.config.sample_rate / self.config.chunk_size * 0.5)
             for _ in range(preroll_frames):
-                data = self.stream.read(
-                    self.config.chunk_size, exception_on_overflow=False
-                )
+                data = self.stream.read(self.config.chunk_size, exception_on_overflow=False)
                 frames.append(data)
 
             # 실제 녹음
             record_frames = int(
-                self.config.sample_rate
-                / self.config.chunk_size
-                * self.config.record_seconds
+                self.config.sample_rate / self.config.chunk_size * self.config.record_seconds
             )
             for _ in range(record_frames):
-                data = self.stream.read(
-                    self.config.chunk_size, exception_on_overflow=False
-                )
+                data = self.stream.read(self.config.chunk_size, exception_on_overflow=False)
                 frames.append(data)
 
             print("녹음 완료 ✓")
@@ -316,9 +311,7 @@ class MultiSpeakerCollector:
             distance=distance,
         )
 
-        collector.collect_all_keywords(
-            keywords=keywords, samples_per_phrase=samples_per_phrase
-        )
+        collector.collect_all_keywords(keywords=keywords, samples_per_phrase=samples_per_phrase)
 
     def merge_all_speakers(self, output_dir: Optional[str] = None):
         """모든 화자 데이터 병합"""
@@ -423,6 +416,4 @@ if __name__ == "__main__":
         if not keywords:
             keywords = [s.keyword for s in KEYWORD_SPECS]
 
-        collector.collect_all_keywords(
-            keywords=keywords, samples_per_phrase=args.samples
-        )
+        collector.collect_all_keywords(keywords=keywords, samples_per_phrase=args.samples)

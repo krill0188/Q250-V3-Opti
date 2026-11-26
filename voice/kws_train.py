@@ -3,17 +3,18 @@ KWS Model Training - 키워드 스팟팅 모델 학습 및 TFLite 변환
 MFCC + DS-CNN 아키텍처, INT8 양자화로 임베디드 배포용
 """
 
-import os
 import json
-import time
-import numpy as np
-import librosa
-import tensorflow as tf
+import os
 from pathlib import Path
+import time
+from typing import Dict, List, Optional, Tuple
+import warnings
+
+import librosa
+import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
-from typing import Tuple, Dict, List, Optional
-import warnings
+import tensorflow as tf
 
 warnings.filterwarnings("ignore")
 
@@ -97,9 +98,7 @@ def prepare_dataset(
     return X, y
 
 
-def build_ds_cnn_model(
-    input_shape: Tuple[int, int, int], num_classes: int
-) -> tf.keras.Model:
+def build_ds_cnn_model(input_shape: Tuple[int, int, int], num_classes: int) -> tf.keras.Model:
     """
     DS-CNN (Depthwise Separable CNN) 아키텍처
     Google Speech Commands 논문 기반, 초경량 KWS용
@@ -139,9 +138,9 @@ def _dw_conv_block(x, filters: int, kernel_size: tuple, strides: tuple, name: st
     x = tf.keras.layers.ReLU(name=f"{name}_relu_dw")(x)
 
     # Pointwise Conv
-    x = tf.keras.layers.Conv2D(
-        filters, (1, 1), padding="same", use_bias=False, name=f"{name}_pw"
-    )(x)
+    x = tf.keras.layers.Conv2D(filters, (1, 1), padding="same", use_bias=False, name=f"{name}_pw")(
+        x
+    )
     x = tf.keras.layers.BatchNormalization(name=f"{name}_bn_pw")(x)
     x = tf.keras.layers.ReLU(name=f"{name}_relu_pw")(x)
 
@@ -212,9 +211,7 @@ def train_kws(
         augment_meta = Path(augment_dir).expanduser() / "metadata.jsonl"
         augment_audio = Path(augment_dir).expanduser() / "audio"
         if augment_meta.exists():
-            X_aug, y_aug = prepare_dataset(
-                str(augment_meta), str(augment_audio), label_to_idx
-            )
+            X_aug, y_aug = prepare_dataset(str(augment_meta), str(augment_audio), label_to_idx)
             X_train = np.concatenate([X_train, X_aug])
             y_train = np.concatenate([y_train, y_aug])
             print(f"증강 후: {X_train.shape}")
@@ -226,15 +223,11 @@ def train_kws(
     print(f"\nTrain: {X_train.shape}, Val: {X_val.shape}")
 
     # 5. 클래스 가중치 계산 (불균형 보정)
-    class_weights = compute_class_weight(
-        "balanced", classes=np.unique(y_train), y=y_train
-    )
+    class_weights = compute_class_weight("balanced", classes=np.unique(y_train), y=y_train)
     class_weight_dict = {i: w for i, w in enumerate(class_weights)}
 
     # 6. 모델 빌드
-    model = build_ds_cnn_model(
-        input_shape=(TARGET_FRAMES, N_MFCC, 1), num_classes=len(keywords)
-    )
+    model = build_ds_cnn_model(input_shape=(TARGET_FRAMES, N_MFCC, 1), num_classes=len(keywords))
 
     model.compile(
         optimizer=tf.keras.optimizers.Adam(LEARNING_RATE),
@@ -261,9 +254,7 @@ def train_kws(
             save_best_only=True,
             verbose=1,
         ),
-        tf.keras.callbacks.TensorBoard(
-            log_dir=str(output_path / "logs"), histogram_freq=1
-        ),
+        tf.keras.callbacks.TensorBoard(log_dir=str(output_path / "logs"), histogram_freq=1),
     ]
 
     # 8. 학습
@@ -288,14 +279,10 @@ def train_kws(
 
     # 9. TFLite 변환 (INT8 양자화)
     print("\n=== TFLite 변환 (INT8) ===")
-    convert_to_tflite(
-        model, X_train, str(output_path / "kws_model_int8.tflite"), quantize=True
-    )
+    convert_to_tflite(model, X_train, str(output_path / "kws_model_int8.tflite"), quantize=True)
 
     # FP16 버전도 저장 (참고용)
-    convert_to_tflite(
-        model, X_train, str(output_path / "kws_model_fp16.tflite"), quantize=False
-    )
+    convert_to_tflite(model, X_train, str(output_path / "kws_model_fp16.tflite"), quantize=False)
 
     # 10. 학습 곡선 저장
     import matplotlib
@@ -442,9 +429,7 @@ if __name__ == "__main__":
         label_to_idx = {kw: i for i, kw in enumerate(keywords)}
 
         X_test, y_test = prepare_dataset(args.metadata, args.audio, label_to_idx)
-        _, X_test, _, y_test = train_test_split(
-            X_test, y_test, test_size=0.2, random_state=42
-        )
+        _, X_test, _, y_test = train_test_split(X_test, y_test, test_size=0.2, random_state=42)
 
         evaluate_tflite(args.tflite, X_test, y_test)
         test_tflite_inference_speed(args.tflite)

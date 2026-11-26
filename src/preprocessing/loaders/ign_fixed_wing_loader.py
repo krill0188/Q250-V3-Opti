@@ -4,16 +4,17 @@ IGN Fixed-Wing Dataset 로더
 Non-GPS 네비게이션 검증용 Ground Truth
 """
 
+from datetime import datetime
 from pathlib import Path
+import re
 from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-import re
-from datetime import datetime
 
-from ..core.base_loader import BaseLoader, SensorData, MultiSensorData
 from ..config import DatasetConfig
+from ..core.base_loader import BaseLoader, MultiSensorData, SensorData
 
 
 class IGNFixedWingLoader(BaseLoader):
@@ -64,9 +65,7 @@ class IGNFixedWingLoader(BaseLoader):
 
         return MultiSensorData(
             sensors=sensors,
-            reference_sensor=(
-                "camera" if "camera" in sensors else list(sensors.keys())[0]
-            ),
+            reference_sensor=("camera" if "camera" in sensors else list(sensors.keys())[0]),
             metadata={
                 "source": "IGN_Fixed_Wing",
                 "description": "High-precision GPS + Camera + GCP dataset for Non-GPS navigation validation",
@@ -172,9 +171,7 @@ class IGNFixedWingLoader(BaseLoader):
 
     def _load_gcp_image_coords(self) -> Optional[SensorData]:
         """GCP 이미지 좌표 로드"""
-        gcp_file = (
-            self.data_root / "Camera" / "Data" / "GCPs" / "GCPs_img_coordinates.txt"
-        )
+        gcp_file = self.data_root / "Camera" / "Data" / "GCPs" / "GCPs_img_coordinates.txt"
         if not gcp_file.exists():
             return None
 

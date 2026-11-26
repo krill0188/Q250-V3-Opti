@@ -3,17 +3,19 @@
 LLM 출력이 시스템 프롬프트의 JSON 스키마와 규칙을 준수하는지 검증
 """
 
-import pytest
 import json
 from pathlib import Path
-from voice.voice_command_engine import VoiceIntentParser, ParsedVoiceIntent
-from voice.tactical_normalizer import create_tactical_normalizer
+
+import pytest
+
 from voice.military_coords import (
-    CoordinateParser,
-    CoordinateConverter,
     BranchProfileManager,
+    CoordinateConverter,
+    CoordinateParser,
     MilitaryBranch,
 )
+from voice.tactical_normalizer import create_tactical_normalizer
+from voice.voice_command_engine import ParsedVoiceIntent, VoiceIntentParser
 
 
 class MockLLMClient:
@@ -23,9 +25,7 @@ class MockLLMClient:
         self.responses = responses
         self.call_count = 0
 
-    async def generate_json(
-        self, system_prompt: str, user_prompt: str, response_model
-    ) -> str:
+    async def generate_json(self, system_prompt: str, user_prompt: str, response_model) -> str:
         # user_prompt에서 텍스트 추출
         if "명령:" in user_prompt:
             text = user_prompt.split("명령:")[-1].strip()
@@ -330,18 +330,10 @@ class TestTacticalParserPromptCompliance:
 
         for branch, expected_vals in expected.items():
             profile = branch_mgr.get_mission_params(branch, "default")
-            assert (
-                profile["altitude_agl"] == expected_vals["altitude"]
-            ), f"{branch} 고도 불일치"
-            assert (
-                profile["gimbal_pitch"] == expected_vals["gimbal"]
-            ), f"{branch} 짐벌 불일치"
-            assert (
-                profile["speed_mps"] == expected_vals["speed"]
-            ), f"{branch} 속도 불일치"
-            assert (
-                profile["loiter_pattern"] == expected_vals["mode"]
-            ), f"{branch} 모드 불일치"
+            assert profile["altitude_agl"] == expected_vals["altitude"], f"{branch} 고도 불일치"
+            assert profile["gimbal_pitch"] == expected_vals["gimbal"], f"{branch} 짐벌 불일치"
+            assert profile["speed_mps"] == expected_vals["speed"], f"{branch} 속도 불일치"
+            assert profile["loiter_pattern"] == expected_vals["mode"], f"{branch} 모드 불일치"
 
     def test_arty_mission_override(self, branch_mgr):
         """ARTY target_acquisition: 300m, -20도"""
@@ -378,16 +370,14 @@ class TestTacticalParserPromptCompliance:
         """전체 파이프라인: 참조 구현 테스트 케이스"""
         # 참조 구현 raw_stt_1
         raw_1 = "번개 둘 여기는 본부 포병 관측 임무 수행하라 좌표 델타 골프 하나둘셋넷 오여섯칠팔 탄착 관측"
-        expected_1 = (
-            "번개 2 여기는 본부 포병 관측 임무 수행하라 좌표 DG 1234 5678 탄착 관측"
-        )
+        expected_1 = "번개 2 여기는 본부 포병 관측 임무 수행하라 좌표 DG 1234 5678 탄착 관측"
         assert normalizer.normalize(raw_1) == expected_1
 
         # 참조 구현 raw_stt_2
-        raw_2 = "개척 하나 공병 소대 전방 지뢰 지대 정찰 방위각 하나여섯공공 밀 거리 삼백 미터로 이동"
-        expected_2 = (
-            "개척 1 공병 소대 전방 지뢰 지대 정찰 방위각 1600 밀 거리 300 미터로 이동"
+        raw_2 = (
+            "개척 하나 공병 소대 전방 지뢰 지대 정찰 방위각 하나여섯공공 밀 거리 삼백 미터로 이동"
         )
+        expected_2 = "개척 1 공병 소대 전방 지뢰 지대 정찰 방위각 1600 밀 거리 300 미터로 이동"
         assert normalizer.normalize(raw_2) == expected_2
 
     # ===== 7. JSON 스키마 준수 검증 =====
@@ -411,7 +401,7 @@ class TestTacticalParserPromptCompliance:
 
     def test_unified_command_schema(self):
         """UnifiedCommand 스키마 유효성"""
-        from core_arbitrator import UnifiedCommand, CommandPriority
+        from core_arbitrator import CommandPriority, UnifiedCommand
 
         cmd = UnifiedCommand(
             command_id="test-123",

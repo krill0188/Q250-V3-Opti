@@ -7,18 +7,18 @@ Natural Language Understanding Learning Pipeline
 - 활성 학습(Active Learning): 불확실한 샘플 우선 라벨링
 """
 
-import os
-import json
-import logging
-import uuid
 import asyncio
-from pathlib import Path
-from dataclasses import dataclass, field, asdict
-from typing import List, Dict, Optional, Tuple, Any
+from collections import defaultdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
-from collections import defaultdict
+import json
+import logging
+import os
+from pathlib import Path
 import random
+from typing import Any, Dict, List, Optional, Tuple
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -332,9 +332,7 @@ class FewShotPromptBuilder:
                 by_action[action].append(s)
 
         # 각 액션당 최대 N개씩 선택 (다양성)
-        max_per_action = max(
-            1, self.config.max_examples_in_prompt // max(len(by_action), 1)
-        )
+        max_per_action = max(1, self.config.max_examples_in_prompt // max(len(by_action), 1))
         selected = []
 
         for action, action_samples in by_action.items():
@@ -347,9 +345,7 @@ class FewShotPromptBuilder:
             selected = selected[: self.config.max_examples_in_prompt]
 
         self.examples = selected
-        logger.info(
-            f"Few-shot 예시 업데이트: {len(self.examples)}개 (액션 {len(by_action)}종류)"
-        )
+        logger.info(f"Few-shot 예시 업데이트: {len(self.examples)}개 (액션 {len(by_action)}종류)")
 
     def build_prompt(self, user_utterance: str, active_target: str = "drone_1") -> str:
         """Few-shot 프롬프트 생성"""
@@ -461,9 +457,7 @@ class NLULearningPipeline:
             model_path = await self._run_lora_training()
 
             if model_path:
-                self.current_model_version = (
-                    f"v{datetime.now().strftime('%Y%m%d_%H%M')}"
-                )
+                self.current_model_version = f"v{datetime.now().strftime('%Y%m%d_%H%M')}"
                 self.last_training_time = datetime.now().isoformat()
                 logger.info(
                     f"NLU 모델 학습 완료: {model_path} (버전: {self.current_model_version})"
@@ -482,9 +476,7 @@ class NLULearningPipeline:
         training_data = self.collector.get_training_data()
 
         # 학습 데이터 JSONL 형식으로 저장
-        train_file = (
-            Path(self.config.data_dir) / f"nlu_train_{self.current_model_version}.jsonl"
-        )
+        train_file = Path(self.config.data_dir) / f"nlu_train_{self.current_model_version}.jsonl"
         with open(train_file, "w", encoding="utf-8") as f:
             for sample in training_data:
                 # 채팅 형식으로 변환
@@ -496,9 +488,7 @@ class NLULearningPipeline:
                     },
                     {
                         "role": "assistant",
-                        "content": json.dumps(
-                            sample.ground_truth_intent, ensure_ascii=False
-                        ),
+                        "content": json.dumps(sample.ground_truth_intent, ensure_ascii=False),
                     },
                 ]
                 f.write(json.dumps({"messages": messages}, ensure_ascii=False) + "\n")

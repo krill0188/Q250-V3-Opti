@@ -3,14 +3,12 @@ Sequence Dataset for FAN-GHETS24, FANET
 """
 
 import os
-import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+import warnings
 
 import numpy as np
 import pandas as pd
-import torch
-import yaml
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import (
@@ -19,7 +17,9 @@ from sklearn.preprocessing import (
     RobustScaler,
     StandardScaler,
 )
+import torch
 from torch.utils.data import DataLoader, Dataset
+import yaml
 
 warnings.filterwarnings("ignore")
 
@@ -66,9 +66,7 @@ class SequenceDataset(Dataset):
         # 패딩
         if seq_len < self.max_len:
             pad_width = ((0, self.max_len - seq_len), (0, 0))
-            seq = np.pad(
-                seq, pad_width, mode="constant", constant_values=self.pad_value
-            )
+            seq = np.pad(seq, pad_width, mode="constant", constant_values=self.pad_value)
 
         return {
             "sequence": torch.FloatTensor(seq),

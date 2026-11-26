@@ -4,29 +4,29 @@ Ensemble Learning for Audio Classification
 K-fold Cross Validation, Seed Ensemble, Model Averaging
 """
 
-import os
+import copy
 import json
+import os
+from pathlib import Path
 import random
+from typing import Dict, List, Optional, Tuple
+
+from augmentation import get_augmentation_pipeline, mixup_criterion
 import numpy as np
+from sklearn.metrics import accuracy_score, classification_report, f1_score
+from sklearn.model_selection import KFold, StratifiedKFold
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, Subset, ConcatDataset
-from sklearn.model_selection import KFold, StratifiedKFold
-from sklearn.metrics import accuracy_score, f1_score, classification_report
-from pathlib import Path
-from typing import List, Dict, Tuple, Optional
-import copy
-
+from torch.utils.data import ConcatDataset, DataLoader, Subset
 from train_audio_classifier import (
-    AudioDataset,
     AudioCNNLSTM,
+    AudioDataset,
+    FocalLoss,
+    compute_class_weights,
     train_epoch,
     validate,
-    compute_class_weights,
-    FocalLoss,
 )
-from augmentation import get_augmentation_pipeline, mixup_criterion
 
 
 class EnsembleTrainer:
@@ -57,14 +57,10 @@ class EnsembleTrainer:
         self.full_dataset = ConcatDataset([self.train_dataset, self.val_dataset])
 
         # Get labels for stratification
-        self.labels = np.concatenate(
-            [self.train_dataset.labels, self.val_dataset.labels]
-        )
+        self.labels = np.concatenate([self.train_dataset.labels, self.val_dataset.labels])
 
         self.num_classes = 2 if task == "binary" else 3
-        self.class_weights = compute_class_weights(self.labels, self.num_classes).to(
-            self.device
-        )
+        self.class_weights = compute_class_weights(self.labels, self.num_classes).to(self.device)
 
         print(f"Full dataset: {len(self.full_dataset)} samples")
         print(f"Class distribution: {np.bincount(self.labels)}")
@@ -90,12 +86,8 @@ class EnsembleTrainer:
         train_subset = Subset(self.full_dataset, train_idx)
         val_subset = Subset(self.full_dataset, val_idx)
 
-        train_loader = DataLoader(
-            train_subset, batch_size=batch_size, shuffle=True, num_workers=0
-        )
-        val_loader = DataLoader(
-            val_subset, batch_size=batch_size, shuffle=False, num_workers=0
-        )
+        train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=True, num_workers=0)
+        val_loader = DataLoader(val_subset, batch_size=batch_size, shuffle=False, num_workers=0)
 
         # Model
         model = AudioCNNLSTM(num_classes=self.num_classes).to(self.device)
@@ -143,9 +135,7 @@ class EnsembleTrainer:
 
                 if use_augmentation and random.random() < 0.5:
                     # Apply batch augmentation
-                    features_aug, y_a, y_b, lam = aug_pipeline.apply_batch_augment(
-                        features, labels
-                    )
+                    features_aug, y_a, y_b, lam = aug_pipeline.apply_batch_augment(features, labels)
                     outputs = model(features_aug)
                     loss = mixup_criterion(criterion, outputs, y_a, y_b, lam)
                 else:
@@ -245,9 +235,7 @@ class EnsembleTrainer:
         save_dir.mkdir(parents=True, exist_ok=True)
 
         # Stratified K-Fold
-        skf = StratifiedKFold(
-            n_splits=self.n_splits, shuffle=True, random_state=self.random_state
-        )
+        skf = StratifiedKFold(n_splits=self.n_splits, shuffle=True, random_state=self.random_state)
 
         fold_results = []
 
@@ -324,9 +312,9 @@ class SeedEnsemble:
         self.test_dataset = AudioDataset(str(self.data_dir / "test" / "features.npz"))
 
         self.num_classes = 2 if task == "binary" else 3
-        self.class_weights = compute_class_weights(
-            self.train_dataset.labels, self.num_classes
-        ).to(self.device)
+        self.class_weights = compute_class_weights(self.train_dataset.labels, self.num_classes).to(
+            self.device
+        )
 
     def train_seed(
         self,
@@ -381,9 +369,7 @@ class SeedEnsemble:
                 optimizer.zero_grad()
 
                 if use_augmentation and random.random() < 0.5:
-                    features_aug, y_a, y_b, lam = aug_pipeline.apply_batch_augment(
-                        features, labels
-                    )
+                    features_aug, y_a, y_b, lam = aug_pipeline.apply_batch_augment(features, labels)
                     outputs = model(features_aug)
                     loss = mixup_criterion(criterion, outputs, y_a, y_b, lam)
                 else:
@@ -393,9 +379,7 @@ class SeedEnsemble:
                 loss.backward()
                 optimizer.step()
 
-            val_loss, val_acc, val_f1, _, _ = validate(
-                model, val_loader, criterion, self.device
-            )
+            val_loss, val_acc, val_f1, _, _ = validate(model, val_loader, criterion, self.device)
             scheduler.step()
 
             if val_f1 > best_val_f1:
@@ -445,9 +429,7 @@ class SeedEnsemble:
         all_test_labels = None
 
         for seed in self.seeds:
-            result = self.train_seed(
-                seed, epochs, batch_size, lr, loss_type, use_augmentation
-            )
+            result = self.train_seed(seed, epochs, batch_size, lr, loss_type, use_augmentation)
             results.append(result)
 
             # Save individual model
@@ -471,16 +453,12 @@ class SeedEnsemble:
         print(f"Mean Test F1: {np.mean(test_f1s):.4f} ± {np.std(test_f1s):.4f}")
 
         # Ensemble prediction (average probabilities from each model)
-        test_loader = DataLoader(
-            self.test_dataset, batch_size=64, shuffle=False, num_workers=0
-        )
+        test_loader = DataLoader(self.test_dataset, batch_size=64, shuffle=False, num_workers=0)
 
         all_probs = []
         for seed in self.seeds:
             model = AudioCNNLSTM(num_classes=self.num_classes).to(self.device)
-            checkpoint = torch.load(
-                save_dir / f"seed_{seed}_best.pth", map_location=self.device
-            )
+            checkpoint = torch.load(save_dir / f"seed_{seed}_best.pth", map_location=self.device)
             model.load_state_dict(checkpoint["model_state_dict"])
             model.eval()
 
@@ -570,17 +548,13 @@ if __name__ == "__main__":
         type=str,
         default="/Users/amaster/data/drone_datasets/processed/drone_audio",
     )
-    parser.add_argument(
-        "--task", type=str, choices=["binary", "multiclass"], default="multiclass"
-    )
+    parser.add_argument("--task", type=str, choices=["binary", "multiclass"], default="multiclass")
     parser.add_argument("--mode", type=str, choices=["kfold", "seed"], default="seed")
     parser.add_argument("--epochs", type=int, default=5)  # Quick test
     parser.add_argument("--n_splits", type=int, default=3)
     args = parser.parse_args()
 
     if args.mode == "kfold":
-        train_kfold_ensemble(
-            args.data, args.task, n_splits=args.n_splits, epochs=args.epochs
-        )
+        train_kfold_ensemble(args.data, args.task, n_splits=args.n_splits, epochs=args.epochs)
     else:
         train_seed_ensemble(args.data, args.task, epochs=args.epochs)

@@ -4,14 +4,15 @@ UZH-FPV Dataset 로더
 """
 
 from pathlib import Path
+import re
 from typing import Dict, List, Optional
+
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-import re
 
-from ..core.base_loader import BaseLoader, SensorData, MultiSensorData
 from ..config import DatasetConfig
+from ..core.base_loader import BaseLoader, MultiSensorData, SensorData
 
 
 class UZHFPVLoader(BaseLoader):
@@ -131,9 +132,7 @@ class UZHFPVLoader(BaseLoader):
         print(f"Loaded sensors: {list(sensors.keys())}")
         for name, s in sensors.items():
             if hasattr(s, "data"):
-                print(
-                    f"  {name}: {len(s)} samples @ {s.frequency_hz:.1f}Hz, shape={s.data.shape}"
-                )
+                print(f"  {name}: {len(s)} samples @ {s.frequency_hz:.1f}Hz, shape={s.data.shape}")
 
         return MultiSensorData(
             sensors=sensors,

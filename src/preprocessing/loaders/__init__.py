@@ -2,14 +2,13 @@
 Drone Data Preprocessing Loaders Package
 """
 
+from ..config import DatasetConfig
+from .drone_audio_loader import AudioConfig, DroneAudioLoader, create_drone_audio_loader
+from .fixed_wing_attitude_loader import FixedWingAttitudeLoader
+from .fpv_analog_loader import FPVAnalogLoader
 from .idf_ds_loader import IDF_DSLoader
 from .ign_fixed_wing_loader import IGNFixedWingLoader
 from .uzh_fpv_loader import UZHFPVLoader
-from .fpv_analog_loader import FPVAnalogLoader
-from .fixed_wing_attitude_loader import FixedWingAttitudeLoader
-from .drone_audio_loader import DroneAudioLoader, AudioConfig, create_drone_audio_loader
-
-from ..config import DatasetConfig
 
 __all__ = [
     "IDF_DSLoader",
@@ -35,8 +34,6 @@ def get_loader(dataset_name: str, config: DatasetConfig):
     }
 
     if dataset_name not in loaders:
-        raise ValueError(
-            f"Unknown dataset: {dataset_name}. Available: {list(loaders.keys())}"
-        )
+        raise ValueError(f"Unknown dataset: {dataset_name}. Available: {list(loaders.keys())}")
 
     return loaders[dataset_name](config)

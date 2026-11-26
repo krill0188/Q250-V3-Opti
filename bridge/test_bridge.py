@@ -4,8 +4,8 @@ Bridge 구조 검증 테스트 (타겟 PC에서 실행)
 import 테스트 및 기본 구조 확인
 """
 
-import sys
 import os
+import sys
 
 # 프로젝트 루트 추가
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -16,11 +16,11 @@ def test_dual_bridge_import():
     print("Testing DualBridge import...")
     try:
         from bridge.dual_bridge import (
-            DualBridge,
-            MAVSDKBridge,
-            MAVROS2Bridge,
-            DroneState,
             ConnectionState,
+            DroneState,
+            DualBridge,
+            MAVROS2Bridge,
+            MAVSDKBridge,
         )
 
         print("✅ All classes imported successfully")
@@ -91,28 +91,16 @@ def test_custom_mavlink_messages():
     try:
         import sys
 
-        sys.path.insert(
-            0, os.path.join(os.path.dirname(__file__), "..", "generated", "mavlink")
-        )
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "generated", "mavlink"))
         import python as mavlink_custom
 
         # 메시지 ID 확인
         msg_ids = {
-            "VOICE_COMMAND": getattr(
-                mavlink_custom, "MAVLINK_MSG_ID_VOICE_COMMAND", None
-            ),
-            "VOICE_STATUS": getattr(
-                mavlink_custom, "MAVLINK_MSG_ID_VOICE_STATUS", None
-            ),
-            "VOICE_FEEDBACK": getattr(
-                mavlink_custom, "MAVLINK_MSG_ID_VOICE_FEEDBACK", None
-            ),
-            "VOICE_WAYPOINT": getattr(
-                mavlink_custom, "MAVLINK_MSG_ID_VOICE_WAYPOINT", None
-            ),
-            "VOICE_EMERGENCY": getattr(
-                mavlink_custom, "MAVLINK_MSG_ID_VOICE_EMERGENCY", None
-            ),
+            "VOICE_COMMAND": getattr(mavlink_custom, "MAVLINK_MSG_ID_VOICE_COMMAND", None),
+            "VOICE_STATUS": getattr(mavlink_custom, "MAVLINK_MSG_ID_VOICE_STATUS", None),
+            "VOICE_FEEDBACK": getattr(mavlink_custom, "MAVLINK_MSG_ID_VOICE_FEEDBACK", None),
+            "VOICE_WAYPOINT": getattr(mavlink_custom, "MAVLINK_MSG_ID_VOICE_WAYPOINT", None),
+            "VOICE_EMERGENCY": getattr(mavlink_custom, "MAVLINK_MSG_ID_VOICE_EMERGENCY", None),
         }
 
         print(f"✅ Message IDs: {msg_ids}")

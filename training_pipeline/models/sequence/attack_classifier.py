@@ -44,9 +44,7 @@ class AttentionPooling(nn.Module):
         attn = torch.matmul(q, k.transpose(-2, -1)) * self.scale  # (B, heads, T, T)
 
         # Length-based masking
-        mask = torch.arange(T, device=x.device).unsqueeze(0) >= lengths.unsqueeze(
-            1
-        )  # (B, T)
+        mask = torch.arange(T, device=x.device).unsqueeze(0) >= lengths.unsqueeze(1)  # (B, T)
         mask = mask.unsqueeze(1).unsqueeze(2)  # (B, 1, 1, T)
         attn = attn.masked_fill(mask, -1e9)
 
@@ -59,9 +57,7 @@ class AttentionPooling(nn.Module):
         out = self.out_proj(out)
 
         # Global average pooling over valid timesteps
-        mask_valid = torch.arange(T, device=x.device).unsqueeze(0) < lengths.unsqueeze(
-            1
-        )  # (B, T)
+        mask_valid = torch.arange(T, device=x.device).unsqueeze(0) < lengths.unsqueeze(1)  # (B, T)
         mask_valid = mask_valid.unsqueeze(-1).float()  # (B, T, 1)
         out = (out * mask_valid).sum(dim=1) / lengths.unsqueeze(1).float()  # (B, H)
 
@@ -235,9 +231,7 @@ class TransformerClassifier(nn.Module):
         x = self.input_proj(x) + self.pos_encoding[:, :T, :]
 
         # Length-based attention mask
-        mask = torch.arange(T, device=x.device).unsqueeze(0) >= lengths.unsqueeze(
-            1
-        )  # (B, T)
+        mask = torch.arange(T, device=x.device).unsqueeze(0) >= lengths.unsqueeze(1)  # (B, T)
 
         # Transformer
         out = self.transformer(x, src_key_padding_mask=mask)  # (B, T, H)
@@ -304,7 +298,5 @@ def get_model(model_type: str, **kwargs) -> nn.Module:
         "1dcnn": CNN1DClassifier,
     }
     if model_type not in models:
-        raise ValueError(
-            f"Unknown model type: {model_type}. Available: {list(models.keys())}"
-        )
+        raise ValueError(f"Unknown model type: {model_type}. Available: {list(models.keys())}")
     return models[model_type](**kwargs)

@@ -1,8 +1,9 @@
-import numpy as np
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Tuple
 from enum import Enum
+from typing import List, Tuple
+
+import numpy as np
 
 
 class TrajectoryMethod(Enum):
@@ -37,15 +38,11 @@ class TrajectoryEngine:
         """다이브 궤적 생성 (다중 방법 지원)"""
 
         if method == TrajectoryMethod.MPC:
-            return await self._mpc_optimize(
-                start_pos, target_alt, dive_angle, max_speed
-            )
+            return await self._mpc_optimize(start_pos, target_alt, dive_angle, max_speed)
         elif method == TrajectoryMethod.LUT:
             return self._lut_lookup(start_pos, target_alt, dive_angle, max_speed)
         else:  # GEOMETRIC
-            return self._geometric_fallback(
-                start_pos, target_alt, dive_angle, max_speed
-            )
+            return self._geometric_fallback(start_pos, target_alt, dive_angle, max_speed)
 
     def _lut_lookup(self, start, target_alt, angle, max_speed) -> DiveTrajectory:
         """사전 계산된 궤적 룩업 (최속)"""
@@ -65,9 +62,7 @@ class TrajectoryEngine:
         self.lut_cache[key] = lut_traj
         return lut_traj
 
-    async def _mpc_optimize(
-        self, start, target_alt, angle, max_speed
-    ) -> DiveTrajectory:
+    async def _mpc_optimize(self, start, target_alt, angle, max_speed) -> DiveTrajectory:
         """MPC 실시간 최적화 (제약 조건 고려)"""
         # 간단한 구현: 기하학적 계산 + 제약 조건 검증
         traj = self._geometric_fallback(start, target_alt, angle, max_speed)
@@ -75,9 +70,7 @@ class TrajectoryEngine:
         traj.constraints_satisfied = True
         return traj
 
-    def _geometric_fallback(
-        self, start, target_alt, angle, max_speed
-    ) -> DiveTrajectory:
+    def _geometric_fallback(self, start, target_alt, angle, max_speed) -> DiveTrajectory:
         """기하학적 계산으로 다이브 궤적 생성"""
         import math
 

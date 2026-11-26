@@ -4,11 +4,11 @@
 - Regex + 사전 기반, 확률적 추론 없음 (파싱 오류율 0% 목표)
 """
 
-import re
-from typing import Dict, List, Tuple, Optional, Pattern
 from dataclasses import dataclass, field
-from pathlib import Path
 import json
+from pathlib import Path
+import re
+from typing import Dict, List, Optional, Pattern, Tuple
 
 
 @dataclass
@@ -210,9 +210,7 @@ class TacticalNormalizer:
         """정규식 컴파일 - 단어 경계(\\b) 필수 적용"""
         # NATO 포네틱: 단어 경계로 완전 매칭만
         nato_keys = sorted(self.nato_phonetic.keys(), key=len, reverse=True)
-        self._nato_pattern = re.compile(
-            r"\b(?:" + "|".join(map(re.escape, nato_keys)) + r")\b"
-        )
+        self._nato_pattern = re.compile(r"\b(?:" + "|".join(map(re.escape, nato_keys)) + r")\b")
 
         # 전술 용어: 단어 경계로 완전 매칭만
         term_keys = sorted(self.tactical_terms.keys(), key=len, reverse=True)
@@ -374,20 +372,11 @@ class TacticalNormalizer:
         return changes
 
     def _classify_change(self, original: str, normalized: str) -> str:
-        if (
-            original in self.phonetic_numbers
-            and normalized == self.phonetic_numbers[original]
-        ):
+        if original in self.phonetic_numbers and normalized == self.phonetic_numbers[original]:
             return "phonetic_number"
-        if (
-            original in self.nato_phonetic
-            and normalized == self.nato_phonetic[original]
-        ):
+        if original in self.nato_phonetic and normalized == self.nato_phonetic[original]:
             return "nato_phonetic"
-        if (
-            original in self.tactical_terms
-            and normalized == self.tactical_terms[original]
-        ):
+        if original in self.tactical_terms and normalized == self.tactical_terms[original]:
             return "tactical_term"
         if re.match(r"^[A-Z]{2}\s\d{3,5}\s\d{3,5}$", normalized):
             return "grid_coord"

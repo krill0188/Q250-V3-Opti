@@ -4,18 +4,17 @@
 """
 
 import argparse
-import sys
-from pathlib import Path
 import logging
+from pathlib import Path
+import sys
 
 # 프로젝트 루트 추가
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.preprocessing import (
-    create_pipeline,
-    run_all_pipelines,
     DATASET_CONFIGS,
     create_pipeline,
+    run_all_pipelines,
 )
 from src.preprocessing.config import DatasetConfig
 
@@ -55,9 +54,7 @@ def parse_args():
     parser.add_argument("--target-len", type=int, default=1, help="타겟 길이")
     parser.add_argument("--batch-size", type=int, default=32, help="배치 크기")
     parser.add_argument("--num-workers", type=int, default=4, help="데이터로더 워커 수")
-    parser.add_argument(
-        "--dry-run", action="store_true", help="실제 실행 없이 설정만 확인"
-    )
+    parser.add_argument("--dry-run", action="store_true", help="실제 실행 없이 설정만 확인")
     parser.add_argument("--verbose", "-v", action="store_true", help="상세 출력")
 
     return parser.parse_args()

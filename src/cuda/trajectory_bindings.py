@@ -5,12 +5,13 @@ ctypes 기반 경량 래퍼 (pybind11 빌드 불필요)
 """
 
 import ctypes
-import numpy as np
 import os
-import sys
 from pathlib import Path
-from typing import Tuple, List, Optional
+import sys
 import time
+from typing import List, Optional, Tuple
+
+import numpy as np
 
 # =============================================================================
 # Data Structures (CUDA 커널과 일치)
@@ -204,9 +205,7 @@ class TrajectoryCUDA:
         # 출력 배열 할당
         output = (TrajectoryPoint * (num_points + 1))()
 
-        err = self.lib.launch_geometric_dive_trajectory(
-            ctypes.byref(params), output, num_points
-        )
+        err = self.lib.launch_geometric_dive_trajectory(ctypes.byref(params), output, num_points)
         self._check_error(err, "geometric_dive")
 
         return list(output)
@@ -235,9 +234,7 @@ class TrajectoryCUDA:
 
         output = (TrajectoryPoint * (num_points + 1))()
 
-        err = self.lib.launch_spiral_dive_trajectory(
-            ctypes.byref(params), output, num_points
-        )
+        err = self.lib.launch_spiral_dive_trajectory(ctypes.byref(params), output, num_points)
         self._check_error(err, "spiral_dive")
 
         return list(output)
@@ -266,9 +263,7 @@ class TrajectoryCUDA:
 
         output = (TrajectoryPoint * (num_points + 1))()
 
-        err = self.lib.launch_sine_dive_trajectory(
-            ctypes.byref(params), output, num_points
-        )
+        err = self.lib.launch_sine_dive_trajectory(ctypes.byref(params), output, num_points)
         self._check_error(err, "sine_dive")
 
         return list(output)
@@ -447,8 +442,9 @@ class TrajectoryEngineGPU:
         max_speed: float,
         method: str = "MPC",
     ):
-        from core.trajectory_engine import DiveTrajectory, TrajectoryMethod
         import math
+
+        from core.trajectory_engine import DiveTrajectory, TrajectoryMethod
 
         if method == "LUT" or method == TrajectoryMethod.LUT:
             # LUT: 캐시된 궤적 재사용
@@ -490,8 +486,7 @@ class TrajectoryEngineGPU:
             vz = -max_speed * math.sin(math.radians(dive_angle))
             velocities = [(vx, 0, vz) for _ in waypoints]
             timestamps = [
-                i * (altitudes[0] - altitudes[-1]) / max_speed / 50
-                for i in range(len(waypoints))
+                i * (altitudes[0] - altitudes[-1]) / max_speed / 50 for i in range(len(waypoints))
             ]
 
         return DiveTrajectory(
@@ -511,9 +506,7 @@ class TrajectoryEngineGPU:
         import asyncio
 
         traj = asyncio.create_task(
-            self.generate_dive_trajectory(
-                start, target_alt, angle, max_speed, method="GEOMETRIC"
-            )
+            self.generate_dive_trajectory(start, target_alt, angle, max_speed, method="GEOMETRIC")
         )
         # Note: This is a workaround - in real usage, call generate_dive_trajectory directly
         # and cache the result before returning

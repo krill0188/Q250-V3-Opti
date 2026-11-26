@@ -3,15 +3,16 @@
 데이터 정규화, 스케일링, 역변환
 """
 
-from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import joblib
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 from sklearn.base import BaseEstimator, TransformerMixin
-import joblib
-from pathlib import Path
+from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 
 
 class NormalizationMethod(Enum):
@@ -170,9 +171,7 @@ class SensorNormalizer:
 
         return result
 
-    def inverse_transform(
-        self, sensor_data: Dict[str, np.ndarray]
-    ) -> Dict[str, np.ndarray]:
+    def inverse_transform(self, sensor_data: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
         """역변환 (정규화 -> 원본)"""
         if not self.is_fitted:
             raise ValueError("Normalizer not fitted")
@@ -214,9 +213,7 @@ class SensorNormalizer:
                 "std_": params.std_.tolist() if params.std_ is not None else None,
                 "min_": params.min_.tolist() if params.min_ is not None else None,
                 "max_": params.max_.tolist() if params.max_ is not None else None,
-                "center_": (
-                    params.center_.tolist() if params.center_ is not None else None
-                ),
+                "center_": (params.center_.tolist() if params.center_ is not None else None),
                 "scale_": params.scale_.tolist() if params.scale_ is not None else None,
             }
 
@@ -295,9 +292,7 @@ class SensorNormalizer:
 class GlobalNormalizer:
     """전체 데이터 통합 정규화 (단일 스케일러)"""
 
-    def __init__(
-        self, method: str = "standard", feature_range: Tuple[float, float] = (0.0, 1.0)
-    ):
+    def __init__(self, method: str = "standard", feature_range: Tuple[float, float] = (0.0, 1.0)):
         self.method = method
         self.feature_range = feature_range
         self.scaler = None
@@ -311,22 +306,12 @@ class GlobalNormalizer:
             self.scaler_params = ScalerParams(
                 method=self.method,
                 n_features=data.shape[1],
-                mean_=(
-                    self.scaler.mean_.copy() if hasattr(self.scaler, "mean_") else None
-                ),
+                mean_=(self.scaler.mean_.copy() if hasattr(self.scaler, "mean_") else None),
                 std_=self.scaler.std_.copy() if hasattr(self.scaler, "std_") else None,
                 min_=self.scaler.min_.copy() if hasattr(self.scaler, "min_") else None,
                 max_=self.scaler.max_.copy() if hasattr(self.scaler, "max_") else None,
-                center_=(
-                    self.scaler.center_.copy()
-                    if hasattr(self.scaler, "center_")
-                    else None
-                ),
-                scale_=(
-                    self.scaler.scale_.copy()
-                    if hasattr(self.scaler, "scale_")
-                    else None
-                ),
+                center_=(self.scaler.center_.copy() if hasattr(self.scaler, "center_") else None),
+                scale_=(self.scaler.scale_.copy() if hasattr(self.scaler, "scale_") else None),
             )
         self.is_fitted = True
         return self
@@ -372,6 +357,4 @@ def create_normalizer(
     per_sensor: bool = True,
 ) -> SensorNormalizer:
     """정규화기 생성 팩토리"""
-    return SensorNormalizer(
-        method=method, feature_range=feature_range, per_sensor=per_sensor
-    )
+    return SensorNormalizer(method=method, feature_range=feature_range, per_sensor=per_sensor)

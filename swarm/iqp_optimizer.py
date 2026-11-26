@@ -4,13 +4,14 @@ IQP 폐루프 최적화 엔진 (Prototype with PuLP)
 실제 운영 시 CPLEX/Gurobi로 교체 가능
 """
 
-import numpy as np
-import time
-import logging
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple, Optional, Any
 from enum import Enum
 import json
+import logging
+import time
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 
 try:
     import pulp
@@ -21,10 +22,10 @@ except ImportError:
     print("Warning: PuLP not installed. Install with: pip install pulp")
 
 from swarm.silvus_interface import (
-    SilvusInterface,
     LinkQuality,
-    create_silvus_interface,
     OptimizationStatus,
+    SilvusInterface,
+    create_silvus_interface,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,9 +44,7 @@ class UAVPosition:
         return (self.x, self.y, self.z)
 
     def distance_to(self, other: "UAVPosition") -> float:
-        return np.sqrt(
-            (self.x - other.x) ** 2 + (self.y - other.y) ** 2 + (self.z - other.z) ** 2
-        )
+        return np.sqrt((self.x - other.x) ** 2 + (self.y - other.y) ** 2 + (self.z - other.z) ** 2)
 
 
 @dataclass
@@ -107,9 +106,7 @@ class GridMap:
 
     def get_neighbors(self, pos: UAVPosition, radius: int = 1) -> List[UAVPosition]:
         neighbors = []
-        for dx in range(
-            -radius * self.resolution, (radius + 1) * self.resolution, self.resolution
-        ):
+        for dx in range(-radius * self.resolution, (radius + 1) * self.resolution, self.resolution):
             for dy in range(
                 -radius * self.resolution,
                 (radius + 1) * self.resolution,
@@ -219,17 +216,12 @@ class IQPOptimizer:
             for uav_id in self.uav_ids:
                 for ch_idx, channel in enumerate(self.available_channels):
                     var_name = f"freq_{uav_id}_{ch_idx}"
-                    freq_vars[(uav_id, ch_idx)] = pulp.LpVariable(
-                        var_name, cat="Binary"
-                    )
+                    freq_vars[(uav_id, ch_idx)] = pulp.LpVariable(var_name, cat="Binary")
 
             # 제약 1: 각 UAV는 정확히 하나의 위치에 배치
             for uav_id in self.uav_ids:
                 prob += (
-                    pulp.lpSum(
-                        pos_vars[(uav_id, cell)] for cell in self.grid_map.valid_cells
-                    )
-                    == 1
+                    pulp.lpSum(pos_vars[(uav_id, cell)] for cell in self.grid_map.valid_cells) == 1
                 )
 
             # 제약 2: 각 UAV는 정확히 하나의 주파수 채널 사용
@@ -251,9 +243,7 @@ class IQPOptimizer:
                         # 같은 채널 사용 시 최소 거리 보장
                         for cell_i in self.grid_map.valid_cells:
                             for cell_j in self.grid_map.valid_cells:
-                                dist = np.sqrt(
-                                    sum((a - b) ** 2 for a, b in zip(cell_i, cell_j))
-                                )
+                                dist = np.sqrt(sum((a - b) ** 2 for a, b in zip(cell_i, cell_j)))
                                 if dist < 50:  # 50m 미만이면 같은 채널 금지
                                     prob += (
                                         freq_vars[(uav_i, ch_idx)]
@@ -323,9 +313,7 @@ class IQPOptimizer:
                 # 위치 찾기
                 for cell in self.grid_map.valid_cells:
                     if pulp.value(pos_vars[(uav_id, cell)]) > 0.5:
-                        positions[uav_id] = UAVPosition(
-                            uav_id, cell[0], cell[1], cell[2]
-                        )
+                        positions[uav_id] = UAVPosition(uav_id, cell[0], cell[1], cell[2])
                         break
 
                 # 주파수 찾기
@@ -551,8 +539,6 @@ if __name__ == "__main__":
 
     if should:
         result2 = inc_optimizer.reoptimize(silvus)
-        print(
-            f"Reoptimization result: {result2.status.value}, obj={result2.objective_value:.2f}"
-        )
+        print(f"Reoptimization result: {result2.status.value}, obj={result2.objective_value:.2f}")
 
     print("\n=== Test Complete ===")

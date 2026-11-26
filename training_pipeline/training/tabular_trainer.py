@@ -2,17 +2,15 @@
 Tabular Model Training for FALCON, SkyMimic
 """
 
-import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+import warnings
 
+from catboost import CatBoostClassifier
 import joblib
 import lightgbm as lgb
 import numpy as np
 import pandas as pd
-import xgboost as xgb
-import yaml
-from catboost import CatBoostClassifier
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.metrics import (
     accuracy_score,
@@ -24,6 +22,8 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 from sklearn.model_selection import StratifiedKFold
+import xgboost as xgb
+import yaml
 
 warnings.filterwarnings("ignore")
 
@@ -62,24 +62,18 @@ class TabularTrainer:
         else:
             raise ValueError(f"Unknown model type: {model_type}")
 
-    def train_cv(
-        self, X: np.ndarray, y: np.ndarray, class_names: List[str] = None
-    ) -> Dict:
+    def train_cv(self, X: np.ndarray, y: np.ndarray, class_names: List[str] = None) -> Dict:
         """Cross-validation 훈련"""
         self.class_names = class_names
         cv_folds = self.train_cfg.get("cv_folds", 5)
         cv_strategy = self.train_cfg.get("cv_strategy", "stratified_kfold")
 
         if cv_strategy == "stratified_kfold":
-            cv = StratifiedKFold(
-                n_splits=cv_folds, shuffle=True, random_state=self.config["seed"]
-            )
+            cv = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=self.config["seed"])
         else:
             from sklearn.model_selection import KFold
 
-            cv = KFold(
-                n_splits=cv_folds, shuffle=True, random_state=self.config["seed"]
-            )
+            cv = KFold(n_splits=cv_folds, shuffle=True, random_state=self.config["seed"])
 
         fold_scores = {"f1_macro": [], "f1_weighted": [], "accuracy": [], "roc_auc": []}
         n_classes = len(class_names) if class_names is not None else len(np.unique(y))
@@ -106,9 +100,7 @@ class TabularTrainer:
                     eval_set=eval_set,
                     eval_metric=self.model_cfg.get("eval_metric", "multi_logloss"),
                     callbacks=[
-                        lgb.early_stopping(
-                            self.model_cfg.get("early_stopping_rounds", 50)
-                        ),
+                        lgb.early_stopping(self.model_cfg.get("early_stopping_rounds", 50)),
                         lgb.log_evaluation(100),
                     ],
                 )
@@ -117,9 +109,7 @@ class TabularTrainer:
                     X_trn,
                     y_trn,
                     eval_set=eval_set,
-                    early_stopping_rounds=self.model_cfg.get(
-                        "early_stopping_rounds", 50
-                    ),
+                    early_stopping_rounds=self.model_cfg.get("early_stopping_rounds", 50),
                     verbose=100,
                 )
             elif self.model_cfg["type"] == "catboost":
@@ -127,9 +117,7 @@ class TabularTrainer:
                     X_trn,
                     y_trn,
                     eval_set=eval_set,
-                    early_stopping_rounds=self.model_cfg.get(
-                        "early_stopping_rounds", 50
-                    ),
+                    early_stopping_rounds=self.model_cfg.get("early_stopping_rounds", 50),
                     verbose=100,
                 )
 
@@ -172,9 +160,7 @@ class TabularTrainer:
         # Best model 선택 (가장 좋은 fold)
         best_fold = np.argmax(fold_scores["f1_macro"])
         self.best_model = self.models[best_fold]
-        print(
-            f"\nBest fold: {best_fold+1} (Macro F1: {fold_scores['f1_macro'][best_fold]:.4f})"
-        )
+        print(f"\nBest fold: {best_fold+1} (Macro F1: {fold_scores['f1_macro'][best_fold]:.4f})")
 
         # Feature importance
         self._extract_feature_importance()
@@ -217,9 +203,7 @@ class TabularTrainer:
         elif model_type == "catboost":
             self.feature_importances = self.best_model.get_feature_importance()
 
-    def _optimize_thresholds(
-        self, oof_proba: np.ndarray, oof_labels: np.ndarray
-    ) -> None:
+    def _optimize_thresholds(self, oof_proba: np.ndarray, oof_labels: np.ndarray) -> None:
         """클래스별 임계값 최적화"""
         from scipy.optimize import minimize_scalar
 
@@ -262,9 +246,7 @@ class TabularTrainer:
             raise ValueError("Model not trained yet")
         return self.best_model.predict_proba(X)
 
-    def evaluate(
-        self, X: np.ndarray, y: np.ndarray, class_names: List[str] = None
-    ) -> Dict:
+    def evaluate(self, X: np.ndarray, y: np.ndarray, class_names: List[str] = None) -> Dict:
         """상세 평가"""
         if self.best_model is None:
             raise ValueError("Model not trained yet")
@@ -277,9 +259,7 @@ class TabularTrainer:
             "f1_weighted": f1_score(y, y_pred, average="weighted"),
             "accuracy": accuracy_score(y, y_pred),
             "roc_auc_ovr": roc_auc_score(y, y_proba, multi_class="ovr"),
-            "precision_macro": precision_score(
-                y, y_pred, average="macro", zero_division=0
-            ),
+            "precision_macro": precision_score(y, y_pred, average="macro", zero_division=0),
             "recall_macro": recall_score(y, y_pred, average="macro", zero_division=0),
         }
 
@@ -314,9 +294,7 @@ class TabularTrainer:
         meta = {
             "model_type": model_type,
             "feature_importances": (
-                self.feature_importances.tolist()
-                if self.feature_importances is not None
-                else None
+                self.feature_importances.tolist() if self.feature_importances is not None else None
             ),
             "class_names": (
                 self.class_names.tolist()
@@ -324,13 +302,9 @@ class TabularTrainer:
                 else list(self.class_names) if self.class_names is not None else None
             ),
             "optimal_thresholds": (
-                self.optimal_thresholds.tolist()
-                if hasattr(self, "optimal_thresholds")
-                else None
+                self.optimal_thresholds.tolist() if hasattr(self, "optimal_thresholds") else None
             ),
-            "cv_scores": {
-                k: [float(v) for v in vals] for k, vals in self.cv_scores.items()
-            },
+            "cv_scores": {k: [float(v) for v in vals] for k, vals in self.cv_scores.items()},
         }
         import json
 
@@ -363,9 +337,7 @@ class TabularTrainer:
             )
             self.class_names = meta.get("class_names")
             self.optimal_thresholds = (
-                np.array(meta.get("optimal_thresholds"))
-                if meta.get("optimal_thresholds")
-                else None
+                np.array(meta.get("optimal_thresholds")) if meta.get("optimal_thresholds") else None
             )
             self.cv_scores = meta.get("cv_scores", {})
 
@@ -402,9 +374,7 @@ def run_falcon_training(
             print(f"{metric}: {value:.4f}")
 
     # 모델 저장
-    export_path = trainer.export_cfg.get(
-        "model_path", "models/falcon_intrusion_detection.txt"
-    )
+    export_path = trainer.export_cfg.get("model_path", "models/falcon_intrusion_detection.txt")
     trainer.save_model(export_path)
 
     return trainer

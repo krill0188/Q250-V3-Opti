@@ -5,6 +5,7 @@ SpecAugment, Mixup, Time/Frequency Masking
 """
 
 import random
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -136,9 +137,7 @@ class CutMixAugment:
 class TimeFreqMasking:
     """Simple time/frequency masking (simpler SpecAugment variant)"""
 
-    def __init__(
-        self, time_mask_ratio: float = 0.1, freq_mask_ratio: float = 0.1, p: float = 0.5
-    ):
+    def __init__(self, time_mask_ratio: float = 0.1, freq_mask_ratio: float = 0.1, p: float = 0.5):
         self.time_mask_ratio = time_mask_ratio
         self.freq_mask_ratio = freq_mask_ratio
         self.p = p
@@ -227,9 +226,7 @@ class AugmentationPipeline:
         spec = self.gaussian_noise(spec)
         return spec
 
-    def apply_batch_augment(
-        self, batch_x: torch.Tensor, batch_y: torch.Tensor
-    ) -> tuple:
+    def apply_batch_augment(self, batch_x: torch.Tensor, batch_y: torch.Tensor) -> tuple:
         """Apply batch-level augmentations (Mixup/CutMix)"""
         # Randomly choose one
         r = random.random()

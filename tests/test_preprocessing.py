@@ -3,10 +3,10 @@
 전처리 파이프라인 테스트 스크립트
 """
 
-import sys
 from pathlib import Path
-import tempfile
 import shutil
+import sys
+import tempfile
 
 # 프로젝트 루트 추가
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -16,16 +16,16 @@ import pandas as pd
 
 from src.preprocessing import (
     DATASET_CONFIGS,
-    create_pipeline,
-    SensorData,
-    MultiSensorData,
-    TimeSynchronizer,
-    SensorNormalizer,
     DataSplitter,
     DataValidator,
-    create_synchronizer,
+    MultiSensorData,
+    SensorData,
+    SensorNormalizer,
+    TimeSynchronizer,
     create_normalizer,
+    create_pipeline,
     create_splitter,
+    create_synchronizer,
     create_validator,
 )
 
@@ -152,9 +152,7 @@ def test_normalizer():
     data = create_test_data()
 
     normalizer = SensorNormalizer(method="standard", per_sensor=True)
-    normalizer.fit(
-        {k: v.data for k, v in data.items()}, {k: v.columns for k, v in data.items()}
-    )
+    normalizer.fit({k: v.data for k, v in data.items()}, {k: v.columns for k, v in data.items()})
 
     # 변환 테스트
     normalized = normalizer.transform({k: v.data for k, v in data.items()})
@@ -177,7 +175,7 @@ def test_normalizer():
 def test_splitter():
     """DataSplitter 테스트"""
     print("Testing DataSplitter...")
-    from src.preprocessing import create_splitter, MultiSensorData
+    from src.preprocessing import MultiSensorData, create_splitter
     from src.preprocessing.config import DataSplit
 
     data = create_test_data()
@@ -218,7 +216,7 @@ def test_splitter():
 def test_validator():
     """DataValidator 테스트"""
     print("Testing DataValidator...")
-    from src.preprocessing import create_validator, SensorData
+    from src.preprocessing import SensorData, create_validator
 
     # 정상 데이터
     good_data = SensorData(

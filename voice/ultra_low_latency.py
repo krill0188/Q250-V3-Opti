@@ -9,14 +9,15 @@ Optimized for <500ms end-to-end latency
 """
 
 import asyncio
-import logging
-import time
-import threading
-from pathlib import Path
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from typing import Optional, Callable, List, Dict, Any, Tuple
-from collections import deque, defaultdict
 from enum import Enum
+import logging
+from pathlib import Path
+import threading
+import time
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -53,13 +54,9 @@ class LatencyProfile:
         return -1
 
     def total_ms(self) -> float:
-        if (
-            PipelineStage.WAKE_WORD in self.timestamps
-            and PipelineStage.EXECUTE in self.timestamps
-        ):
+        if PipelineStage.WAKE_WORD in self.timestamps and PipelineStage.EXECUTE in self.timestamps:
             return (
-                self.timestamps[PipelineStage.EXECUTE]
-                - self.timestamps[PipelineStage.WAKE_WORD]
+                self.timestamps[PipelineStage.EXECUTE] - self.timestamps[PipelineStage.WAKE_WORD]
             ) * 1000
         return -1
 
@@ -125,9 +122,7 @@ class StreamingVAD:
             logger.warning(f"Silero VAD 로드 실패, 에너지 기반 폴백: {e}")
             self._model = None
 
-    def process_frame(
-        self, audio_frame: np.ndarray
-    ) -> Tuple[bool, bool, Optional[np.ndarray]]:
+    def process_frame(self, audio_frame: np.ndarray) -> Tuple[bool, bool, Optional[np.ndarray]]:
         """
         단일 프레임 처리
         Returns: (is_speech, segment_ended, completed_segment_audio)
@@ -135,9 +130,7 @@ class StreamingVAD:
         if len(audio_frame) != self.frame_size:
             # 리샘플/패딩
             if len(audio_frame) < self.frame_size:
-                audio_frame = np.pad(
-                    audio_frame, (0, self.frame_size - len(audio_frame))
-                )
+                audio_frame = np.pad(audio_frame, (0, self.frame_size - len(audio_frame)))
             else:
                 audio_frame = audio_frame[: self.frame_size]
 
@@ -262,9 +255,7 @@ class FastWhisperSTT:
         Returns: (text, is_final, confidence)
         """
         # 오디오 버퍼에 추가
-        self._audio_buffer = np.concatenate(
-            [self._audio_buffer, audio_chunk.astype(np.float32)]
-        )
+        self._audio_buffer = np.concatenate([self._audio_buffer, audio_chunk.astype(np.float32)])
 
         # 최소 길이 체크 (0.5초)
         min_samples = 16000 * 0.5
@@ -494,9 +485,7 @@ class CommandCache:
 
         return None
 
-    def add(
-        self, phrase: str, action: str, target: str, params: Dict, priority: int = 2
-    ):
+    def add(self, phrase: str, action: str, target: str, params: Dict, priority: int = 2):
         self._cache[phrase] = {
             "action": action,
             "priority": priority,
@@ -538,19 +527,13 @@ class PredictiveCommander:
             for a in self._command_history:
                 freq[a] += 1
             total = sum(freq.values())
-            return [
-                (a, c / total)
-                for a, c in sorted(freq.items(), key=lambda x: -x[1])[:top_k]
-            ]
+            return [(a, c / total) for a, c in sorted(freq.items(), key=lambda x: -x[1])[:top_k]]
 
         probs = self._transition_probs[self._last_command]
         total = sum(probs.values())
         if total == 0:
             return []
-        return [
-            (a, c / total)
-            for a, c in sorted(probs.items(), key=lambda x: -x[1])[:top_k]
-        ]
+        return [(a, c / total) for a, c in sorted(probs.items(), key=lambda x: -x[1])[:top_k]]
 
     def prewarm(self, action: str):
         """예측된 명령 프리워밍 (모델 캐시, 연결 풀 등)"""
@@ -615,9 +598,10 @@ class UltraLowLatencyPipeline:
 
     def _init_wake_word(self, keywords: List[str]):
         try:
+            import os
+
             import pvporcupine
             import pyaudio
-            import os
 
             access_key = os.getenv("PICOVOICE_ACCESS_KEY")
             if not access_key:
@@ -714,9 +698,7 @@ class UltraLowLatencyPipeline:
 
         # VAD 처리
         if self._vad_active:
-            is_speech, segment_ended, segment_audio = self._vad.process_frame(
-                audio_chunk
-            )
+            is_speech, segment_ended, segment_audio = self._vad.process_frame(audio_chunk)
 
             if is_speech and not segment_ended:
                 # 음성 진행 중 - STT 스트리밍
@@ -859,9 +841,7 @@ class UltraLowLatencyPipeline:
 
         # 하이브리드 전용
         if target == "hybrid_drone_1":
-            if "다이브" in text and (
-                "어택" in text or "공격" in text or "시작" in text
-            ):
+            if "다이브" in text and ("어택" in text or "공격" in text or "시작" in text):
                 return {
                     "action": "DIVE_ATTACK",
                     "target": target,
@@ -911,9 +891,7 @@ class UltraLowLatencyPipeline:
 
         cmd = {
             "action": cached["action"],
-            "target": (
-                cached["target"] if cached["target"] != "*" else self._active_target
-            ),
+            "target": (cached["target"] if cached["target"] != "*" else self._active_target),
             "params": cached["params"],
             "priority": cached["priority"],
             "source": "FAILSAFE" if is_emergency else "VOICE_NLU",

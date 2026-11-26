@@ -1,8 +1,8 @@
 import asyncio
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Dict, List, Any, Optional
 import time
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -26,18 +26,14 @@ class LogAggregator:
                 self.buffers[sample.device_id] = deque(maxlen=self.max_samples)
             self.buffers[sample.device_id].append(sample)
 
-    def get_window(
-        self, device_id: str, window_sec: Optional[float] = None
-    ) -> List[LogSample]:
+    def get_window(self, device_id: str, window_sec: Optional[float] = None) -> List[LogSample]:
         window = window_sec or self.window_sec
         cutoff = time.time() - window
         if device_id not in self.buffers:
             return []
         return [s for s in self.buffers[device_id] if s.timestamp >= cutoff]
 
-    def get_all_windows(
-        self, window_sec: Optional[float] = None
-    ) -> Dict[str, List[LogSample]]:
+    def get_all_windows(self, window_sec: Optional[float] = None) -> Dict[str, List[LogSample]]:
         return {did: self.get_window(did, window_sec) for did in self.buffers}
 
     def clear_old(self, max_age_sec: float = 10.0):

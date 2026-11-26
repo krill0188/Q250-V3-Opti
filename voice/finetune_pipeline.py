@@ -7,31 +7,31 @@ Whisper Fine-tuning Pipeline for Drone Voice Control
 5. Deploy model path update
 """
 
-import os
+from collections import defaultdict
+from dataclasses import dataclass, field
+from datetime import datetime
 import json
 import logging
-import subprocess
-import shutil
-import random
+import os
 from pathlib import Path
-from dataclasses import dataclass, field
-from typing import List, Dict, Optional, Tuple
-from datetime import datetime
-from collections import defaultdict
+import random
+import shutil
+import subprocess
+from typing import Dict, List, Optional, Tuple
 
+from datasets import Audio, Dataset
+import numpy as np
+from peft import LoraConfig, PeftModel, TaskType, get_peft_model
 import torch
 import torchaudio
-import numpy as np
-from datasets import Dataset, Audio
 from transformers import (
+    Seq2SeqTrainer,
+    Seq2SeqTrainingArguments,
+    WhisperFeatureExtractor,
     WhisperForConditionalGeneration,
     WhisperProcessor,
-    WhisperFeatureExtractor,
     WhisperTokenizer,
-    Seq2SeqTrainingArguments,
-    Seq2SeqTrainer,
 )
-from peft import LoraConfig, get_peft_model, TaskType, PeftModel
 
 logger = logging.getLogger(__name__)
 
@@ -125,9 +125,7 @@ class STTLogCollector:
         }
         with open(self.pairs_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-        logger.info(
-            f"STT 쌍 저장: {audio_path} | STT: '{stt_text}' | GT: '{ground_truth}'"
-        )
+        logger.info(f"STT 쌍 저장: {audio_path} | STT: '{stt_text}' | GT: '{ground_truth}'")
 
     def add_pending_review(
         self, audio_path: str, stt_text: str, confidence: float, metadata: dict = None
@@ -158,9 +156,7 @@ class STTLogCollector:
                             {
                                 "audio": entry["audio_path"],
                                 "text": entry["ground_truth"],
-                                "language": self._detect_language(
-                                    entry["ground_truth"]
-                                ),
+                                "language": self._detect_language(entry["ground_truth"]),
                             }
                         )
         logger.info(f"학습 데이터 로드: {len(data)}개 (신뢰도 >= {min_confidence})")
@@ -247,9 +243,7 @@ class DREGONNoiseAugmenter:
         """RMS 계산"""
         return np.sqrt(np.mean(audio**2) + 1e-10)
 
-    def _mix_with_snr(
-        self, speech: np.ndarray, noise: np.ndarray, snr_db: float
-    ) -> np.ndarray:
+    def _mix_with_snr(self, speech: np.ndarray, noise: np.ndarray, snr_db: float) -> np.ndarray:
         """지정된 SNR로 음성과 노이즈 합성"""
         speech_rms = self._calculate_rms(speech)
         noise_rms = self._calculate_rms(noise)
@@ -378,9 +372,7 @@ class WhisperFinetuner:
             for audio_path in batch["audio"]:
                 waveform, sr = torchaudio.load(audio_path)
                 if sr != self.config.sampling_rate:
-                    resampler = torchaudio.transforms.Resample(
-                        sr, self.config.sampling_rate
-                    )
+                    resampler = torchaudio.transforms.Resample(sr, self.config.sampling_rate)
                     waveform = resampler(waveform)
                 # 모노 채널로 변환
                 if waveform.shape[0] > 1:
@@ -478,12 +470,8 @@ class WhisperFinetuner:
             pred_ids = pred.predictions
             label_ids = pred.label_ids
             label_ids[label_ids == -100] = self.processor.tokenizer.pad_token_id
-            pred_str = self.processor.tokenizer.batch_decode(
-                pred_ids, skip_special_tokens=True
-            )
-            label_str = self.processor.tokenizer.batch_decode(
-                label_ids, skip_special_tokens=True
-            )
+            pred_str = self.processor.tokenizer.batch_decode(pred_ids, skip_special_tokens=True)
+            label_str = self.processor.tokenizer.batch_decode(label_ids, skip_special_tokens=True)
             return {"wer": wer(label_str, pred_str)}
 
         self.trainer = Seq2SeqTrainer(
@@ -636,9 +624,7 @@ class FinetunePipeline:
         train_data = data[:split_idx]
         eval_data = data[split_idx:] if test_size > 0 else None
 
-        logger.info(
-            f"  Train: {len(train_data)}개, Eval: {len(eval_data) if eval_data else 0}개"
-        )
+        logger.info(f"  Train: {len(train_data)}개, Eval: {len(eval_data) if eval_data else 0}개")
 
         # 2. 모델 준비
         logger.info("2단계: 모델 및 LoRA 준비")
@@ -744,16 +730,12 @@ def quick_finetune(
 if __name__ == "__main__":
     import argparse
 
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
     parser = argparse.ArgumentParser(
         description="Whisper Fine-tuning Pipeline for Drone Voice Control"
     )
-    parser.add_argument(
-        "--base-model", default="openai/whisper-large-v3", help="Base model name"
-    )
+    parser.add_argument("--base-model", default="openai/whisper-large-v3", help="Base model name")
     parser.add_argument(
         "--output-dir", default="~/models/whisper-finetuned", help="Output directory"
     )
@@ -781,9 +763,7 @@ if __name__ == "__main__":
         action="store_true",
         help="Skip training, only convert existing model",
     )
-    parser.add_argument(
-        "--model-path", help="Existing model path to convert (for --skip-train)"
-    )
+    parser.add_argument("--model-path", help="Existing model path to convert (for --skip-train)")
 
     args = parser.parse_args()
 

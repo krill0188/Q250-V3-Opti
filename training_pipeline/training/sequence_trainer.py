@@ -3,15 +3,12 @@ Sequence Model Training for FAN-GHETS24, FANET
 """
 
 import json
-import time
-import warnings
 from pathlib import Path
+import time
 from typing import Any, Dict, List, Optional, Tuple
+import warnings
 
 import numpy as np
-import torch
-import torch.nn as nn
-import yaml
 from sklearn.metrics import (
     accuracy_score,
     classification_report,
@@ -21,9 +18,12 @@ from sklearn.metrics import (
     recall_score,
     roc_auc_score,
 )
+import torch
+import torch.nn as nn
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau, StepLR
 from torch.utils.data import DataLoader
+import yaml
 
 warnings.filterwarnings("ignore")
 
@@ -54,9 +54,7 @@ class SequenceTrainer:
             return torch.device("cuda" if torch.cuda.is_available() else "cpu")
         return torch.device(device_cfg)
 
-    def build_model(
-        self, input_dim: int, num_classes: int, class_names: List[str]
-    ) -> None:
+    def build_model(self, input_dim: int, num_classes: int, class_names: List[str]) -> None:
         """모델 생성"""
         self.class_names = class_names
 
@@ -92,9 +90,7 @@ class SequenceTrainer:
         elif opt_type == "adam":
             return torch.optim.Adam(self.model.parameters(), lr=lr, weight_decay=wd)
         elif opt_type == "sgd":
-            return torch.optim.SGD(
-                self.model.parameters(), lr=lr, weight_decay=wd, momentum=0.9
-            )
+            return torch.optim.SGD(self.model.parameters(), lr=lr, weight_decay=wd, momentum=0.9)
         else:
             return AdamW(self.model.parameters(), lr=lr, weight_decay=wd)
 
@@ -188,9 +184,7 @@ class SequenceTrainer:
 
         avg_loss = total_loss / len(dataloader)
         f1_macro = f1_score(all_labels, all_preds, average="macro", zero_division=0)
-        f1_weighted = f1_score(
-            all_labels, all_preds, average="weighted", zero_division=0
-        )
+        f1_weighted = f1_score(all_labels, all_preds, average="weighted", zero_division=0)
         acc = accuracy_score(all_labels, all_preds)
 
         try:
@@ -233,9 +227,7 @@ class SequenceTrainer:
             start_time = time.time()
 
             # Train
-            train_metrics = self.train_epoch(
-                train_loader, criterion, optimizer, class_weights
-            )
+            train_metrics = self.train_epoch(train_loader, criterion, optimizer, class_weights)
 
             # Validate
             val_metrics = self.validate(val_loader, criterion)
@@ -313,17 +305,11 @@ class SequenceTrainer:
 
         results = {
             "f1_macro": f1_score(y_true, y_pred, average="macro", zero_division=0),
-            "f1_weighted": f1_score(
-                y_true, y_pred, average="weighted", zero_division=0
-            ),
+            "f1_weighted": f1_score(y_true, y_pred, average="weighted", zero_division=0),
             "accuracy": accuracy_score(y_true, y_pred),
             "roc_auc_ovr": roc_auc_score(y_true, y_proba, multi_class="ovr"),
-            "precision_macro": precision_score(
-                y_true, y_pred, average="macro", zero_division=0
-            ),
-            "recall_macro": recall_score(
-                y_true, y_pred, average="macro", zero_division=0
-            ),
+            "precision_macro": precision_score(y_true, y_pred, average="macro", zero_division=0),
+            "recall_macro": recall_score(y_true, y_pred, average="macro", zero_division=0),
         }
 
         # Per-class report
@@ -360,9 +346,7 @@ class SequenceTrainer:
                 },
                 "class_names": self.class_names,
                 "history": self.history,
-                "best_val_f1": (
-                    max(self.history["val_f1"]) if self.history["val_f1"] else 0
-                ),
+                "best_val_f1": (max(self.history["val_f1"]) if self.history["val_f1"] else 0),
             },
             path,
         )
@@ -423,9 +407,7 @@ def run_fanghets_training(config_path: str, data: Dict) -> SequenceTrainer:
             print(f"{metric}: {value:.4f}")
 
     # 모델 저장
-    export_path = trainer.export_cfg.get(
-        "model_path", "models/fanghets_attack_classification.pth"
-    )
+    export_path = trainer.export_cfg.get("model_path", "models/fanghets_attack_classification.pth")
     trainer.save_model(export_path)
 
     return trainer

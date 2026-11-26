@@ -5,11 +5,11 @@
 - 병과별 비행/센서 프로파일 자동 분기
 """
 
-import re
-from typing import Dict, List, Tuple, Optional, NamedTuple, Literal
 from dataclasses import dataclass, field
 from enum import Enum
 import math
+import re
+from typing import Dict, List, Literal, NamedTuple, Optional, Tuple
 
 try:
     import mgrs
@@ -20,7 +20,7 @@ except ImportError:
     mgrs = None
 
 try:
-    from pyproj import Transformer, CRS
+    from pyproj import CRS, Transformer
 
     PYPROJ_AVAILABLE = True
 except ImportError:
@@ -345,15 +345,11 @@ class CoordinateParser:
         # 전체 MGRS (공백 없는): 52SDG12345678
         (
             CoordinateType.MGRS_10M,
-            re.compile(
-                r"\b(\d{1,2}[A-HJ-NP-Z])([A-HJ-NP-Z]{2})(\d{4})(\d{4})\b", re.IGNORECASE
-            ),
+            re.compile(r"\b(\d{1,2}[A-HJ-NP-Z])([A-HJ-NP-Z]{2})(\d{4})(\d{4})\b", re.IGNORECASE),
         ),
         (
             CoordinateType.MGRS_1M,
-            re.compile(
-                r"\b(\d{1,2}[A-HJ-NP-Z])([A-HJ-NP-Z]{2})(\d{5})(\d{5})\b", re.IGNORECASE
-            ),
+            re.compile(r"\b(\d{1,2}[A-HJ-NP-Z])([A-HJ-NP-Z]{2})(\d{5})(\d{5})\b", re.IGNORECASE),
         ),
         # 약식 MGRS (100km 격자 생략): DG 1234 5678 또는 DG 123 456
         (
@@ -407,9 +403,7 @@ class CoordinateParser:
     )
 
     # UTM 패턴
-    UTM_PATTERN = re.compile(
-        r"\b(\d{1,2}[A-HJ-NP-Z])\s*(\d{6})\s*(\d{7})\b", re.IGNORECASE
-    )
+    UTM_PATTERN = re.compile(r"\b(\d{1,2}[A-HJ-NP-Z])\s*(\d{6})\s*(\d{7})\b", re.IGNORECASE)
 
     # 병과 키워드
     BRANCH_KEYWORDS = {
@@ -513,9 +507,7 @@ class CoordinateParser:
                 easting = easting.ljust(4, "0")
                 northing = northing.ljust(4, "0")
 
-            raw_value = (
-                f"{zone + ' ' if zone else ''}{grid} {easting} {northing}".strip()
-            )
+            raw_value = f"{zone + ' ' if zone else ''}{grid} {easting} {northing}".strip()
 
             return ParsedCoordinate(
                 raw_text=raw,
@@ -527,9 +519,7 @@ class CoordinateParser:
         except Exception:
             return None
 
-    def _parse_latlon_dms_simple(
-        self, match: re.Match, raw: str
-    ) -> Optional[ParsedCoordinate]:
+    def _parse_latlon_dms_simple(self, match: re.Match, raw: str) -> Optional[ParsedCoordinate]:
         """한국어 DMS 형식 파싱: 위도 38도 12분 34초 북 경도 127도 45분 21초 동"""
         try:
             lat_deg = int(match.group(1))
@@ -558,9 +548,7 @@ class CoordinateParser:
         except Exception:
             return None
 
-    def _parse_latlon_dms(
-        self, match: re.Match, raw: str
-    ) -> Optional[ParsedCoordinate]:
+    def _parse_latlon_dms(self, match: re.Match, raw: str) -> Optional[ParsedCoordinate]:
         try:
             lat_deg = int(match.group(1))
             lat_min = int(match.group(2))
@@ -588,9 +576,7 @@ class CoordinateParser:
         except Exception:
             return None
 
-    def _parse_latlon_dec(
-        self, match: re.Match, raw: str
-    ) -> Optional[ParsedCoordinate]:
+    def _parse_latlon_dec(self, match: re.Match, raw: str) -> Optional[ParsedCoordinate]:
         try:
             lat = float(match.group(1))
             lon = float(match.group(2))
@@ -624,9 +610,7 @@ class CoordinateParser:
         except Exception:
             return None
 
-    def _parse_mil_offset(
-        self, match: re.Match, raw: str
-    ) -> Optional[ParsedCoordinate]:
+    def _parse_mil_offset(self, match: re.Match, raw: str) -> Optional[ParsedCoordinate]:
         try:
             mil_offset = float(match.group(1))
             dist = float(match.group(2)) if match.group(2) else 0
@@ -783,9 +767,7 @@ class CoordinateConverter:
             return f"{zone} {grid} {easting} {northing}"
         return mgrs_str
 
-    def wgs84_to_ned(
-        self, lat: float, lon: float, alt: float = 0
-    ) -> Tuple[float, float, float]:
+    def wgs84_to_ned(self, lat: float, lon: float, alt: float = 0) -> Tuple[float, float, float]:
         """위경도 → 로컬 NED (기준점 대비)"""
         if not PYPROJ_AVAILABLE or not self._transformer_wgs_to_utm:
             # 간단한 평탄 지구 근사 (단거리용)
@@ -800,9 +782,7 @@ class CoordinateConverter:
         # 정확한 변환: WGS84 -> UTM-K -> 로컬 NED
         x, y = self._transformer_wgs_to_utm.transform(lon, lat)
         # 기준점도 UTM으로 변환
-        ox, oy = self._transformer_wgs_to_utm.transform(
-            self.origin_lon, self.origin_lat
-        )
+        ox, oy = self._transformer_wgs_to_utm.transform(self.origin_lon, self.origin_lat)
         north = y - oy
         east = x - ox
         down = -alt
@@ -845,9 +825,7 @@ class BranchProfileManager:
             self.profiles.update(custom_profiles)
 
     def get_profile(self, branch: MilitaryBranch) -> BranchFlightProfile:
-        return self.profiles.get(
-            branch, DEFAULT_BRANCH_PROFILES[MilitaryBranch.INFANTRY]
-        )
+        return self.profiles.get(branch, DEFAULT_BRANCH_PROFILES[MilitaryBranch.INFANTRY])
 
     def get_mission_params(self, branch: MilitaryBranch, mission_type: str) -> Dict:
         """미션 타입별 파라미터 병합"""
@@ -898,9 +876,7 @@ def detect_branches(text: str) -> List[Tuple[MilitaryBranch, float]]:
     return parser.detect_branch(text)
 
 
-def convert_coordinate(
-    coord: ParsedCoordinate, converter: CoordinateConverter
-) -> ParsedCoordinate:
+def convert_coordinate(coord: ParsedCoordinate, converter: CoordinateConverter) -> ParsedCoordinate:
     """파싱된 좌표를 WGS84/NED로 변환"""
     try:
         if coord.coord_type in (
@@ -915,9 +891,7 @@ def convert_coordinate(
 
         elif coord.coord_type in (CoordinateType.LATLON_DMS, CoordinateType.LATLON_DEC):
             if coord.lat is not None and coord.lon is not None:
-                coord.north, coord.east, coord.down = converter.wgs84_to_ned(
-                    coord.lat, coord.lon
-                )
+                coord.north, coord.east, coord.down = converter.wgs84_to_ned(coord.lat, coord.lon)
 
         elif coord.coord_type == CoordinateType.MIL_POLAR:
             if coord.mil_azimuth is not None and coord.distance_m is not None:
@@ -943,9 +917,7 @@ def convert_coordinate(
     return coord
 
 
-def get_branch_flight_params(
-    branch: MilitaryBranch, mission_type: str = "default"
-) -> Dict:
+def get_branch_flight_params(branch: MilitaryBranch, mission_type: str = "default") -> Dict:
     """병과+미션별 비행 파라미터 조회"""
     manager = BranchProfileManager()
     return manager.get_mission_params(branch, mission_type)
@@ -984,14 +956,10 @@ if __name__ == "__main__":
                     f"    NED: N={converted.north:.1f}m E={converted.east:.1f}m D={converted.down:.1f}m"
                 )
             if converted.mil_azimuth is not None:
-                print(
-                    f"    밀: 방위 {converted.mil_azimuth}밀, 거리 {converted.distance_m}m"
-                )
+                print(f"    밀: 방위 {converted.mil_azimuth}밀, 거리 {converted.distance_m}m")
 
         if branches:
-            print(
-                f"  탐지된 병과: {', '.join(f'{b.value}({c:.1f})' for b, c in branches)}"
-            )
+            print(f"  탐지된 병과: {', '.join(f'{b.value}({c:.1f})' for b, c in branches)}")
             for branch, _ in branches:
                 params = branch_mgr.get_mission_params(branch, "recon")
                 print(

@@ -3,16 +3,16 @@
 데이터 무결성, 완전성, 일관성 검증
 """
 
-from typing import Dict, List, Optional, Tuple, Any, Set
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
-from typing import Callable, Any
 
-from .base_loader import SensorData, MultiSensorData
 from ..config import DatasetConfig
+from .base_loader import MultiSensorData, SensorData
 
 
 class Severity(Enum):
@@ -74,9 +74,7 @@ class DataValidator:
 
     def _register_default_checks(self):
         """기본 검증 규칙 등록"""
-        self.add_check(
-            "timestamp_monotonic", self._check_timestamp_monotonic, "critical"
-        )
+        self.add_check("timestamp_monotonic", self._check_timestamp_monotonic, "critical")
         self.add_check("no_nan_values", self._check_no_nan, "error")
         self.add_check("no_inf_values", self._check_no_inf, "error")
         self.add_check("frequency_consistency", self._check_frequency, "warning")
@@ -89,15 +87,11 @@ class DataValidator:
         """검증 규칙 추가"""
         self.checks.append({"name": name, "func": func, "severity": severity})
 
-    def validate_sensor(
-        self, sensor_data: "SensorData", sensor_name: str
-    ) -> "ValidationReport":
+    def validate_sensor(self, sensor_data: "SensorData", sensor_name: str) -> "ValidationReport":
         """단일 센서 데이터 검증"""
         from .base_loader import SensorData
 
-        report = ValidationReport(
-            sensor="", total_samples=0, duration_sec=0.0, frequency_hz=0.0
-        )
+        report = ValidationReport(sensor="", total_samples=0, duration_sec=0.0, frequency_hz=0.0)
 
         report.sensor = sensor_data.name
         report.total_samples = len(sensor_data)
@@ -337,9 +331,7 @@ class DataValidator:
                 for range_key, (min_val, max_val) in ranges.items():
                     if range_key in col_name.lower():
                         col_data = sensor.data[:, i]
-                        out_of_range = np.sum(
-                            (col_data < min_val) | (col_data > max_val)
-                        )
+                        out_of_range = np.sum((col_data < min_val) | (col_data > max_val))
                         if out_of_range > 0:
                             issues.append(
                                 ValidationIssue(
