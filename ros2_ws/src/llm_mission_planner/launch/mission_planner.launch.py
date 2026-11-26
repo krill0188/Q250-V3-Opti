@@ -12,17 +12,13 @@ def generate_launch_description():
             default_value="openai",
             description="LLM provider: openai, anthropic, local",
         ),
-        DeclareLaunchArgument(
-            "llm_model", default_value="gpt-4o", description="LLM model name"
-        ),
+        DeclareLaunchArgument("llm_model", default_value="gpt-4o", description="LLM model name"),
         DeclareLaunchArgument(
             "llm_temperature",
             default_value="0.1",
             description="LLM temperature (0.0-1.0)",
         ),
-        DeclareLaunchArgument(
-            "llm_max_tokens", default_value="2048", description="LLM max tokens"
-        ),
+        DeclareLaunchArgument("llm_max_tokens", default_value="2048", description="LLM max tokens"),
         DeclareLaunchArgument(
             "llm_timeout", default_value="30.0", description="LLM timeout in seconds"
         ),
@@ -42,9 +38,7 @@ def generate_launch_description():
             default_value="3.0",
             description="Default cruise speed (m/s)",
         ),
-        DeclareLaunchArgument(
-            "max_speed", default_value="5.0", description="Maximum speed (m/s)"
-        ),
+        DeclareLaunchArgument("max_speed", default_value="5.0", description="Maximum speed (m/s)"),
         DeclareLaunchArgument(
             "safety_margin",
             default_value="2.0",
@@ -106,9 +100,7 @@ def generate_launch_description():
                     "max_speed": LaunchConfiguration("max_speed"),
                     "safety_margin": LaunchConfiguration("safety_margin"),
                     "max_waypoints": LaunchConfiguration("max_waypoints"),
-                    "max_waypoint_distance": LaunchConfiguration(
-                        "max_waypoint_distance"
-                    ),
+                    "max_waypoint_distance": LaunchConfiguration("max_waypoint_distance"),
                     "geofence_polygon": LaunchConfiguration("geofence_polygon"),
                     "validate_waypoints": LaunchConfiguration("validate_waypoints"),
                     "max_retries": LaunchConfiguration("max_retries"),
@@ -131,9 +123,7 @@ def generate_launch_description():
                     "min_altitude": LaunchConfiguration("min_altitude"),
                     "max_speed": LaunchConfiguration("max_speed"),
                     "safety_margin": LaunchConfiguration("safety_margin"),
-                    "max_waypoint_distance": LaunchConfiguration(
-                        "max_waypoint_distance"
-                    ),
+                    "max_waypoint_distance": LaunchConfiguration("max_waypoint_distance"),
                     "geofence_polygon": LaunchConfiguration("geofence_polygon"),
                 }
             ],

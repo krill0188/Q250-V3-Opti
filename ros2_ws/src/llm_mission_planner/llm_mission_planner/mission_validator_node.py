@@ -74,9 +74,7 @@ class MissionValidatorNode(Node):
         )
 
         # Publisher for validation results
-        self.result_pub = self.create_publisher(
-            String, "/llm_mission/validation_result", qos
-        )
+        self.result_pub = self.create_publisher(String, "/llm_mission/validation_result", qos)
 
         self.get_logger().info("Mission Validator Node initialized")
 
@@ -98,9 +96,7 @@ class MissionValidatorNode(Node):
             self.result_pub.publish(result_msg)
 
             if validation["valid"]:
-                self.get_logger().info(
-                    f'Mission validation PASSED (score: {validation["score"]})'
-                )
+                self.get_logger().info(f'Mission validation PASSED (score: {validation["score"]})')
             else:
                 self.get_logger().warn(
                     f'Mission validation FAILED: {len(validation["errors"])} errors'
@@ -111,9 +107,7 @@ class MissionValidatorNode(Node):
             error_result = {
                 "valid": False,
                 "score": 0.0,
-                "errors": [
-                    {"code": "PARSE_ERROR", "message": str(e), "severity": "critical"}
-                ],
+                "errors": [{"code": "PARSE_ERROR", "message": str(e), "severity": "critical"}],
                 "warnings": [],
                 "suggestions": [],
             }
@@ -146,12 +140,8 @@ class MissionValidatorNode(Node):
             max_speed=parsed.get("constraints", {}).get("max_speed", 5.0),
             geofence=parsed.get("constraints", {}).get("geofence", []),
             no_fly_zones=parsed.get("constraints", {}).get("no_fly_zones", []),
-            max_waypoint_distance=parsed.get("constraints", {}).get(
-                "max_waypoint_distance", 500.0
-            ),
-            min_obstacle_clearance=parsed.get("constraints", {}).get(
-                "min_obstacle_clearance", 2.0
-            ),
+            max_waypoint_distance=parsed.get("constraints", {}).get("max_waypoint_distance", 500.0),
+            min_obstacle_clearance=parsed.get("constraints", {}).get("min_obstacle_clearance", 2.0),
         )
 
         failsafe_data = parsed.get("failsafe", {})
@@ -183,9 +173,7 @@ class MissionValidatorNode(Node):
             failsafe=Failsafe(
                 on_comm_loss=parsed.get("failsafe", {}).get("on_comm_loss", "rtl"),
                 on_battery_low=parsed.get("failsafe", {}).get("on_battery_low", "rtl"),
-                on_geofence_breach=parsed.get("failsafe", {}).get(
-                    "on_geofence_breach", "rtl"
-                ),
+                on_geofence_breach=parsed.get("failsafe", {}).get("on_geofence_breach", "rtl"),
                 on_obstacle_critical=parsed.get("failsafe", {}).get(
                     "on_obstacle_critical", "hover"
                 ),

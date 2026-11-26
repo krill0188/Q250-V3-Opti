@@ -6,11 +6,11 @@ Extends the base flight log analyzer with LLM-powered natural language
 report generation, anomaly detection, and intelligent recommendations.
 """
 
+from dataclasses import dataclass
+from datetime import datetime
 import json
 import os
 import sqlite3
-from dataclasses import dataclass
-from datetime import datetime
 from typing import Dict, List, Optional
 
 try:
@@ -47,9 +47,7 @@ class FlightAnalysisResult:
 class LLMFlightAnalyzer:
     """LLM-enhanced flight log analyzer"""
 
-    def __init__(
-        self, db_path: str, llm_provider: str = "openai", llm_model: str = "gpt-4o"
-    ):
+    def __init__(self, db_path: str, llm_provider: str = "openai", llm_model: str = "gpt-4o"):
         self.db_path = db_path
         self.llm_provider = llm_provider
         self.llm_model = llm_model
@@ -235,12 +233,8 @@ Avoid vague statements - be precise with metrics and thresholds.
                 "pos_innov_std": np.std(pos_innov_arr, axis=0).tolist(),
                 "vel_innov_mean": np.mean(vel_innov_arr, axis=0).tolist(),
                 "vel_innov_std": np.std(vel_innov_arr, axis=0).tolist(),
-                "pos_3sigma_violation_rate": self._compute_3sigma_violations(
-                    pos_innov_arr
-                ),
-                "vel_3sigma_violation_rate": self._compute_3sigma_violations(
-                    vel_innov_arr
-                ),
+                "pos_3sigma_violation_rate": self._compute_3sigma_violations(pos_innov_arr),
+                "vel_3sigma_violation_rate": self._compute_3sigma_violations(vel_innov_arr),
                 "sample_count": len(ekf2),
             }
 
@@ -249,9 +243,7 @@ Avoid vague statements - be precise with metrics and thresholds.
         global_pos = flight_data.get("vehicle_global_position", [])
 
         if local_pos:
-            positions = np.array(
-                [[r.get("x", 0), r.get("y", 0), r.get("z", 0)] for r in local_pos]
-            )
+            positions = np.array([[r.get("x", 0), r.get("y", 0), r.get("z", 0)] for r in local_pos])
             if len(positions) > 1:
                 # Compute drift rate (position change during hover/loiter)
                 drift = np.mean(np.linalg.norm(np.diff(positions, axis=0), axis=1))
@@ -281,13 +273,9 @@ Avoid vague statements - be precise with metrics and thresholds.
                 metrics["gps_quality"] = {
                     "avg_horizontal_accuracy": float(np.mean(eph_vals)),
                     "avg_vertical_accuracy": float(np.mean(epv_vals)),
-                    "fix_type_mode": (
-                        int(np.bincount(fix_types).argmax()) if fix_types else 0
-                    ),
+                    "fix_type_mode": (int(np.bincount(fix_types).argmax()) if fix_types else 0),
                     "avg_satellites": float(np.mean(sats)),
-                    "fix_type_distribution": {
-                        str(i): fix_types.count(i) for i in set(fix_types)
-                    },
+                    "fix_type_distribution": {str(i): fix_types.count(i) for i in set(fix_types)},
                     "sample_count": len(global_pos),
                 }
 
@@ -301,11 +289,7 @@ Avoid vague statements - be precise with metrics and thresholds.
         metrics["avoidance_performance"] = {
             "total_triggers": len(ca_events),
             "successful_stops": len(
-                [
-                    e
-                    for e in ca_events
-                    if e.get("description", "").lower().find("stop") >= 0
-                ]
+                [e for e in ca_events if e.get("description", "").lower().find("stop") >= 0]
             ),
             "avoidance_rate": len(ca_events) / max(1, len(events)) if events else 0,
             "event_types": {
@@ -317,9 +301,7 @@ Avoid vague statements - be precise with metrics and thresholds.
         # Silvus Link Quality
         silvus = flight_data.get("silvus_link_quality", [])
         if silvus:
-            rssi = [
-                r.get("rssi_dbm", -100) for r in silvus if r.get("rssi_dbm") is not None
-            ]
+            rssi = [r.get("rssi_dbm", -100) for r in silvus if r.get("rssi_dbm") is not None]
             loss = [
                 r.get("packet_loss_pct", 100)
                 for r in silvus
@@ -340,20 +322,14 @@ Avoid vague statements - be precise with metrics and thresholds.
         # Battery Health
         battery = flight_data.get("battery_status", [])
         if battery:
-            voltages = [
-                r.get("voltage_v", 0) for r in battery if r.get("voltage_v", 0) > 0
-            ]
-            currents = [
-                r.get("current_a", 0) for r in battery if r.get("current_a", 0) > 0
-            ]
+            voltages = [r.get("voltage_v", 0) for r in battery if r.get("voltage_v", 0) > 0]
+            currents = [r.get("current_a", 0) for r in battery if r.get("current_a", 0) > 0]
 
             metrics["battery_health"] = {
                 "min_voltage_v": float(np.min(voltages)) if voltages else 0,
                 "avg_voltage_v": float(np.mean(voltages)) if voltages else 0,
                 "voltage_sag_v": (
-                    float(np.max(voltages) - np.min(voltages))
-                    if len(voltages) > 1
-                    else 0
+                    float(np.max(voltages) - np.min(voltages)) if len(voltages) > 1 else 0
                 ),
                 "avg_current_a": float(np.mean(currents)) if currents else 0,
                 "max_current_a": float(np.max(currents)) if currents else 0,
@@ -379,9 +355,7 @@ Avoid vague statements - be precise with metrics and thresholds.
         parts = []
         if "ekf2_health" in metrics:
             ekf = metrics["ekf2_health"]
-            parts.append(
-                f"EKF2 3σ violation: {ekf.get('pos_3sigma_violation_rate', 0)*100:.1f}%"
-            )
+            parts.append(f"EKF2 3σ violation: {ekf.get('pos_3sigma_violation_rate', 0)*100:.1f}%")
         if "vio_quality" in metrics:
             vio = metrics["vio_quality"]
             parts.append(f"VIO drift: {vio.get('avg_drift_rate_m_s', 0)*100:.1f} cm/s")
@@ -487,9 +461,7 @@ Avoid vague statements - be precise with metrics and thresholds.
 
         return anomalies
 
-    def _generate_llm_narrative(
-        self, flight_id: str, metrics: Dict, anomalies: List[Dict]
-    ) -> str:
+    def _generate_llm_narrative(self, flight_id: str, metrics: Dict, anomalies: List[Dict]) -> str:
         """Generate natural language narrative using LLM"""
 
         if self.llm_client is None:
@@ -594,9 +566,7 @@ Analyze flight {flight_id} and generate a professional flight analysis report.
 
         return "\n".join(lines)
 
-    def _generate_recommendations(
-        self, metrics: Dict, anomalies: List[Dict]
-    ) -> List[str]:
+    def _generate_recommendations(self, metrics: Dict, anomalies: List[Dict]) -> List[str]:
         """Generate actionable recommendations"""
         recommendations = []
 
@@ -642,17 +612,12 @@ Analyze flight {flight_id} and generate a professional flight analysis report.
 
         # Anomaly-based recommendations
         for anomaly in anomalies:
-            if (
-                anomaly["type"] == "ekf2_innovation_excess"
-                and anomaly["severity"] == "high"
-            ):
+            if anomaly["type"] == "ekf2_innovation_excess" and anomaly["severity"] == "high":
                 recommendations.append(
                     "URGENT: EKF2 innovation excessive. Ground aircraft immediately. "
                     "Check VIO alignment, EKF2_EV_DELAY, and sensor health."
                 )
-            elif (
-                anomaly["type"] == "silvus_high_loss" and anomaly["severity"] == "high"
-            ):
+            elif anomaly["type"] == "silvus_high_loss" and anomaly["severity"] == "high":
                 recommendations.append(
                     "HIGH PRIORITY: Silvus link degraded. Switch to manual/RTL mode if operating beyond VLOS."
                 )
@@ -685,9 +650,7 @@ def main():
         default="/Users/amaster/projectm/Q250-V3-Opti/flight_logs/db/flightlog.db",
         help="Database path",
     )
-    parser.add_argument(
-        "--provider", choices=["openai", "anthropic", "local"], default="openai"
-    )
+    parser.add_argument("--provider", choices=["openai", "anthropic", "local"], default="openai")
     parser.add_argument("--model", default="gpt-4o")
     parser.add_argument("--output", help="Output file (JSON)")
 

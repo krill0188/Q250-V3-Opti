@@ -34,7 +34,7 @@ If the stop condition appears to be met, the leader should raise a motion for th
 - `t_fe13bd88` assignee=researcher — Validate TensorRT INT8 calibration strategy with agreed spec
 - ... +3 more
 
-**Last heartbeat:** 2026-11-26T14:36:24.528362+00:00
+**Last heartbeat:** 2026-11-26T14:47:18.616292+00:00
 
 ## Recent Decisions
 

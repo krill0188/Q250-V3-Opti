@@ -14,9 +14,9 @@ Based on: docs/13-fake-gps-implementation.md
 
 import math
 
-import rclpy
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from mavros_msgs.msg import GPSINPUT
+import rclpy
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import Header
@@ -111,10 +111,7 @@ class FakeGPSNode(Node):
         now_sec = now.nanoseconds / 1e9
 
         # Rate limiting
-        if (
-            self.min_interval > 0
-            and (now_sec - self.last_publish_time) < self.min_interval
-        ):
+        if self.min_interval > 0 and (now_sec - self.last_publish_time) < self.min_interval:
             return
         self.last_publish_time = now_sec
 
@@ -192,10 +189,7 @@ class FakeGPSNode(Node):
         self.msg_count += 1
 
         # Periodic logging
-        if (
-            self.debug_logging
-            or (now.nanoseconds - self.last_log_time.nanoseconds) > 5e9
-        ):
+        if self.debug_logging or (now.nanoseconds - self.last_log_time.nanoseconds) > 5e9:
             self.get_logger().info(
                 f"Fake GPS #{self.msg_count}: lat={lat:.6f}, lon={lon:.6f}, alt={alt:.2f}m, "
                 f"horiz_acc={horiz_acc:.2f}m, vert_acc={vert_acc:.2f}m"
@@ -210,12 +204,7 @@ class FakeGPSNode(Node):
         # ENU to LLA: datum is the origin
         # x_enu = East, y_enu = North, z_enu = Up
         dlat = y_enu / self.R_EARTH * 180.0 / math.pi
-        dlon = (
-            x_enu
-            / (self.R_EARTH * math.cos(math.radians(self.datum_lat)))
-            * 180.0
-            / math.pi
-        )
+        dlon = x_enu / (self.R_EARTH * math.cos(math.radians(self.datum_lat))) * 180.0 / math.pi
 
         lat = self.datum_lat + dlat
         lon = self.datum_lon + dlon
@@ -232,9 +221,7 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
-        node.get_logger().info(
-            f"Fake GPS Node shutting down. Total messages: {node.msg_count}"
-        )
+        node.get_logger().info(f"Fake GPS Node shutting down. Total messages: {node.msg_count}")
         node.destroy_node()
         rclpy.shutdown()
 

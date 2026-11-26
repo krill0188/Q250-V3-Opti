@@ -5,9 +5,9 @@
 """
 
 import hashlib
+from pathlib import Path
 import subprocess
 import sys
-from pathlib import Path
 
 DATASETS = {
     "idf_ds": "~/data/drone_datasets/processed/idf_ds",

@@ -5,11 +5,11 @@ Parses MAVLink messages from PCAP captures or text logs.
 Maintains provenance (SHA-256, source path, transform metadata).
 """
 
-import hashlib
-import json
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from datetime import datetime
+import hashlib
+import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -194,9 +194,7 @@ class MAVLinkAdapter:
             "provenance": asdict(provenance),
             "message_counts": {k: len(v) for k, v in messages_by_type.items()},
             "total_messages": total_parsed,
-            "messages": {
-                k: [asdict(m) for m in v] for k, v in messages_by_type.items()
-            },
+            "messages": {k: [asdict(m) for m in v] for k, v in messages_by_type.items()},
         }
 
     def parse_text_log(
@@ -259,9 +257,7 @@ class MAVLinkAdapter:
             "provenance": asdict(provenance),
             "message_counts": {k: len(v) for k, v in messages_by_type.items()},
             "total_messages": total_parsed,
-            "messages": {
-                k: [asdict(m) for m in v] for k, v in messages_by_type.items()
-            },
+            "messages": {k: [asdict(m) for m in v] for k, v in messages_by_type.items()},
         }
 
     def _parse_mavlink_bytes(
@@ -311,9 +307,7 @@ class MAVLinkAdapter:
         with open(output_path, "w") as f:
             json.dump(data, f, indent=2, default=str)
 
-    def extract_time_series(
-        self, data: Dict, msg_type: str, fields: List[str]
-    ) -> Dict[str, List]:
+    def extract_time_series(self, data: Dict, msg_type: str, fields: List[str]) -> Dict[str, List]:
         """Extract specific fields as time series for plotting/analysis."""
         messages = data.get("messages", {}).get(msg_type, [])
         result = {field: [] for field in fields}

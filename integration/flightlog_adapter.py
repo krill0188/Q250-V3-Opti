@@ -5,10 +5,10 @@ Parses ulog format and extracts structured data for analysis.
 Maintains provenance (SHA-256, source path, transform metadata).
 """
 
-import hashlib
-import json
 from dataclasses import asdict, dataclass
 from datetime import datetime
+import hashlib
+import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -240,9 +240,7 @@ class FlightLogAdapter:
 
         return data
 
-    def _extract_metadata(
-        self, ulog: ULog, provenance: Provenance
-    ) -> FlightLogMetadata:
+    def _extract_metadata(self, ulog: ULog, provenance: Provenance) -> FlightLogMetadata:
         """Extract flight metadata from ulog."""
         # Get start timestamp from first message
         start_ts = min(
@@ -293,9 +291,7 @@ class FlightLogAdapter:
                         if field != "timestamp":
                             val = dataset.data[field][i]
                             # Handle arrays
-                            if hasattr(val, "__len__") and not isinstance(
-                                val, (str, bytes)
-                            ):
+                            if hasattr(val, "__len__") and not isinstance(val, (str, bytes)):
                                 msg_dict[field] = [float(x) for x in val]
                             else:
                                 msg_dict[field] = (

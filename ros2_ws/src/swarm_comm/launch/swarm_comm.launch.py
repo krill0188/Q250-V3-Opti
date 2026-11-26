@@ -85,9 +85,7 @@ def generate_launch_description():
                     "drone_id": LaunchConfiguration("drone_id"),
                     "swarm_id": LaunchConfiguration("swarm_id"),
                     "broadcast_rate": LaunchConfiguration("broadcast_rate"),
-                    "silvus_link_loss_threshold": LaunchConfiguration(
-                        "silvus_link_loss_threshold"
-                    ),
+                    "silvus_link_loss_threshold": LaunchConfiguration("silvus_link_loss_threshold"),
                     "silvus_rtt_threshold": LaunchConfiguration("silvus_rtt_threshold"),
                     "log_broadcast_stats": LaunchConfiguration("log_broadcast_stats"),
                 }

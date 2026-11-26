@@ -4,9 +4,9 @@
 # 필요 패키지: pip install python-docx markdown2 weasyprint pillow
 
 import os
+from pathlib import Path
 import subprocess
 import sys
-from pathlib import Path
 
 
 def check_dependencies():
@@ -32,9 +32,7 @@ def render_mermaid_to_png(mmd_file, output_dir):
         # mmdc (Mermaid CLI) 확인
         result = subprocess.run(["which", "mmdc"], capture_output=True)
         if result.returncode != 0:
-            print(
-                "Warning: mmdc not found. Install with: npm install -g @mermaid-js/mermaid-cli"
-            )
+            print("Warning: mmdc not found. Install with: npm install -g @mermaid-js/mermaid-cli")
             return False
 
         output_dir = Path(output_dir)
@@ -67,10 +65,10 @@ def markdown_to_docx(md_file, docx_file, images_dir):
     """Markdown을 DOCX로 변환"""
     import re
 
-    import markdown2
     from docx import Document
     from docx.enum.style import WD_STYLE_TYPE
     from docx.shared import Inches, Pt, RGBColor
+    import markdown2
 
     # Markdown 읽기
     with open(md_file, "r", encoding="utf-8") as f:
@@ -85,9 +83,7 @@ def markdown_to_docx(md_file, docx_file, images_dir):
         return f"[Diagram: {diagram_name}.mmd - 렌더링 필요]"
 
     # ```mermaid 블록 처리
-    md_content = re.sub(
-        r"```mermaid\s*\n(.*?)\n```", replace_mermaid, md_content, flags=re.DOTALL
-    )
+    md_content = re.sub(r"```mermaid\s*\n(.*?)\n```", replace_mermaid, md_content, flags=re.DOTALL)
 
     # HTML로 변환
     html = markdown2.markdown(

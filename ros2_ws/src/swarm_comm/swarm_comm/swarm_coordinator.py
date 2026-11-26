@@ -5,11 +5,11 @@ Swarm Coordinator for Q250-V3-Opti
 High-level swarm coordination: formation flight, task allocation, mission coordination.
 """
 
+from dataclasses import dataclass
+from enum import Enum
 import json
 import math
 import time
-from dataclasses import dataclass
-from enum import Enum
 from typing import Dict, List, Tuple
 
 import rclpy
@@ -95,9 +95,7 @@ class SwarmCoordinator(Node):
         )
 
         # Publisher
-        self.formation_pub = self.create_publisher(
-            String, self.config["formation_cmd_topic"], 10
-        )
+        self.formation_pub = self.create_publisher(String, self.config["formation_cmd_topic"], 10)
 
         # Timer
         self.coord_timer = self.create_timer(0.1, self.coordination_loop)  # 10 Hz
@@ -145,15 +143,11 @@ class SwarmCoordinator(Node):
 
         # Get active neighbors
         active_drones = [
-            d
-            for d in self.neighbors.keys()
-            if time.time() - self.neighbors[d]["timestamp"] < 1.0
+            d for d in self.neighbors.keys() if time.time() - self.neighbors[d]["timestamp"] < 1.0
         ]
 
         # Compute formation positions
-        self.formation_positions = self._compute_formation(
-            shape, spacing, len(active_drones) + 1
-        )
+        self.formation_positions = self._compute_formation(shape, spacing, len(active_drones) + 1)
 
         # Broadcast formation command
         cmd = {

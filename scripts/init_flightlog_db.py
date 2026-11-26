@@ -6,9 +6,9 @@ Creates SQLite database with multi-modal flight log schema.
 Based on references/flightlog-schema.sql
 """
 
+from pathlib import Path
 import sqlite3
 import sys
-from pathlib import Path
 
 
 def init_database(db_path: str) -> None:

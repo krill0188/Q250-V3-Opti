@@ -11,8 +11,8 @@ Publishes:  mavros_msgs/ObstacleDistance (to MAVROS -> PX4)
 Based on docs/12-obstacle-avoidance-pipeline.md
 """
 
-import rclpy
 from mavros_msgs.msg import DistanceSensor, ObstacleDistance
+import rclpy
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import Range
@@ -27,9 +27,7 @@ class ObstacleDistancePublisher(Node):
 
         # Parameters
         self.declare_parameter("lidar_topic", "/mavros/distance_sensor/lidar")
-        self.declare_parameter(
-            "mavros_obstacle_topic", "/mavros/obstacle_distance/send"
-        )
+        self.declare_parameter("mavros_obstacle_topic", "/mavros/obstacle_distance/send")
         self.declare_parameter("num_sectors", 72)  # 5-degree sectors (360/5=72)
         self.declare_parameter("max_distance", 10.0)
         self.declare_parameter("min_distance", 0.1)
@@ -73,9 +71,7 @@ class ObstacleDistancePublisher(Node):
         )
 
         # Publisher: MAVROS ObstacleDistance
-        self.obstacle_pub = self.create_publisher(
-            ObstacleDistance, self.obstacle_topic, qos
-        )
+        self.obstacle_pub = self.create_publisher(ObstacleDistance, self.obstacle_topic, qos)
 
         # Timer: publish at 10Hz (PX4 expects regular updates)
         self.timer = self.create_timer(0.1, self.publish_obstacle_distance)
@@ -140,12 +136,8 @@ class ObstacleDistancePublisher(Node):
 
         self.obstacle_pub.publish(msg)
 
-        if (
-            self.get_clock().now().nanoseconds % 10_000_000_000 < 100_000_000
-        ):  # ~1Hz log
-            self.get_logger().debug(
-                f"Published obstacle distance: {dist:.2f}m ({dist_cm}cm)"
-            )
+        if self.get_clock().now().nanoseconds % 10_000_000_000 < 100_000_000:  # ~1Hz log
+            self.get_logger().debug(f"Published obstacle distance: {dist:.2f}m ({dist_cm}cm)")
 
 
 def main(args=None):

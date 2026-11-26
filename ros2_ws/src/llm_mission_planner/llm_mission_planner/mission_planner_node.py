@@ -10,17 +10,17 @@ Architecture: Decision Layer (LLM) → Validation → PX4 OFFBOARD/Mission
 """
 
 import asyncio
+from dataclasses import asdict, dataclass, field
+from enum import Enum
 import json
 import os
 import time
-import uuid
-from dataclasses import asdict, dataclass, field
-from enum import Enum
 from typing import Dict, List, Optional, Tuple
+import uuid
 
-import rclpy
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from mavros_msgs.msg import State as MavrosState
+import rclpy
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
@@ -332,9 +332,7 @@ class MissionValidator:
                     )
                 else:
                     # Check margin
-                    margin = self._distance_to_polygon_edge(
-                        wp.lat, wp.lon, self.geofence
-                    )
+                    margin = self._distance_to_polygon_edge(wp.lat, wp.lon, self.geofence)
                     if margin < self.safety_margin:
                         warnings.append(
                             {
@@ -406,9 +404,7 @@ class MissionValidator:
         if len(mission.waypoints) > 20:
             suggestions.append("Consider splitting long mission into multiple segments")
         if mission.constraints.max_altitude > 30:
-            suggestions.append(
-                "High altitude mission: verify VIO/fake GPS accuracy at altitude"
-            )
+            suggestions.append("High altitude mission: verify VIO/fake GPS accuracy at altitude")
 
         valid = len(errors) == 0
         score = 1.0 - (len(errors) * 0.2 + len(warnings) * 0.05)
@@ -442,9 +438,7 @@ class MissionValidator:
             p1x, p1y = p2x, p2y
         return inside
 
-    def _distance_to_polygon_edge(
-        self, lat: float, lon: float, polygon: List[Dict]
-    ) -> float:
+    def _distance_to_polygon_edge(self, lat: float, lon: float, polygon: List[Dict]) -> float:
         """Minimum distance from point to polygon edges"""
         min_dist = float("inf")
         for i in range(len(polygon)):
@@ -476,9 +470,7 @@ class MissionValidator:
         px, py = x1 + t * dx, y1 + t * dy
         return math.hypot(x - px, y - py)
 
-    def _haversine_distance(
-        self, lat1: float, lon1: float, lat2: float, lon2: float
-    ) -> float:
+    def _haversine_distance(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         """Haversine distance in meters"""
         import math
 
@@ -487,9 +479,7 @@ class MissionValidator:
         dlon = math.radians(lon2 - lon1)
         a = (
             math.sin(dlat / 2) ** 2
-            + math.cos(math.radians(lat1))
-            * math.cos(math.radians(lat2))
-            * math.sin(dlon / 2) ** 2
+            + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
         )
         return 2 * R * math.asin(math.sqrt(a))
 
@@ -598,17 +588,11 @@ class MissionPlannerNode(Node):
 
         # Publishers
         self.mission_pub = self.create_publisher(String, "/llm_mission/response", qos)
-        self.validated_pub = self.create_publisher(
-            String, "/llm_mission/validated", qos
-        )
-        self.waypoints_pub = self.create_publisher(
-            String, "/llm_mission/waypoints", qos
-        )
+        self.validated_pub = self.create_publisher(String, "/llm_mission/validated", qos)
+        self.waypoints_pub = self.create_publisher(String, "/llm_mission/waypoints", qos)
 
         # Services
-        self.plan_srv = self.create_service(
-            String, "/llm_mission/plan", self.plan_mission_callback
-        )
+        self.plan_srv = self.create_service(String, "/llm_mission/plan", self.plan_mission_callback)
         self.validate_srv = self.create_service(
             String, "/llm_mission/validate", self.validate_mission_callback
         )
@@ -645,9 +629,7 @@ class MissionPlannerNode(Node):
         if msg.capacity > 0:
             self.current_battery = (msg.charge / msg.capacity) * 100.0
         else:
-            self.current_battery = (
-                msg.percentage * 100.0 if msg.percentage >= 0 else 100.0
-            )
+            self.current_battery = msg.percentage * 100.0 if msg.percentage >= 0 else 100.0
 
     def state_callback(self, msg: MavrosState):
         self.current_mode = msg.mode
@@ -696,13 +678,9 @@ class MissionPlannerNode(Node):
 
             # Generate mission plan
             for attempt in range(self.config["max_retries"]):
-                self.get_logger().info(
-                    f'LLM attempt {attempt + 1}/{self.config["max_retries"]}'
-                )
+                self.get_logger().info(f'LLM attempt {attempt + 1}/{self.config["max_retries"]}')
 
-                response = await self.llm_provider.generate(
-                    system_prompt, mission_prompt
-                )
+                response = await self.llm_provider.generate(system_prompt, mission_prompt)
 
                 if self.config["log_llm_responses"]:
                     self.get_logger().info(f"LLM Response: {response[:200]}...")
@@ -730,9 +708,7 @@ class MissionPlannerNode(Node):
 
             # All attempts failed
             self.get_logger().error("All LLM attempts failed or validation failed")
-            await self._publish_error(
-                user_input, "Failed to generate valid mission plan"
-            )
+            await self._publish_error(user_input, "Failed to generate valid mission plan")
 
         except Exception as e:
             self.get_logger().error(f"Mission planning error: {e}")
@@ -743,9 +719,7 @@ class MissionPlannerNode(Node):
             return self.jinja_env.get_template(filename).render()
         else:
             # Fallback: read raw file
-            path = os.path.join(
-                os.path.dirname(__file__), "config", "prompts", filename
-            )
+            path = os.path.join(os.path.dirname(__file__), "config", "prompts", filename)
             with open(path, "r") as f:
                 return f.read()
 
@@ -754,9 +728,7 @@ class MissionPlannerNode(Node):
             return self.jinja_env.get_template(filename).render(**context)
         else:
             # Simple string replacement fallback
-            path = os.path.join(
-                os.path.dirname(__file__), "config", "prompts", filename
-            )
+            path = os.path.join(os.path.dirname(__file__), "config", "prompts", filename)
             with open(path, "r") as f:
                 template = f.read()
             for key, value in context.items():
@@ -787,9 +759,7 @@ class MissionPlannerNode(Node):
             min_altitude=parsed.get("constraints", {}).get(
                 "min_altitude", self.config["min_altitude"]
             ),
-            max_speed=parsed.get("constraints", {}).get(
-                "max_speed", self.config["max_speed"]
-            ),
+            max_speed=parsed.get("constraints", {}).get("max_speed", self.config["max_speed"]),
             geofence=parsed.get("constraints", {}).get(
                 "geofence", self.config.get("geofence_polygon", [])
             ),
@@ -860,9 +830,7 @@ class MissionPlannerNode(Node):
     def plan_mission_callback(self, request: String, response: String):
         """Service callback for mission planning"""
         self.create_task(self.process_mission_request(request.data))
-        response.data = json.dumps(
-            {"status": "accepted", "message": "Mission planning started"}
-        )
+        response.data = json.dumps({"status": "accepted", "message": "Mission planning started"})
         return response
 
     def validate_mission_callback(self, request: String, response: String):

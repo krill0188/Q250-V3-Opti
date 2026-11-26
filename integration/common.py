@@ -4,10 +4,10 @@ Common utilities and shared data structures for flight intelligence integration.
 Provides base classes, SQL schema, and shared constants used by all adapters.
 """
 
-import hashlib
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
+import hashlib
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
 
@@ -1016,9 +1016,7 @@ def ecef_to_lla(x: float, y: float, z: float) -> Tuple[float, float, float]:
     return math.degrees(lat), math.degrees(lon), alt
 
 
-def quat_to_euler(
-    q0: float, q1: float, q2: float, q3: float
-) -> Tuple[float, float, float]:
+def quat_to_euler(q0: float, q1: float, q2: float, q3: float) -> Tuple[float, float, float]:
     """Quaternion to Euler angles (roll, pitch, yaw) in radians. ZYX convention."""
     import math
 
@@ -1042,9 +1040,7 @@ def quat_to_euler(
     return roll, pitch, yaw
 
 
-def euler_to_quat(
-    roll: float, pitch: float, yaw: float
-) -> Tuple[float, float, float, float]:
+def euler_to_quat(roll: float, pitch: float, yaw: float) -> Tuple[float, float, float, float]:
     """Euler angles (roll, pitch, yaw) in radians to quaternion. ZYX convention."""
     import math
 

@@ -37,7 +37,7 @@ jobs:
     - name: Run ruff
       run: ruff check --exclude='venv*/**' --exclude='generated/**' --exclude='build/**' --exclude='.git/**' --output-format=github .
     - name: Run black
-      run: black --check --diff --exclude='venv*/**|generated/**|build/**|\.git/**' .
+      run: black --check --diff --exclude='venv*/**|generated/**|build/**|\.git/**|.*\.launch\.py$' .
     - name: Run isort
       run: isort --check-only --diff --skip venv --skip generated --skip build --skip .git .
     - name: Run mypy

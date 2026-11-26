@@ -8,10 +8,10 @@ and triggers failsafe modes when anomalies detected.
 Based on docs/12-obstacle-avoidance-pipeline.md Section 12.9
 """
 
-import rclpy
 from geometry_msgs.msg import Twist
 from mavros_msgs.msg import ParamValue
 from mavros_msgs.srv import ParamSet
+import rclpy
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import Float32MultiArray
@@ -185,9 +185,7 @@ class SafetyWatchdog(Node):
     def update_px4_param(self, param_name: str, value: float):
         """Update PX4 parameter via MAVROS."""
         if not self.param_client.service_is_ready():
-            self.get_logger().debug(
-                f"MAVROS param service not ready, skipping {param_name}"
-            )
+            self.get_logger().debug(f"MAVROS param service not ready, skipping {param_name}")
             return
 
         request = ParamSet.Request()

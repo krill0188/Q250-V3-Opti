@@ -6,16 +6,16 @@ Real-time collision avoidance using potential fields / velocity obstacles.
 Subscribes to swarm position broadcasts and computes avoidance velocities.
 """
 
+from dataclasses import dataclass
+from enum import Enum
 import json
 import math
 import time
-from dataclasses import dataclass
-from enum import Enum
 from typing import Dict, Optional, Tuple
 
-import rclpy
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
+import rclpy
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import String
@@ -128,9 +128,7 @@ class CollisionAvoidance(Node):
         )
 
         # Publisher
-        self.cmd_vel_pub = self.create_publisher(
-            Twist, self.config["cmd_vel_topic"], 10
-        )
+        self.cmd_vel_pub = self.create_publisher(Twist, self.config["cmd_vel_topic"], 10)
 
         # Timer for CA loop
         self.ca_timer = self.create_timer(0.05, self.ca_loop)  # 20 Hz
@@ -299,9 +297,7 @@ class CollisionAvoidance(Node):
 
         # Limit to max avoidance acceleration
         max_accel = self.get_parameter("max_avoidance_accel").value
-        vel_mag = math.sqrt(
-            avoidance_vel[0] ** 2 + avoidance_vel[1] ** 2 + avoidance_vel[2] ** 2
-        )
+        vel_mag = math.sqrt(avoidance_vel[0] ** 2 + avoidance_vel[1] ** 2 + avoidance_vel[2] ** 2)
         if vel_mag > max_accel:
             scale = max_accel / vel_mag
             avoidance_vel = (
@@ -351,11 +347,7 @@ class CollisionAvoidance(Node):
                             fy = ry + rvy * t
                             fz = rz + rvz * t
                             dist = math.sqrt(fx * fx + fy * fy + fz * fz)
-                            if (
-                                dist
-                                < self.get_parameter("safety_radius").value
-                                + safety_margin
-                            ):
+                            if dist < self.get_parameter("safety_radius").value + safety_margin:
                                 collision = True
                                 break
 

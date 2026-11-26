@@ -90,10 +90,7 @@ def generate_launch_description():
         nodes.append(obstacle_dist_node)
 
         # 4. Safety Watchdog (planner health + Silvus link quality -> PX4 failsafe)
-        if (
-            LaunchConfiguration("enable_silvus_monitor").perform(context).lower()
-            == "true"
-        ):
+        if LaunchConfiguration("enable_silvus_monitor").perform(context).lower() == "true":
             watchdog_node = Node(
                 package="obstacle_avoidance",
                 executable="safety_watchdog",

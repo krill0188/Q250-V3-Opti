@@ -9,8 +9,8 @@ Integrates with Silvus link quality monitoring for adaptive broadcast rates.
 import json
 import time
 
-import rclpy
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped, TwistStamped
+import rclpy
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import BatteryState
@@ -137,9 +137,7 @@ class PositionBroadcaster(Node):
         self.battery_sub = self.create_subscription(
             BatteryState, "/mavros/battery", self.battery_callback, 10
         )
-        self.state_sub = self.create_subscription(
-            State, "/mavros/state", self.state_callback, 10
-        )
+        self.state_sub = self.create_subscription(State, "/mavros/state", self.state_callback, 10)
 
         # Silvus link quality
         self.silvus_sub = self.create_subscription(
@@ -152,9 +150,7 @@ class PositionBroadcaster(Node):
         )
 
         # Publishers
-        self.position_pub = self.create_publisher(
-            String, self.config["position_topic"], 10
-        )
+        self.position_pub = self.create_publisher(String, self.config["position_topic"], 10)
         self.status_pub = self.create_publisher(String, self.config["status_topic"], 10)
 
         # Timer for broadcasting
@@ -204,9 +200,7 @@ class PositionBroadcaster(Node):
             if msg.capacity > 0:
                 self.current_battery = (msg.charge / msg.capacity) * 100.0
             else:
-                self.current_battery = (
-                    msg.percentage * 100.0 if msg.percentage >= 0 else 100.0
-                )
+                self.current_battery = msg.percentage * 100.0 if msg.percentage >= 0 else 100.0
 
     def state_callback(self, msg):
         if self.config["include_mode"]:
@@ -239,8 +233,7 @@ class PositionBroadcaster(Node):
                     )
                     # Reduce broadcast rate
                     self.current_broadcast_rate = (
-                        self.base_broadcast_rate
-                        * self.get_parameter("link_loss_reduce_rate").value
+                        self.base_broadcast_rate * self.get_parameter("link_loss_reduce_rate").value
                     )
                 else:
                     self.get_logger().info("Silvus link recovered")
