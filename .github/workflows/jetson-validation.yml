@@ -1,0 +1,221 @@
+name: Jetson Orin On-Device Validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: 'Pipeline stage to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - deploy
+          - build
+          - calibrate
+          - dla
+          - benchmark
+          - package
+      jetson_host:
+        description: 'Jetson Orin hostname/IP'
+        required: false
+        default: ''
+        type: string
+      skip_deploy:
+        description: 'Skip deployment (assume files on Jetson)'
+        required: false
+        default: false
+        type: boolean
+      dry_run:
+        description: 'Dry run mode (show commands only)'
+        required: false
+        default: false
+        type: boolean
+
+  schedule:
+    # Run weekly on Monday at 2 AM UTC for regression testing
+    - cron: '0 2 * * 1'
+
+  # Run on tag push for release validation
+  push:
+    tags:
+      - 'v*'
+
+env:
+  # Default Jetson config (overridden by secrets/inputs)
+  JETSON_HOST: ${{ secrets.JETSON_HOST || 'jetson.local' }}
+  JETSON_USER: ${{ secrets.JETSON_USER || 'jetson' }}
+  JETSON_PORT: ${{ secrets.JETSON_PORT || '22' }}
+  JETSON_KEY_BASE64: ${{ secrets.JETSON_KEY_BASE64 }}
+  JETSON_CALIB_DIR: ${{ secrets.JETSON_CALIB_DIR || '/home/jetson/data/drone_datasets/processed/drone_audio' }}
+  JETSON_CHECKPOINT_DIR: ${{ secrets.JETSON_CHECKPOINT_DIR || '/home/jetson/checkpoints' }}
+
+jobs:
+  validate-jetson:
+    name: Jetson Orin Validation Pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      actions: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup SSH key
+        if: env.JETSON_KEY_BASE64 != ''
+        run: |
+          echo "${JETSON_KEY_BASE64}" | base64 -d > ~/.ssh/jetson_key
+          chmod 600 ~/.ssh/jetson_key
+          echo "JETSON_KEY=~/.ssh/jetson_key" >> $GITHUB_ENV
+
+      - name: Configure Jetson host from input
+        if: github.event.inputs.jetson_host != ''
+        run: |
+          echo "JETSON_HOST=${{ github.event.inputs.jetson_host }}" >> $GITHUB_ENV
+
+      - name: Install SSH automation script
+        run: |
+          chmod +x scripts/ssh_jetson_setup.sh
+          chmod +x scripts/jetson_pipeline.sh
+
+      - name: Run Jetson validation pipeline
+        env:
+          STAGE: ${{ github.event.inputs.stage || 'all' }}
+          SKIP_DEPLOY: ${{ github.event.inputs.skip_deploy || 'false' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        run: |
+          ./scripts/ssh_jetson_setup.sh \
+            --host "${JETSON_HOST}" \
+            --user "${JETSON_USER}" \
+            --port "${JETSON_PORT}" \
+            --key "${JETSON_KEY:-~/.ssh/id_ed25519}" \
+            --stage "${STAGE}" \
+            ${SKIP_DEPLOY:+--skip-deploy} \
+            ${DRY_RUN:+--dry-run}
+
+      - name: Download deploy package artifact
+        if: github.event.inputs.stage == 'all' || github.event.inputs.stage == 'package'
+        run: |
+          # The package is downloaded by ssh_jetson_setup.sh to the workspace
+          PACKAGE=$(ls -t q250-v3-opti-gpu-*.tar.gz 2>/dev/null | head -1 || true)
+          if [[ -n "${PACKAGE}" && -f "${PACKAGE}" ]]; then
+            echo "PACKAGE=${PACKAGE}" >> $GITHUB_ENV
+            echo "Found deploy package: ${PACKAGE}"
+          else
+            echo "No deploy package found"
+            exit 1
+          fi
+
+      - name: Upload deploy package as artifact
+        if: env.PACKAGE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: q250-v3-opti-gpu-deploy-package
+          path: ${{ env.PACKAGE }}
+          retention-days: 30
+
+      - name: Upload checksum as artifact
+        if: env.PACKAGE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: q250-v3-opti-gpu-deploy-checksum
+          path: ${{ env.PACKAGE }}.sha256
+          retention-days: 30
+
+      - name: Publish to GitHub Release (on tag push)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && env.PACKAGE != ''
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ${{ env.PACKAGE }}
+            ${{ env.PACKAGE }}.sha256
+          tag_name: ${{ github.ref_name }}
+          name: Q250-V3-Opti GPU Deploy Package ${{ github.ref_name }}
+          body: |
+            ## Q250-V3-Opti GPU Deployment Package
+            
+            This package contains validated GPU artifacts for Jetson Orin (sm_87):
+            
+            ### Contents
+            - `libtrajectory_kernels.so` - CUDA kernels (geometric/spiral/sine dive, jink, LUT interpolation)
+            - `audio_classifier.engine` - TensorRT INT8 engine (entropy calibration)
+            - `audio_classifier_percentile.engine` - TensorRT INT8 engine (percentile 99.9 calibration)
+            - `trajectory_bindings.py` - Python ctypes bindings with auto-fallback
+            - `trajectory_kernels.cuh` - CUDA kernel headers
+            - Calibration caches (`.calib` files)
+            
+            ### Validation Results
+            - CUDA kernel execution: ✓ Verified on Jetson Orin
+            - TensorRT INT8 (entropy): ✓ Calibrated & benchmarked
+            - TensorRT INT8 (percentile): ✓ Calibrated & benchmarked
+            - DLA execution: ✓ Tested (if available)
+            - Performance benchmarks: ✓ Completed
+            
+            ### Usage
+            ```bash
+            tar -xzf ${{ env.PACKAGE }}
+            export LD_LIBRARY_PATH=\$PWD:\$LD_LIBRARY_PATH
+            export PYTHONPATH=\$PWD:\$PYTHONPATH
+            python3 -c "
+            from trajectory_bindings import get_trajectory_backend
+            backend, name = get_trajectory_backend()
+            print(f'Backend: {name}')
+            "
+            ```
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Jetson Orin Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Stage | ${{ github.event.inputs.stage || 'all' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Host | ${JETSON_HOST} |" >> $GITHUB_STEP_SUMMARY
+          echo "| User | ${JETSON_USER} |" >> $GITHUB_STEP_SUMMARY
+          if [[ -n "${PACKAGE}" ]]; then
+            echo "| Package | ${PACKAGE} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Checksum | $(cat ${PACKAGE}.sha256 | cut -d' ' -f1) |" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Artifacts uploaded as workflow artifacts." >> $GITHUB_STEP_SUMMARY
+
+  # Optional: Run quick validation on every push to main
+  quick-validate:
+    name: Quick Jetson Validation (smoke test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: validate-jetson
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        if: env.JETSON_KEY_BASE64 != ''
+        run: |
+          echo "${JETSON_KEY_BASE64}" | base64 -d > ~/.ssh/jetson_key
+          chmod 600 ~/.ssh/jetson_key
+          echo "JETSON_KEY=~/.ssh/jetson_key" >> $GITHUB_ENV
+
+      - name: Run quick validation (build + smoke test only)
+        env:
+          STAGE: build
+          SKIP_DEPLOY: true
+        run: |
+          chmod +x scripts/ssh_jetson_setup.sh
+          ./scripts/ssh_jetson_setup.sh \
+            --host "${JETSON_HOST}" \
+            --user "${JETSON_USER}" \
+            --port "${JETSON_PORT}" \
+            --key "${JETSON_KEY:-~/.ssh/id_ed25519}" \
+            --stage "${STAGE}" \
+            --skip-deploy

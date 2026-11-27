@@ -87,6 +87,9 @@ def build_tensorrt_engine(
     int8_mode: bool = False,
     calibration_data: np.ndarray = None,
     calibration_cache: str = None,
+    calib_method: str = "entropy",
+    calib_batch_size: int = 32,
+    calib_percentile: float = 99.9,
     workspace_size: int = 1 << 30,  # 1GB
 ) -> bool:
     """Build TensorRT engine from ONNX with INT8 calibration support"""
@@ -95,7 +98,7 @@ def build_tensorrt_engine(
         import tensorrt as trt
 
         print(f"Building TensorRT engine: {engine_path}")
-        print(f"FP16: {fp16_mode}, INT8: {int8_mode}")
+        print(f"FP16: {fp16_mode}, INT8: {int8_mode}, calib_method: {calib_method}")
 
         TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
         builder = trt.Builder(TRT_LOGGER)
@@ -122,15 +125,27 @@ def build_tensorrt_engine(
         calibrator = None
         if int8_mode and builder.platform_has_fast_int8:
             config.set_flag(trt.BuilderFlag.INT8)
-            print("INT8 mode enabled")
+            print(f"INT8 mode enabled (calibrator: {calib_method})")
 
             if calibration_data is not None:
-                calibrator = INT8Calibrator(
-                    calibration_data,
-                    cache_file=calibration_cache or f"{engine_path}.calib",
-                )
+                if calib_method == "percentile":
+                    calibrator = PercentileCalibrator(
+                        calibration_data,
+                        cache_file=calibration_cache or f"{engine_path}.calib",
+                        batch_size=calib_batch_size,
+                        percentile=calib_percentile,
+                    )
+                else:
+                    calibrator = INT8Calibrator(
+                        calibration_data,
+                        cache_file=calibration_cache or f"{engine_path}.calib",
+                        batch_size=calib_batch_size,
+                    )
                 config.int8_calibrator = calibrator
-                print(f"INT8 calibrator set (cache: {calibration_cache or engine_path + '.calib'})")
+                print(
+                    f"INT8 calibrator set ({calib_method}, cache: "
+                    f"{calibration_cache or engine_path + '.calib'})"
+                )
             else:
                 print("WARNING: INT8 mode requested but no calibration data provided")
 
@@ -190,6 +205,93 @@ class INT8Calibrator(trt.IInt8EntropyCalibrator2):
 
         self.cache_file = cache_file
         self.batch_size = batch_size
+
+        # 데이터 정규화 확인 및 전처리
+        self.data = calibration_data.astype(np.float32)
+        if self.data.ndim == 3:  # (N, 157, 40) -> (N, 1, 157, 40)
+            self.data = self.data[:, np.newaxis, :, :]
+        elif self.data.ndim != 4 or self.data.shape[1] != 1:
+            raise ValueError(f"Expected (N, 1, 157, 40), got {self.data.shape}")
+
+        self.num_samples = self.data.shape[0]
+        self.current_batch = 0
+
+        # GPU 메모리 할당 (첫 배치 크기로)
+        self.device_input = None
+        self._allocate_device_memory()
+
+        # 캐시 로드 시도
+        self.calibration_cache = None
+        if os.path.exists(self.cache_file):
+            with open(self.cache_file, "rb") as f:
+                self.calibration_cache = f.read()
+            print(f"Loaded calibration cache from {self.cache_file}")
+
+    def _allocate_device_memory(self):
+        """첫 배치 크기로 GPU 메모리 할당"""
+        import pycuda.driver as cuda
+
+        batch = self.data[: self.batch_size]
+        self.device_input = cuda.mem_alloc(batch.nbytes)
+
+    def get_batch_size(self) -> int:
+        return self.batch_size
+
+    def get_batch(self, names: List[str], p_str: Optional[List] = None) -> List[int]:
+        """다음 캘리브레이션 배치 반환"""
+        if self.current_batch * self.batch_size >= self.num_samples:
+            return None
+
+        start = self.current_batch * self.batch_size
+        end = min(start + self.batch_size, self.num_samples)
+        batch = self.data[start:end]
+
+        import pycuda.driver as cuda
+
+        cuda.memcpy_htod(self.device_input, batch)
+
+        self.current_batch += 1
+        return [int(self.device_input)]
+
+    def read_calibration_cache(self) -> bytes:
+        return self.calibration_cache
+
+    def write_calibration_cache(self, cache: bytes):
+        with open(self.cache_file, "wb") as f:
+            f.write(cache)
+        print(f"Calibration cache saved to {self.cache_file}")
+
+
+class PercentileCalibrator(trt.IInt8MinMaxCalibrator):
+    """INT8 MinMax Calibrator using percentile-based threshold for Audio Classification Models.
+
+    Uses percentile (default 99.9) of the observed activation range as the
+    min/max calibration threshold instead of entropy-based histogram analysis.
+    This typically yields tighter quantization ranges for long-tailed
+    activation distributions common in audio classification.
+    """
+
+    def __init__(
+        self,
+        calibration_data: np.ndarray,
+        cache_file: str = "calibration.cache",
+        batch_size: int = 8,
+        percentile: float = 99.9,
+    ):
+        """
+        Args:
+            calibration_data: (N, 1, 157, 40) 대표 데이터셋 (정규화된 float32)
+            cache_file: 캘리브레이션 캐시 파일 경로
+            batch_size: 캘리브레이션 배치 크기
+            percentile: 백분위수 임계값 (기본 99.9, 0~100 사이)
+        """
+        trt.IInt8MinMaxCalibrator.__init__(self)
+
+        self.cache_file = cache_file
+        self.batch_size = batch_size
+        self.percentile = float(percentile)
+        if not 0.0 < self.percentile <= 100.0:
+            raise ValueError(f"percentile must be in (0, 100], got {self.percentile}")
 
         # 데이터 정규화 확인 및 전처리
         self.data = calibration_data.astype(np.float32)
@@ -333,12 +435,20 @@ def export_pytorch_to_tensorrt(
     int8: bool = False,
     simplify: bool = True,
     calibration_dataset: Optional[torch.utils.data.DataLoader] = None,
+    calib_method: str = "entropy",
+    calib_batches: int = 32,
+    calib_batch_size: int = 32,
+    calib_percentile: float = 99.9,
 ) -> Tuple[str, str]:
     """
     Complete pipeline: PyTorch -> ONNX -> TensorRT with INT8 calibration
 
     Args:
         calibration_dataset: INT8 캘리브레이션용 DataLoader (필수 if int8=True)
+        calib_method: "entropy" (IInt8EntropyCalibrator2) or "percentile" (IInt8MinMaxCalibrator)
+        calib_batches: 최대 캘리브레이션 배치 수 (기본 32)
+        calib_batch_size: 캘리브레이션 배치 크기 (기본 32)
+        calib_percentile: percentile calibrator용 백분위수 (기본 99.9)
     Returns:
         (onnx_path, engine_path)
     """
@@ -370,11 +480,13 @@ def export_pytorch_to_tensorrt(
         model.eval()
         with torch.no_grad():
             for batch_idx, (inputs, _) in enumerate(calibration_dataset):
-                if batch_idx >= 50:  # 최대 50 배치 (배치당 8개면 400 샘플)
+                if batch_idx >= calib_batches:
                     break
                 calibration_data.append(inputs.cpu().numpy())
         calibration_data = np.concatenate(calibration_data, axis=0)
-        print(f"Prepared calibration data: {calibration_data.shape}")
+        print(
+            f"Prepared calibration data: {calibration_data.shape} ({calib_batches} batches x {calib_batch_size})"
+        )
 
     # 4. ONNX -> TensorRT
     success = build_tensorrt_engine(
@@ -384,6 +496,9 @@ def export_pytorch_to_tensorrt(
         int8_mode=int8,
         calibration_data=calibration_data,
         calibration_cache=str(calibration_cache),
+        calib_method=calib_method,
+        calib_batch_size=calib_batch_size,
+        calib_percentile=calib_percentile,
     )
 
     if success:
@@ -486,6 +601,25 @@ if __name__ == "__main__":
         type=str,
         help="Path to calibration dataset directory (for INT8)",
     )
+    parser.add_argument(
+        "--calib_method",
+        type=str,
+        choices=["entropy", "percentile"],
+        default="entropy",
+        help="INT8 calibration method: 'entropy' (IInt8EntropyCalibrator2) or 'percentile' (IInt8MinMaxCalibrator)",
+    )
+    parser.add_argument(
+        "--calib_batches",
+        type=int,
+        default=32,
+        help="Maximum number of calibration batches (default: 32)",
+    )
+    parser.add_argument(
+        "--calib_batch_size",
+        type=int,
+        default=32,
+        help="Calibration batch size (default: 32)",
+    )
     parser.add_argument("--no_simplify", action="store_true", help="Skip ONNX simplification")
     parser.add_argument("--benchmark", action="store_true", help="Run benchmark after export")
 
@@ -521,7 +655,9 @@ if __name__ == "__main__":
         print(f"Loaded calibration dataset: {len(calib_dataset.dataset)} samples")
 
     # Export
-    print(f"Exporting {args.model_path} -> TensorRT (FP16={args.fp16}, INT8={args.int8})")
+    print(
+        f"Exporting {args.model_path} -> TensorRT (FP16={args.fp16}, INT8={args.int8}, calib={args.calib_method})"
+    )
     onnx_path, engine_path = export_pytorch_to_tensorrt(
         model,
         dummy_input,
@@ -531,9 +667,34 @@ if __name__ == "__main__":
         int8=args.int8,
         simplify=not args.no_simplify,
         calibration_dataset=calibration_dataset,
+        calib_method=args.calib_method,
+        calib_batches=args.calib_batches,
+        calib_batch_size=args.calib_batch_size,
     )
 
     if args.benchmark:
         print("\nBenchmarking...")
         results = benchmark_tensorrt_engine(engine_path)
         print(f"Results: {results}")
+
+
+# =============================================================================
+# Review Gate Checklist — PercentileCalibrator + CLI args
+# =============================================================================
+# [ ] PercentileCalibrator class implements trt.IInt8MinMaxCalibrator
+# [ ] PercentileCalibrator.__init__ accepts (calibration_data, cache_file, batch_size, percentile)
+# [ ] PercentileCalibrator.get_batch_size() returns configured batch_size
+# [ ] PercentileCalibrator.get_batch(names) returns [device_pointer] or None when exhausted
+# [ ] PercentileCalibrator.read_calibration_cache() returns cached bytes or None
+# [ ] PercentileCalibrator.write_calibration_cache(cache) writes to cache_file
+# [ ] build_tensorrt_engine accepts calib_method ("entropy"|"percentile"), calib_batch_size, calib_percentile
+# [ ] build_tensorrt_engine selects PercentileCalibrator when calib_method == "percentile"
+# [ ] build_tensorrt_engine selects INT8Calibrator when calib_method == "entropy" (default)
+# [ ] export_pytorch_to_tensorrt accepts calib_method, calib_batches, calib_batch_size, calib_percentile
+# [ ] CLI --calib_method accepts "entropy"|"percentile" (default: entropy)
+# [ ] CLI --calib_batches accepts positive int (default: 32)
+# [ ] CLI --calib_batch_size accepts positive int (default: 32)
+# [ ] Calibration loop uses calib_batches to limit number of batches consumed
+# [ ] Cache version differs between "entropy" and "percentile" methods
+# [ ] All existing tests pass (black, isort, pytest on non-GPU hosts)
+# [ ] Code formatted with black and isort

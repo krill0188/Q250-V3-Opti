@@ -159,6 +159,64 @@ jobs:
       run: docker compose config -q
     - name: Check required services
       run: docker compose config --services | grep -E "^(q250-dev|px4-sitl|mavros2|jupyter|tensorboard)$"
+
+  cuda-build:
+    name: CUDA Build (sm_86/89)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@v4
+    - name: Verify CUDA availability
+      run: |
+        nvidia-smi
+        nvcc --version
+        echo "CUDA_HOME=$CUDA_HOME" >> $GITHUB_ENV
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential
+    - name: Configure CMake (sm_86/89)
+      run: |
+        mkdir -p build
+        cd build
+        cmake .. \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_CUDA_ARCHITECTURES="86;89" \
+          -DBUILD_TESTING=ON \
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    - name: Build CUDA kernels and tests
+      run: |
+        cd build
+        cmake --build . -j$(nproc)
+    - name: Run CUDA kernel tests (ctest)
+      run: |
+        cd build
+        ctest --output-on-failure -V
+    - name: Verify library generated
+      run: |
+        ls -la build/libtrajectory_kernels.so
+        file build/libtrajectory_kernels.so
+        echo "Library size: $(du -h build/libtrajectory_kernels.so | cut -f1)"
+    - name: Verify Python bindings copied
+      run: |
+        ls -la build/trajectory_bindings.py
+        ls -la build/trajectory_kernels.cuh
+    - name: Test Python bindings load (CUDA backend)
+      run: |
+        cd build
+        python3 ../src/cuda/trajectory_bindings.py
+      env:
+        PYTHONPATH: ${{ github.workspace }}/build:${{ github.workspace }}/src/cuda
+    - name: Upload CUDA artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: cuda-build-artifacts
+        path: |
+          build/libtrajectory_kernels.so
+          build/trajectory_bindings.py
+          build/trajectory_kernels.cuh
+        retention-days: 7
+
   summary:
     name: CI Summary
     runs-on: ubuntu-latest
@@ -167,7 +225,8 @@ jobs:
     - test-unit
     - mavlink-gen
     - docker-compose
+    - cuda-build
     if: always()
     steps:
     - name: Check job statuses
-      run: "echo \"Lint: ${{ needs.lint.result }}\"\necho \"Unit Tests: ${{ needs.test-unit.result }}\"\necho \"MAVLink Gen: ${{ needs.mavlink-gen.result }}\"\necho \"Docker Compose: ${{ needs.docker-compose.result }}\"\nif [[ \"${{ needs.lint.result }}\" != \"success\" ]] || [[ \"${{ needs.test-unit.result }}\" != \"success\" ]] || [[ \"${{ needs.mavlink-gen.result }}\" != \"success\" ]] || [[ \"${{ needs.docker-compose.result }}\" != \"success\" ]]; then\n  echo \"Some jobs failed\"\n  exit 1\nelse\n  echo \"All checks passed\"\nfi"
+      run: "echo \"Lint: ${{ needs.lint.result }}\"\necho \"Unit Tests: ${{ needs.test-unit.result }}\"\necho \"MAVLink Gen: ${{ needs.mavlink-gen.result }}\"\necho \"Docker Compose: ${{ needs.docker-compose.result }}\"\necho \"CUDA Build: ${{ needs.cuda-build.result }}\"\nif [[ \"${{ needs.lint.result }}\" != \"success\" ]] || [[ \"${{ needs.test-unit.result }}\" != \"success\" ]] || [[ \"${{ needs.mavlink-gen.result }}\" != \"success\" ]] || [[ \"${{ needs.docker-compose.result }}\" != \"success\" ]] || [[ \"${{ needs.cuda-build.result }}\" != \"success\" ]]; then\n  echo \"Some jobs failed\"\n  exit 1\nelse\n  echo \"All checks passed\"\nfi"
