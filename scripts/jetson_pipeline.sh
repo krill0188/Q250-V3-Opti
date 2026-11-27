@@ -50,7 +50,7 @@ Usage: $0 [OPTIONS]
 Jetson Orin On-Device Validation Pipeline (runs ON Jetson)
 
 OPTIONS:
-    --stage STAGE       Pipeline stage: build, calibrate, dla, benchmark, package, all (default: all)
+    --stage STAGE       Pipeline stage: build, calibrate, dla, power_thermal, benchmark, package, all (default: all)
     --calib-data PATH   Calibration dataset path (default: ~/data/drone_datasets/processed/drone_audio)
     --checkpoint PATH   Model checkpoint path (default: ~/checkpoints/multiclass/best_model.pth)
     --output-dir DIR    Project output directory (default: ~/Q250-V3-Opti)
@@ -284,6 +284,130 @@ else:
 }
 
 # -----------------------------------------------------------------------------
+# Stage: Power/Thermal Profiling
+# -----------------------------------------------------------------------------
+stage_power_thermal() {
+    log_stage "Power/Thermal Profiling (MAXN mode)"
+
+    cd "${PROJECT_DIR}"
+
+    # Verify MAXN power mode
+    log_info "Checking power mode..."
+    nvpmodel -q 2>/dev/null || log_warn "nvpmodel not available"
+
+    # Collect baseline thermal readings
+    log_info "Collecting baseline thermal readings..."
+    if [[ -d /sys/class/thermal ]]; then
+        for zone in /sys/class/thermal/thermal_zone*; do
+            [[ -f "${zone}/temp" ]] || continue
+            local t=$(cat "${zone}/temp" 2>/dev/null || echo "0")
+            local name=$(cat "${zone}/type" 2>/dev/null || echo "unknown")
+            echo "  ${name}: $((t/1000))°C"
+        done
+    else
+        log_warn "No thermal zones found"
+    fi
+
+    # Start tegrastats monitoring
+    log_info "Starting tegrastats power/thermal monitoring..."
+    mkdir -p "${PROJECT_DIR}/profiling"
+    sudo tegrastats --interval 1000 --logfile "${PROJECT_DIR}/profiling/tegrastats_power_thermal.log" --strlen 0 &
+    local TEGRA_PID=$!
+    sleep 2
+    log_info "tegrastats started (PID: ${TEGRA_PID})"
+
+    # Run CUDA kernel benchmarks under thermal monitoring
+    log_info "Running CUDA kernel benchmarks under power monitoring..."
+    cd "${BUILD_DIR}"
+    python3 -c "
+import time
+import sys
+sys.path.insert(0, '..')
+from src.cuda.trajectory_bindings import get_trajectory_backend
+
+backend, name = get_trajectory_backend()
+print(f'Power/thermal benchmark - Backend: {name}')
+
+benchmarks = [
+    ('Geometric Dive (50 pts)', lambda: backend.geometric_dive((0,0,100), 50, 45, 25, 30, 60, 50)),
+    ('Spiral Dive (50 pts)', lambda: backend.spiral_dive((0,0,100), 50, 25, 10, 50)),
+    ('Sine Dive (50 pts)', lambda: backend.sine_dive((0,0,100), 50, 25, 5, 50)),
+    ('Jink (20 segs)', lambda: backend.jink((0,0,100), 20, 25, 30, 45, 50)),
+]
+
+for bname, func in benchmarks:
+    for _ in range(10): func()
+    start = time.perf_counter()
+    for _ in range(1000):
+        func()
+    elapsed = (time.perf_counter() - start) / 1000 * 1000
+    print(f'{bname}: {elapsed:.3f} ms avg (1000 runs)')
+" || log_warn "CUDA kernel benchmarks under power monitoring had issues"
+
+    # Run TensorRT benchmarks under thermal monitoring
+    log_info "Running TensorRT benchmarks under power monitoring..."
+    for engine_name in "audio_classifier_percentile.engine" "audio_classifier.engine"; do
+        ENGINE="${TENSORRT_DIR}/${engine_name}"
+        if [[ -f "${ENGINE}" ]]; then
+            log_info "Benchmarking ${engine_name} under thermal monitoring..."
+            python3 -c "
+import os, numpy as np, tensorrt as trt, pycuda.driver as cuda, time
+
+engine_path = '${ENGINE}'
+logger = trt.Logger(trt.Logger.WARNING)
+runtime = trt.Runtime(logger)
+with open(engine_path, 'rb') as f:
+    engine = runtime.deserialize_cuda_engine(f.read())
+context = engine.create_execution_context()
+input_shape = (1, 1, 157, 40)
+test_input = np.random.randn(*input_shape).astype(np.float32)
+input_binding = engine.get_binding_index('input')
+output_binding = engine.get_binding_index('output')
+d_input = cuda.mem_alloc(test_input.nbytes)
+output_shape = list(engine.get_binding_shape(output_binding))
+output_shape[0] = input_shape[0]
+d_output = cuda.mem_alloc(np.prod(output_shape) * 4)
+for _ in range(10):
+    cuda.memcpy_htod(d_input, test_input)
+    context.execute_v2([int(d_input), int(d_output)])
+cuda.Context.synchronize()
+times = []
+for _ in range(100):
+    start = time.perf_counter()
+    cuda.memcpy_htod(d_input, test_input)
+    context.execute_v2([int(d_input), int(d_output)])
+    cuda.Context.synchronize()
+    times.append(time.perf_counter() - start)
+times = np.array(times)
+name = os.path.basename(engine_path).replace('.engine', '')
+print(f'{name}: mean={np.mean(times)*1000:.2f}ms, min={np.min(times)*1000:.2f}ms, max={np.max(times)*1000:.2f}ms, FPS={1.0/np.mean(times):.1f}')
+" || log_warn "TensorRT benchmark for ${engine_name} had issues"
+        fi
+    done
+
+    # Stop tegrastats
+    log_info "Stopping tegrastats monitoring..."
+    sudo pkill -f tegrastats 2>/dev/null || true
+
+    # Collect final thermal readings
+    log_info "Collecting final thermal readings..."
+    if [[ -d /sys/class/thermal ]]; then
+        for zone in /sys/class/thermal/thermal_zone*; do
+            [[ -f "${zone}/temp" ]] || continue
+            local t=$(cat "${zone}/temp" 2>/dev/null || echo "0")
+            local name=$(cat "${zone}/type" 2>/dev/null || echo "unknown")
+            echo "  Final ${name}: $((t/1000))°C"
+        done
+    fi
+
+    # Save profiling data
+    log_info "Power/thermal profile data saved to ${PROJECT_DIR}/profiling/"
+    ls -la "${PROJECT_DIR}/profiling/" 2>/dev/null || true
+
+    log_ok "Power/thermal profiling complete"
+}
+
+# -----------------------------------------------------------------------------
 # Stage: Benchmarks
 # -----------------------------------------------------------------------------
 stage_benchmark() {
@@ -462,16 +586,24 @@ main() {
             stage_calibrate
             stage_dla
             ;;
+        power_thermal)
+            stage_build
+            stage_calibrate
+            stage_dla
+            stage_power_thermal
+            ;;
         benchmark)
             stage_build
             stage_calibrate
             stage_dla
+            stage_power_thermal
             stage_benchmark
             ;;
         package)
             stage_build
             stage_calibrate
             stage_dla
+            stage_power_thermal
             stage_benchmark
             stage_package
             ;;
@@ -479,6 +611,7 @@ main() {
             stage_build
             stage_calibrate
             stage_dla
+            stage_power_thermal
             stage_benchmark
             stage_package
             ;;

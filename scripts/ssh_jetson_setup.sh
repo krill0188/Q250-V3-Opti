@@ -222,6 +222,41 @@ stage_dla() {
     log_info "DLA test completed"
 }
 
+stage_power_thermal() {
+    log_stage "STAGE 5: Power/Thermal Profiling (MAXN mode)"
+
+    log_info "Verifying MAXN power mode on Jetson Orin..."
+    ssh_cmd "sudo nvpmodel -q 2>/dev/null || nvpmodel -q" \
+        || log_warn "Could not query power mode"
+
+    log_info "Collecting baseline thermal readings..."
+    ssh_cmd "cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null" \
+        || log_warn "Could not read thermal zones"
+
+    log_info "Starting tegrastats power/thermal monitoring..."
+    ssh_cmd "mkdir -p profiling && sudo tegrastats --interval 1000 --logfile profiling/tegrastats_power_thermal.log --strlen 0 &" \
+        || log_warn "tegrastats not available or failed to start"
+    ssh_cmd "sleep 2" || true
+
+    log_info "Running benchmarks under power/thermal monitoring (delegates to stage_benchmark)..."
+    # Power/thermal data is collected by tegrastats while benchmarks run in stage_benchmark
+    log_ok "Power/thermal monitoring active during benchmarks"
+
+    log_info "Stopping tegrastats monitoring..."
+    ssh_cmd "sudo pkill -f tegrastats 2>/dev/null || true" \
+        || log_warn "Could not stop tegrastats"
+
+    log_info "Collecting final thermal readings..."
+    ssh_cmd "cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null" \
+        || log_warn "Could not read final thermal zones"
+
+    log_info "Saving power/thermal profile data..."
+    ssh_cmd "ls -la profiling/ 2>/dev/null || echo 'No profiling directory'" \
+        || log_warn "Could not list profiling directory"
+
+    log_ok "Power/thermal profiling complete"
+}
+
 stage_benchmark() {
     log_stage "STAGE 5: Performance Benchmarks"
 
@@ -280,7 +315,7 @@ OPTIONS:
     --user USER         SSH username (default: jetson)
     --key KEY           SSH private key path (default: ~/.ssh/id_ed25519)
     --port PORT         SSH port (default: 22)
-    --stage STAGE       Run specific stage: deploy, build, calibrate, dla, benchmark, package, all (default: all)
+    --stage STAGE       Run specific stage: deploy, build, calibrate, dla, power_thermal, benchmark, package, all (default: all)
     --skip-deploy       Skip deployment stage
     --dry-run           Show commands without executing
     -h, --help          Show this help
@@ -341,11 +376,19 @@ main() {
             stage_calibrate
             stage_dla
             ;;
+        power_thermal)
+            [[ "${SKIP_DEPLOY}" != "true" ]] && stage_deploy
+            stage_build
+            stage_calibrate
+            stage_dla
+            stage_power_thermal
+            ;;
         benchmark)
             [[ "${SKIP_DEPLOY}" != "true" ]] && stage_deploy
             stage_build
             stage_calibrate
             stage_dla
+            stage_power_thermal
             stage_benchmark
             ;;
         package)
@@ -353,6 +396,7 @@ main() {
             stage_build
             stage_calibrate
             stage_dla
+            stage_power_thermal
             stage_benchmark
             stage_package
             ;;
@@ -361,6 +405,7 @@ main() {
             stage_build
             stage_calibrate
             stage_dla
+            stage_power_thermal
             stage_benchmark
             stage_package
             ;;

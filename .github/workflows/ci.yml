@@ -162,7 +162,7 @@ jobs:
 
   cuda-build:
     name: CUDA Build (sm_86/89)
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, cuda, g5]
     timeout-minutes: 30
     steps:
     - uses: actions/checkout@v4
@@ -170,18 +170,19 @@ jobs:
       run: |
         nvidia-smi
         nvcc --version
-        echo "CUDA_HOME=$CUDA_HOME" >> $GITHUB_ENV
+        echo "CUDA_HOME=/usr/local/cuda-12.2" >> $GITHUB_ENV
+        echo "PATH=/usr/local/cuda-12.2/bin:$PATH" >> $GITHUB_ENV
     - name: Install build dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y cmake build-essential
-    - name: Configure CMake (sm_86/89)
+    - name: Configure CMake (sm_86 for A10G)
       run: |
         mkdir -p build
         cd build
         cmake .. \
           -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_CUDA_ARCHITECTURES="86;89" \
+          -DCMAKE_CUDA_ARCHITECTURES="86" \
           -DBUILD_TESTING=ON \
           -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
     - name: Build CUDA kernels and tests
