@@ -27,7 +27,7 @@ detect_cuda_arch() {
         
         case "${GPU_NAME}" in
             *Orin*|*T234*|*AGX*Orin*) echo "87" ;;      # Jetson Orin
-            *RTX*30*|*A100*|*A30*) echo "80;86" ;;       # Ampere
+            *A10G*|*A10*|*RTX*30*|*A100*|*A30*) echo "86" ;;       # Ampere (g5.xlarge A10G = sm_86)
             *RTX*40*|*H100*) echo "89;90" ;;            # Hopper/Ada
             *T4*|*RTX*20*) echo "75" ;;                  # Turing
             *V100*) echo "70" ;;                         # Volta

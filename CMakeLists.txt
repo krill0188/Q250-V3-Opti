@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.18)
 project(trajectory_kernels LANGUAGES CUDA CXX)
 
-# CUDA 아키텍처 설정 (Jetson Orin = sm_87, RTX 30/40 = sm_86/89)
-set(CMAKE_CUDA_ARCHITECTURES "87;86;89;90" CACHE STRING "CUDA architectures")
+# CUDA 아키텍처 설정 (g5.xlarge A10G = sm_86, Jetson Orin = sm_87)
+set(CMAKE_CUDA_ARCHITECTURES "86;87" CACHE STRING "CUDA architectures")
 
 # C++ 표준
 set(CMAKE_CXX_STANDARD 17)
