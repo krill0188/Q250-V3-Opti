@@ -86,7 +86,7 @@ pip install numpy torch torchvision onnx onnxruntime pycuda tensorrt || \
 log "Cloning Q250-V3-Opti project..."
 PROJECT_DIR="/home/ubuntu/Q250-V3-Opti"
 if [[ ! -d "${PROJECT_DIR}" ]]; then
-    git clone https://github.com/your-org/Q250-V3-Opti.git "${PROJECT_DIR}" 2>/dev/null || \
+    git clone https://github.com/krill0188/Q250-V3-Opti.git "${PROJECT_DIR}" 2>/dev/null || \
         log "Git clone failed - project may need to be copied manually"
 fi
 
