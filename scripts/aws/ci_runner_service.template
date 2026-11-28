@@ -1,0 +1,16 @@
+[Unit]
+Description=Q250-V3-Opti GitHub Self-Hosted CI Runner (g5.xlarge, A10G, sm_86)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/actions-runner
+ExecStart=/home/ubuntu/actions-runner/run.sh
+Restart=always
+RestartSec=10
+Environment=RUNNER_NAME=q250-g5-runner
+Environment=RUNNER_LABELS=self-hosted,cuda,g5
+
+[Install]
+WantedBy=multi-user.target
